@@ -7,7 +7,7 @@ A lightweight, extensible block-based content editor built with Alpine.js. Creat
 
 ## Features
 
-- 🎯 **Lightweight** - Just 23KB gzipped
+- 🎯 **Lightweight** - Minimal footprint
 - 🔧 **Extensible** - Easy to add custom block types
 - 🎨 **18+ Built-in Blocks** - Paragraph, Header, List, Code, Image, Quote, WYSIWYG, Alert, Video, Audio, Carousel, Columns, Raw HTML, Delimiter, Button, and more
 - 🚀 **Alpine.js Powered** - Reactive and performant
