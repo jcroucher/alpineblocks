@@ -1775,18 +1775,21 @@ var $4399172a73dade70$export$2e2bcd8739ae039 = $4399172a73dade70$var$VideoPlayer
 
 
 class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
-    constructor({ id: id, updateFunction: updateFunction, config: config }){
+    constructor({ id: id, updateFunction: updateFunction, config: config = {} }){
         super(id, updateFunction, config);
+        // Check if this is a new instance (no URL = new instance)
+        const isNewInstance = !config.url || config.url === '';
+        // Merge defaults with existing config
+        // For new instances, force spotify type regardless of what was passed
         this.config = {
-            url: this.config.url || 'https://open.spotify.com/track/0ouSkB2t2fGeW60MPcvmXl',
-            type: this.config.type || 'spotify',
-            // file, spotify, soundcloud
-            autoplay: this.config.autoplay || false,
-            controls: this.config.controls || true,
-            loop: this.config.loop || false,
-            title: this.config.title || 'Never Gonna Give You Up',
-            artist: this.config.artist || 'Rick Astley',
-            showMetadata: this.config.showMetadata || true
+            url: config.url || 'https://open.spotify.com/track/0ouSkB2t2fGeW60MPcvmXl',
+            type: isNewInstance ? 'spotify' : config.type || 'spotify',
+            autoplay: config.autoplay !== undefined ? config.autoplay : false,
+            controls: config.controls !== undefined ? config.controls : true,
+            loop: config.loop !== undefined ? config.loop : false,
+            title: config.title || 'The Hampster Dance Song',
+            artist: config.artist || 'Hampton The Hamster',
+            showMetadata: config.showMetadata !== undefined ? config.showMetadata : true
         };
         this.settings = [
             {
@@ -1794,16 +1797,16 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 label: 'Audio URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    :value="block.config.url"
+                    value="${this.config.url}"
                     placeholder="Enter audio URL">`
             },
             {
                 name: 'type',
                 label: 'Audio Type',
                 html: `<select @change="trigger('${this.id}', 'type', $event.target.value)">
-                    <option value="file">Audio File</option>
-                    <option value="spotify">Spotify</option>
-                    <option value="soundcloud">SoundCloud</option>
+                    <option value="file" ${this.config.type === 'file' ? 'selected' : ''}>Audio File</option>
+                    <option value="spotify" ${this.config.type === 'spotify' ? 'selected' : ''}>Spotify</option>
+                    <option value="soundcloud" ${this.config.type === 'soundcloud' ? 'selected' : ''}>SoundCloud</option>
                 </select>`
             },
             {
@@ -1812,11 +1815,11 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<div>
                     <input type="text" 
                         @change="trigger('${this.id}', 'title', $event.target.value)"
-                        :value="block.config.title"
+                        value="${this.config.title}"
                         placeholder="Title">
                     <input type="text" 
                         @change="trigger('${this.id}', 'artist', $event.target.value)"
-                        :value="block.config.artist"
+                        value="${this.config.artist}"
                         placeholder="Artist">
                 </div>`
             },
@@ -1826,7 +1829,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'autoplay', $event.target.checked)"
-                        :checked="block.config.autoplay">
+                        ${this.config.autoplay ? 'checked' : ''}>
                     Autoplay
                 </label>`
             },
@@ -1836,7 +1839,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'controls', $event.target.checked)"
-                        :checked="block.config.controls">
+                        ${this.config.controls ? 'checked' : ''}>
                     Show Controls
                 </label>`
             },
@@ -1846,7 +1849,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'loop', $event.target.checked)"
-                        :checked="block.config.loop">
+                        ${this.config.loop ? 'checked' : ''}>
                     Loop
                 </label>`
             },
@@ -1856,7 +1859,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showMetadata', $event.target.checked)"
-                        :checked="block.config.showMetadata">
+                        ${this.config.showMetadata ? 'checked' : ''}>
                     Show Metadata
                 </label>`
             }
@@ -1907,6 +1910,8 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
         return match ? match[1] : '';
     }
     editorRender() {
+        // Ensure we use the correct type from config
+        const currentType = this.config.type || 'spotify';
         return `<div class="audio-block">
             ${this.config.showMetadata ? `
                 <div class="audio-metadata">
