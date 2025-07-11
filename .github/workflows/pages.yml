@@ -49,7 +49,7 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
           # Build examples
-          npx parcel build examples/index.html --public-url ./
+          npx parcel build examples/index.html --public-url ./ --no-optimize
           # Restore package.json
           mv package.json.bak package.json
       
