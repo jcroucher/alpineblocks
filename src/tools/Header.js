@@ -1,0 +1,126 @@
+import Tool from '../core/Tool';
+
+class Header extends Tool {
+    constructor({id, updateFunction, config}) {
+        super(id, updateFunction, config);
+
+        // Default config if not provided
+        this.config = {
+            content: this.config.content || 'Heading Text',
+            level: this.config.level || 'h2',
+            alignment: this.config.alignment || 'left',
+            anchor: this.config.anchor || '',
+            fontSize: this.config.fontSize || 'default',
+            fontWeight: this.config.fontWeight || 'normal',
+            textColor: this.config.textColor || '#333333'
+        };
+
+        this.settings = [
+            {
+                name: 'level',
+                label: 'Heading Level',
+                html: `<select @change="trigger('${this.id}', 'level', $event.target.value)">
+                    <option value="h1">H1</option>
+                    <option value="h2">H2</option>
+                    <option value="h3">H3</option>
+                    <option value="h4">H4</option>
+                    <option value="h5">H5</option>
+                    <option value="h6">H6</option>
+                </select>`
+            },
+            {
+                name: 'alignment',
+                label: 'Text Alignment',
+                html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)">
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                    <option value="justify">Justify</option>
+                </select>`
+            },
+            {
+                name: 'anchor',
+                label: 'Anchor ID',
+                html: `<input type="text" 
+                    @change="trigger('${this.id}', 'anchor', $event.target.value)"
+                    :value="block.config.anchor"
+                    placeholder="Optional anchor ID">`
+            },
+            {
+                name: 'fontSize',
+                label: 'Font Size',
+                html: `<select @change="trigger('${this.id}', 'fontSize', $event.target.value)">
+                    <option value="small">Small</option>
+                    <option value="default">Default</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra Large</option>
+                </select>`
+            },
+            {
+                name: 'fontWeight',
+                label: 'Font Weight',
+                html: `<select @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                    <option value="lighter">Lighter</option>
+                </select>`
+            },
+            {
+                name: 'textColor',
+                label: 'Text Color',
+                html: `<input type="color" 
+                    @change="trigger('${this.id}', 'textColor', $event.target.value)"
+                    :value="block.config.textColor">`
+            }
+        ];
+    }
+
+    static toolbox() {
+        return {
+            name: 'Header',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 46.3 14.3 32 32 32H80h48c17.7 0 32 14.3 32 32s-14.3 32-32 32H112V208H336V96H320c-17.7 0-32-14.3-32-32s14.3-32 32-32h48 48c17.7 0 32 14.3 32 32s-14.3 32-32 32H400V240 416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H368 320c-17.7 0-32-14.3-32-32s14.3-32 32-32h16V272H112V416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V240 96H32C14.3 96 0 81.7 0 64z"/></svg>',
+            category: 'Basic'
+        };
+    }
+
+    getStyleString() {
+        const fontSizes = {
+            small: '0.875rem',
+            default: '',
+            large: '1.25rem',
+            xlarge: '1.5rem'
+        };
+
+        const styles = [];
+        if (this.config.alignment) styles.push(`text-align: ${this.config.alignment}`);
+        if (this.config.fontSize && this.config.fontSize !== 'default') {
+            styles.push(`font-size: ${fontSizes[this.config.fontSize]}`);
+        }
+        if (this.config.fontWeight) styles.push(`font-weight: ${this.config.fontWeight}`);
+        if (this.config.textColor) styles.push(`color: ${this.config.textColor}`);
+
+        return styles.join('; ');
+    }
+
+    editorRender() {
+        const styleString = this.getStyleString();
+        const anchorId = this.config.anchor ? `id="${this.config.anchor}"` : '';
+        
+        return `<${this.config.level} 
+            class="header-block"
+            ${anchorId}
+            style="${styleString}"
+            contenteditable="true"
+            x-html="block.config.content"
+            @blur="block.config.content = $event.target.innerHTML"></${this.config.level}>`;
+    }
+
+    render() {
+        const styleString = this.getStyleString();
+        const anchorId = this.config.anchor ? `id="${this.config.anchor}"` : '';
+        
+        return `<${this.config.level} ${anchorId} style="${styleString}">${this.config.content}</${this.config.level}>`;
+    }
+}
+
+export default Header;
