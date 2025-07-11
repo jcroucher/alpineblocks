@@ -510,10 +510,12 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
 
 
 /**
- * Toolbar manager for handling tool drag operations
+ * Toolbar manager for handling tool drag operations and click-to-append
  */ class $ae1a22f2bd2eaeed$export$4c260019440d418f {
     constructor(){
         this.tools = [];
+        this.isDragging = false;
+        this.dragStartTime = null;
     }
     /**
    * Initialize toolbar event listeners
@@ -528,8 +530,52 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    * @param {DragEvent} event - The drag event
    * @param {Object} tool - The tool being dragged
    */ handleDragStart(event, tool) {
+        this.isDragging = true;
+        this.dragStartTime = Date.now();
         event.dataTransfer.setData('text/plain', tool.class);
         event.dataTransfer.effectAllowed = 'copy';
+    }
+    /**
+   * Handle drag end event for tools
+   * @param {DragEvent} event - The drag event
+   */ handleDragEnd(event) {
+        // Reset drag state after a short delay to allow click detection
+        setTimeout(()=>{
+            this.isDragging = false;
+            this.dragStartTime = null;
+        }, 100);
+    }
+    /**
+   * Handle click event for tools (append to bottom if not dragging)
+   * @param {MouseEvent} event - The click event
+   * @param {Object} tool - The tool being clicked
+   */ handleClick(event, tool) {
+        // Prevent click if we just finished dragging
+        if (this.isDragging || this.dragStartTime && Date.now() - this.dragStartTime < 200) return;
+        // Find the editor instance
+        const editorElement = document.getElementById('editorjs');
+        if (editorElement && editorElement._x_dataStack && editorElement._x_dataStack[0]) {
+            const editorData = editorElement._x_dataStack[0];
+            if (editorData.editor) {
+                // Create a synthetic drop event to append at the end
+                const syntheticEvent = {
+                    preventDefault: ()=>{},
+                    dataTransfer: {
+                        getData: ()=>tool.class
+                    }
+                };
+                // Call handleDrop with no position/blockId to append at end
+                editorData.editor.handleDrop(syntheticEvent, 'end', null);
+            }
+        }
+    }
+    /**
+   * Handle drop event (existing functionality)
+   * @param {DragEvent} event - The drop event
+   * @param {Object} tool - The tool being dropped
+   */ handleDrop(event, tool) {
+        // This method is kept for compatibility but drag/drop is handled by the editor
+        event.preventDefault();
     }
 }
 
@@ -1064,8 +1110,8 @@ class $89b22059272e1d27$var$Image extends (0, $7a9b6788f4274d37$export$2e2bcd873
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
         this.config = {
-            src: this.config.src || '',
-            alt: this.config.alt || '',
+            src: this.config.src || 'https://placecats.com/millie/1280/720',
+            alt: this.config.alt || 'Cute cat placeholder image',
             caption: this.config.caption || '',
             alignment: this.config.alignment || 'center',
             width: this.config.width || 'auto'
@@ -1338,20 +1384,113 @@ class $806caca8705a7215$var$WYSIWYG extends (0, $7a9b6788f4274d37$export$2e2bcd8
     editorRender() {
         return `<div class="wysiwyg-editor">
             <div class="wysiwyg-toolbar">
-                <button @click="document.execCommand('bold')" title="Bold">B</button>
-                <button @click="document.execCommand('italic')" title="Italic">I</button>
-                <button @click="document.execCommand('underline')" title="Underline">U</button>
-                <button @click="document.execCommand('strikeThrough')" title="Strike">S</button>
-                <select @change="document.execCommand('formatBlock', false, $event.target.value)">
-                    <option value="p">Paragraph</option>
-                    <option value="h1">Heading 1</option>
-                    <option value="h2">Heading 2</option>
-                    <option value="h3">Heading 3</option>
-                    <option value="blockquote">Quote</option>
-                </select>
-                <button @click="document.execCommand('insertUnorderedList')" title="Bullet List">\u{2022}</button>
-                <button @click="document.execCommand('insertOrderedList')" title="Numbered List">#</button>
-                <button @click="document.execCommand('createLink', false, prompt('Enter link URL'))" title="Link">\u{1F517}</button>
+                <div class="wysiwyg-toolbar-group">
+                    <button class="wysiwyg-btn wysiwyg-btn-bold" 
+                            @click="document.execCommand('bold')" 
+                            title="Bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                        </svg>
+                    </button>
+                    <button class="wysiwyg-btn wysiwyg-btn-italic" 
+                            @click="document.execCommand('italic')" 
+                            title="Italic">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="19" y1="4" x2="10" y2="4"/>
+                            <line x1="14" y1="20" x2="5" y2="20"/>
+                            <line x1="15" y1="4" x2="9" y2="20"/>
+                        </svg>
+                    </button>
+                    <button class="wysiwyg-btn wysiwyg-btn-underline" 
+                            @click="document.execCommand('underline')" 
+                            title="Underline">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+                            <line x1="4" y1="20" x2="20" y2="20"/>
+                        </svg>
+                    </button>
+                    <button class="wysiwyg-btn wysiwyg-btn-strike" 
+                            @click="document.execCommand('strikeThrough')" 
+                            title="Strikethrough">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4H9a3 3 0 0 0-2.83 4"/>
+                            <path d="M14 12a4 4 0 0 1 0 8H6"/>
+                            <line x1="4" y1="12" x2="20" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="wysiwyg-toolbar-separator"></div>
+                
+                <div class="wysiwyg-toolbar-group">
+                    <select class="wysiwyg-select" 
+                            @change="document.execCommand('formatBlock', false, $event.target.value)"
+                            title="Format">
+                        <option value="p">Paragraph</option>
+                        <option value="h1">Heading 1</option>
+                        <option value="h2">Heading 2</option>
+                        <option value="h3">Heading 3</option>
+                        <option value="h4">Heading 4</option>
+                        <option value="h5">Heading 5</option>
+                        <option value="h6">Heading 6</option>
+                        <option value="blockquote">Quote</option>
+                    </select>
+                </div>
+                
+                <div class="wysiwyg-toolbar-separator"></div>
+                
+                <div class="wysiwyg-toolbar-group">
+                    <button class="wysiwyg-btn wysiwyg-btn-ul" 
+                            @click="document.execCommand('insertUnorderedList')" 
+                            title="Bullet List">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </button>
+                    <button class="wysiwyg-btn wysiwyg-btn-ol" 
+                            @click="document.execCommand('insertOrderedList')" 
+                            title="Numbered List">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="10" y1="6" x2="21" y2="6"/>
+                            <line x1="10" y1="12" x2="21" y2="12"/>
+                            <line x1="10" y1="18" x2="21" y2="18"/>
+                            <path d="M4 6h1v4"/>
+                            <path d="M4 10h2"/>
+                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="wysiwyg-toolbar-separator"></div>
+                
+                <div class="wysiwyg-toolbar-group">
+                    <button class="wysiwyg-btn wysiwyg-btn-link" 
+                            @click="document.execCommand('createLink', false, prompt('Enter link URL'))" 
+                            title="Insert Link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="wysiwyg-btn wysiwyg-btn-unlink" 
+                            @click="document.execCommand('unlink')" 
+                            title="Remove Link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18.84 12.25l1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07a5.006 5.006 0 0 0-7.07-.12l-1.71 1.72"/>
+                            <path d="M5.17 11.75l-1.72 1.71a5.004 5.004 0 0 0 .12 7.07a5.006 5.006 0 0 0 7.07.12l1.71-1.72"/>
+                            <line x1="8" y1="2" x2="8" y2="5"/>
+                            <line x1="2" y1="8" x2="5" y2="8"/>
+                            <line x1="16" y1="14" x2="16" y2="17"/>
+                            <line x1="14" y1="16" x2="17" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <${this.config.format} 
                 class="wysiwyg-content"
@@ -1465,15 +1604,15 @@ class $1d78d83887e524f6$var$VideoPlayer extends (0, $7a9b6788f4274d37$export$2e2
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
         this.config = {
-            url: this.config.url || '',
+            url: this.config.url || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             type: this.config.type || 'youtube',
             // youtube, vimeo, direct
             autoplay: this.config.autoplay || false,
             controls: this.config.controls || true,
             muted: this.config.muted || false,
             loop: this.config.loop || false,
-            width: this.config.width || '100%',
-            height: this.config.height || 'auto',
+            aspectRatio: this.config.aspectRatio || '16:9',
+            // 16:9, 4:3, 1:1
             caption: this.config.caption || ''
         };
         this.settings = [
@@ -1535,18 +1674,13 @@ class $1d78d83887e524f6$var$VideoPlayer extends (0, $7a9b6788f4274d37$export$2e2
                 </label>`
             },
             {
-                name: 'dimensions',
-                label: 'Dimensions',
-                html: `<div>
-                    <input type="text" 
-                        @change="trigger('${this.id}', 'width', $event.target.value)"
-                        :value="block.config.width"
-                        placeholder="Width (100%, auto, or px)">
-                    <input type="text" 
-                        @change="trigger('${this.id}', 'height', $event.target.value)"
-                        :value="block.config.height"
-                        placeholder="Height (auto or px)">
-                </div>`
+                name: 'aspectRatio',
+                label: 'Aspect Ratio',
+                html: `<select @change="trigger('${this.id}', 'aspectRatio', $event.target.value)">
+                    <option value="16:9">16:9 (Widescreen)</option>
+                    <option value="4:3">4:3 (Standard)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                </select>`
             },
             {
                 name: 'caption',
@@ -1576,33 +1710,33 @@ class $1d78d83887e524f6$var$VideoPlayer extends (0, $7a9b6788f4274d37$export$2e2
         switch(this.config.type){
             case 'youtube':
                 const youtubeId = this.extractYoutubeId(this.config.url);
-                return `<iframe 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    src="https://www.youtube.com/embed/${youtubeId}?${params}"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <iframe 
+                        src="https://www.youtube.com/embed/${youtubeId}?${params}"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>`;
             case 'vimeo':
                 const vimeoId = this.extractVimeoId(this.config.url);
-                return `<iframe 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    src="https://player.vimeo.com/video/${vimeoId}?${params}"
-                    frameborder="0"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowfullscreen></iframe>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <iframe 
+                        src="https://player.vimeo.com/video/${vimeoId}?${params}"
+                        frameborder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>`;
             case 'direct':
-                return `<video 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    ${this.config.controls ? 'controls' : ''}
-                    ${this.config.autoplay ? 'autoplay' : ''}
-                    ${this.config.muted ? 'muted' : ''}
-                    ${this.config.loop ? 'loop' : ''}>
-                    <source src="${this.config.url}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <video 
+                        ${this.config.controls ? 'controls' : ''}
+                        ${this.config.autoplay ? 'autoplay' : ''}
+                        ${this.config.muted ? 'muted' : ''}
+                        ${this.config.loop ? 'loop' : ''}>
+                        <source src="${this.config.url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>`;
         }
     }
     extractYoutubeId(url) {
@@ -1640,14 +1774,14 @@ class $b7a015afcd00e44f$var$AudioPlayer extends (0, $7a9b6788f4274d37$export$2e2
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
         this.config = {
-            url: this.config.url || '',
-            type: this.config.type || 'file',
+            url: this.config.url || 'https://open.spotify.com/track/0ouSkB2t2fGeW60MPcvmXl',
+            type: this.config.type || 'spotify',
             // file, spotify, soundcloud
             autoplay: this.config.autoplay || false,
             controls: this.config.controls || true,
             loop: this.config.loop || false,
-            title: this.config.title || '',
-            artist: this.config.artist || '',
+            title: this.config.title || 'Never Gonna Give You Up',
+            artist: this.config.artist || 'Rick Astley',
             showMetadata: this.config.showMetadata || true
         };
         this.settings = [
@@ -1737,12 +1871,13 @@ class $b7a015afcd00e44f$var$AudioPlayer extends (0, $7a9b6788f4274d37$export$2e2
             case 'spotify':
                 const spotifyId = this.extractSpotifyId(this.config.url);
                 return `<iframe 
-                    src="https://open.spotify.com/embed/track/${spotifyId}"
+                    src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator"
                     width="100%" 
-                    height="80"
+                    height="152"
                     frameborder="0" 
-                    allowtransparency="true" 
-                    allow="encrypted-media"></iframe>`;
+                    allowfullscreen=""
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"></iframe>`;
             case 'soundcloud':
                 return `<iframe 
                     width="100%" 
@@ -2288,27 +2423,11 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                              if (columnsBlock) {
                                  columnsBlock.removeNestedBlock(columnIndex, blockId);
                              }
-                         },
-                         updateColumnWidth(columnIndex, width) {
-                             const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
-                             if (columnsBlock) {
-                                 columnsBlock.config.columns[columnIndex].width = width;
-                                 columnsBlock.triggerRedraw();
-                             }
                          }
                      }">
             ${this.config.columns.map((column, index)=>`
                 <div class="column column-${index}" 
                      :class="{ 'column-hovered': hoveredColumn === ${index} }">
-                    
-                    <div class="column-header">
-                        <span class="column-label">Column ${index + 1}</span>
-                        <input type="text" 
-                               class="column-width-input"
-                               @change="updateColumnWidth(${index}, $event.target.value)"
-                               value="${column.width}"
-                               placeholder="Width (e.g. 1fr, 200px)">
-                    </div>
                     
                     <div class="column-content column-drop-zone" 
                          @dragover="handleColumnDragOver($event, ${index})"
@@ -2336,6 +2455,138 @@ var $caf1e97d18e29b9d$export$2e2bcd8739ae039 = $caf1e97d18e29b9d$var$Columns;
 
 
 
+// Alpine.js component for Raw code editor
+function $08ab3851bf56e43b$var$rawCodeEditor() {
+    return {
+        isValid: true,
+        debounceTimer: null,
+        previewContent: '',
+        block: null,
+        showPreview: false,
+        init (blockId) {
+            // Find the block instance - try multiple approaches
+            this.block = window.blocksManager?.blocks?.find((b)=>b.id === blockId);
+            if (!this.block && window.alpineEditors) // Try finding through alpine editors
+            for(const editorId in window.alpineEditors){
+                const editor = window.alpineEditors[editorId];
+                if (editor && editor.blocks) {
+                    this.block = editor.blocks.find((b)=>b.id === blockId);
+                    if (this.block) break;
+                }
+            }
+            if (this.block) {
+                this.previewContent = this.block.config.content || '';
+                this.isValid = this.validateCode(this.block.config.content);
+                console.log('Raw tool initialized:', {
+                    blockId: blockId,
+                    content: this.block.config.content,
+                    preview: this.previewContent
+                });
+            } else console.log('Block not found for ID:', blockId, 'Available blocks:', window.blocksManager?.blocks || 'none');
+        },
+        validateCode (content) {
+            if (!content) return true;
+            if (!this.block) return true;
+            switch(this.block.config.mode){
+                case 'html':
+                    if (!this.block.config.validateHtml) return true;
+                    try {
+                        // Simple tag matching validation
+                        const openTags = [];
+                        const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
+                        const selfClosingTags = [
+                            'area',
+                            'base',
+                            'br',
+                            'col',
+                            'embed',
+                            'hr',
+                            'img',
+                            'input',
+                            'link',
+                            'meta',
+                            'source',
+                            'track',
+                            'wbr'
+                        ];
+                        // Reset regex
+                        tagRegex.lastIndex = 0;
+                        let match;
+                        while((match = tagRegex.exec(content)) !== null){
+                            const fullTag = match[0];
+                            const tagName = match[1].toLowerCase();
+                            const isClosing = fullTag.startsWith('</');
+                            const isSelfClosing = fullTag.endsWith('/>') || selfClosingTags.includes(tagName);
+                            if (isSelfClosing && !isClosing) continue;
+                            if (isClosing) {
+                                if (openTags.length === 0 || openTags.pop() !== tagName) {
+                                    console.log('Mismatched tag:', tagName, 'Expected:', openTags[openTags.length - 1]);
+                                    return false; // Mismatched closing tag
+                                }
+                            } else if (!isSelfClosing) openTags.push(tagName);
+                        }
+                        // Check if all tags are closed
+                        if (openTags.length > 0) {
+                            console.log('Unclosed tags:', openTags);
+                            return false;
+                        }
+                        return true;
+                    } catch (e) {
+                        console.log('Validation error:', e);
+                        return false;
+                    }
+                case 'css':
+                    try {
+                        const style = document.createElement('style');
+                        style.textContent = content;
+                        document.head.appendChild(style);
+                        document.head.removeChild(style);
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                case 'javascript':
+                    try {
+                        new Function(content);
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                default:
+                    return true;
+            }
+        },
+        handleInput (event) {
+            const content = event.target.value;
+            // Clear existing timer
+            clearTimeout(this.debounceTimer);
+            // Set new timer for debounced update
+            this.debounceTimer = setTimeout(()=>{
+                // Update validation
+                this.isValid = this.validateCode(content);
+                // Always update preview content
+                this.previewContent = content;
+                console.log('Preview updated:', {
+                    content: content,
+                    showPreview: this.showPreview,
+                    previewContent: this.previewContent
+                });
+                // Update block config
+                if (this.block) this.block.config.content = content;
+                // Force Alpine reactivity update
+                this.$nextTick && this.$nextTick(()=>{
+                    console.log('Alpine tick completed');
+                });
+            }, 500); // 500ms debounce
+        },
+        // Add a method to get current preview content for debugging
+        getCurrentPreview () {
+            return this.previewContent;
+        }
+    };
+}
+// Make it globally available for Alpine (only if not already defined)
+if (typeof window !== 'undefined' && !window.rawCodeEditor) window.rawCodeEditor = $08ab3851bf56e43b$var$rawCodeEditor;
 class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
@@ -2402,9 +2653,40 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
             case 'html':
                 if (!this.config.validateHtml) return true;
                 try {
+                    // Check for basic HTML structure issues
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(this.config.content, 'text/html');
-                    return !doc.querySelector('parsererror');
+                    // Check for parser errors
+                    if (doc.querySelector('parsererror')) return false;
+                    // Simple tag matching validation
+                    const openTags = [];
+                    const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
+                    let match;
+                    while((match = tagRegex.exec(this.config.content)) !== null){
+                        const tagName = match[1].toLowerCase();
+                        const isClosing = match[0].startsWith('</');
+                        const isSelfClosing = match[0].endsWith('/>') || [
+                            'area',
+                            'base',
+                            'br',
+                            'col',
+                            'embed',
+                            'hr',
+                            'img',
+                            'input',
+                            'link',
+                            'meta',
+                            'source',
+                            'track',
+                            'wbr'
+                        ].includes(tagName);
+                        if (isSelfClosing) continue;
+                        if (isClosing) {
+                            if (openTags.length === 0 || openTags.pop() !== tagName) return false; // Mismatched closing tag
+                        } else openTags.push(tagName);
+                    }
+                    // Check if all tags are closed
+                    return openTags.length === 0;
                 } catch (e) {
                     return false;
                 }
@@ -2453,23 +2735,55 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
         }
     }
     editorRender() {
-        const isValid = this.validateContent();
-        return `<div class="raw-block" data-block-id="${this.id}">
+        return `<div class="raw-block" data-block-id="${this.id}" 
+                     x-data="rawCodeEditor()" 
+                     x-init="init('${this.id}')">
             <div class="code-editor">
-                <textarea
-                    class="code-input ${!isValid ? 'invalid' : ''}"
-                    x-html="block.config.content"
-                    @input="block.config.content = $event.target.value"
-                    placeholder="Enter your ${this.config.mode} code here..."
-                    style="width: 100%; min-height: 200px; font-family: monospace;">${this.config.content}</textarea>
-                ${!isValid ? '<div class="validation-error">Invalid code format</div>' : ''}
-            </div>
-            ${this.config.mode === 'html' ? `
-                <div class="preview-section">
-                    <h4>Preview:</h4>
-                    <div class="preview-content" x-html="block.config.content"></div>
+                <div class="code-header">
+                    <div class="code-header-left">
+                        <span class="code-mode" x-text="block ? block.config.mode.toUpperCase() : 'CODE'"></span>
+                        <span x-show="!isValid" class="validation-error">\u{26A0} Invalid syntax</span>
+                        <span x-show="isValid" class="validation-success">\u{2713} Valid</span>
+                    </div>
+                    <div class="code-header-right">
+                        <button 
+                            class="toggle-btn" 
+                            :class="{ 'active': !showPreview }"
+                            @click="showPreview = false"
+                            type="button">
+                            Code
+                        </button>
+                        <button 
+                            class="toggle-btn" 
+                            :class="{ 'active': showPreview }"
+                            @click="showPreview = true"
+                            type="button">
+                            Preview
+                        </button>
+                    </div>
                 </div>
-            ` : ''}
+                <textarea
+                    x-show="!showPreview"
+                    class="code-input"
+                    :class="{ 'invalid': !isValid }"
+                    x-init="$el.value = block ? block.config.content : ''; previewContent = $el.value;"
+                    @input="handleInput($event)"
+                    @blur="if(block) { block.config.content = $event.target.value; previewContent = $event.target.value; }"
+                    placeholder="Enter your code here..."
+                    :placeholder="block ? 'Enter your ' + block.config.mode + ' code here...' : 'Enter your code here...'"
+                    spellcheck="false"
+                    autocomplete="off"
+                    style="width: 100%; min-height: 200px; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; resize: vertical;">${this.config.content}</textarea>
+                <div 
+                    x-show="showPreview" 
+                    class="preview-content" 
+                    style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); padding: var(--space-4); background: white;">
+                    <div x-show="!previewContent || previewContent.trim() === ''" class="preview-placeholder">
+                        Enter some HTML code and it will appear here...
+                    </div>
+                    <div x-show="previewContent && previewContent.trim() !== ''" x-html="previewContent"></div>
+                </div>
+            </div>
         </div>`;
     }
     render() {

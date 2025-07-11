@@ -5,14 +5,13 @@ class VideoPlayer extends Tool {
         super(id, updateFunction, config);
 
         this.config = {
-            url: this.config.url || '',
+            url: this.config.url || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             type: this.config.type || 'youtube', // youtube, vimeo, direct
             autoplay: this.config.autoplay || false,
             controls: this.config.controls || true,
             muted: this.config.muted || false,
             loop: this.config.loop || false,
-            width: this.config.width || '100%',
-            height: this.config.height || 'auto',
+            aspectRatio: this.config.aspectRatio || '16:9', // 16:9, 4:3, 1:1
             caption: this.config.caption || ''
         };
 
@@ -75,18 +74,13 @@ class VideoPlayer extends Tool {
                 </label>`
             },
             {
-                name: 'dimensions',
-                label: 'Dimensions',
-                html: `<div>
-                    <input type="text" 
-                        @change="trigger('${this.id}', 'width', $event.target.value)"
-                        :value="block.config.width"
-                        placeholder="Width (100%, auto, or px)">
-                    <input type="text" 
-                        @change="trigger('${this.id}', 'height', $event.target.value)"
-                        :value="block.config.height"
-                        placeholder="Height (auto or px)">
-                </div>`
+                name: 'aspectRatio',
+                label: 'Aspect Ratio',
+                html: `<select @change="trigger('${this.id}', 'aspectRatio', $event.target.value)">
+                    <option value="16:9">16:9 (Widescreen)</option>
+                    <option value="4:3">4:3 (Standard)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                </select>`
             },
             {
                 name: 'caption',
@@ -120,35 +114,35 @@ class VideoPlayer extends Tool {
         switch (this.config.type) {
             case 'youtube':
                 const youtubeId = this.extractYoutubeId(this.config.url);
-                return `<iframe 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    src="https://www.youtube.com/embed/${youtubeId}?${params}"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <iframe 
+                        src="https://www.youtube.com/embed/${youtubeId}?${params}"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>`;
             
             case 'vimeo':
                 const vimeoId = this.extractVimeoId(this.config.url);
-                return `<iframe 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    src="https://player.vimeo.com/video/${vimeoId}?${params}"
-                    frameborder="0"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowfullscreen></iframe>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <iframe 
+                        src="https://player.vimeo.com/video/${vimeoId}?${params}"
+                        frameborder="0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>`;
             
             case 'direct':
-                return `<video 
-                    width="${this.config.width}" 
-                    height="${this.config.height}"
-                    ${this.config.controls ? 'controls' : ''}
-                    ${this.config.autoplay ? 'autoplay' : ''}
-                    ${this.config.muted ? 'muted' : ''}
-                    ${this.config.loop ? 'loop' : ''}>
-                    <source src="${this.config.url}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>`;
+                return `<div class="video-container" data-aspect-ratio="${this.config.aspectRatio}">
+                    <video 
+                        ${this.config.controls ? 'controls' : ''}
+                        ${this.config.autoplay ? 'autoplay' : ''}
+                        ${this.config.muted ? 'muted' : ''}
+                        ${this.config.loop ? 'loop' : ''}>
+                        <source src="${this.config.url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>`;
         }
     }
 

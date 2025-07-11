@@ -320,27 +320,11 @@ class Columns extends Tool {
                              if (columnsBlock) {
                                  columnsBlock.removeNestedBlock(columnIndex, blockId);
                              }
-                         },
-                         updateColumnWidth(columnIndex, width) {
-                             const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
-                             if (columnsBlock) {
-                                 columnsBlock.config.columns[columnIndex].width = width;
-                                 columnsBlock.triggerRedraw();
-                             }
                          }
                      }">
             ${this.config.columns.map((column, index) => `
                 <div class="column column-${index}" 
                      :class="{ 'column-hovered': hoveredColumn === ${index} }">
-                    
-                    <div class="column-header">
-                        <span class="column-label">Column ${index + 1}</span>
-                        <input type="text" 
-                               class="column-width-input"
-                               @change="updateColumnWidth(${index}, $event.target.value)"
-                               value="${column.width}"
-                               placeholder="Width (e.g. 1fr, 200px)">
-                    </div>
                     
                     <div class="column-content column-drop-zone" 
                          @dragover="handleColumnDragOver($event, ${index})"

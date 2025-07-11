@@ -16,8 +16,8 @@ class Image extends Tool {
         super(id, updateFunction, config);
 
         this.config = {
-            src: this.config.src || '',
-            alt: this.config.alt || '',
+            src: this.config.src || 'https://placecats.com/millie/1280/720',
+            alt: this.config.alt || 'Cute cat placeholder image',
             caption: this.config.caption || '',
             alignment: this.config.alignment || 'center',
             width: this.config.width || 'auto'

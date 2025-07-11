@@ -179,8 +179,13 @@
                                         <div id="toolbar" x-data="editorToolbar()">
                                             <template x-for="tool in tools" :key="tool.name">
                                                 <div class="tool-item" draggable="true"
-                                                     @dragstart="handleDragStart($event, tool)" @dragover.prevent=""
-                                                     @dragenter.prevent="" @drop="handleDrop($event, tool)">
+                                                     @dragstart="handleDragStart($event, tool)" 
+                                                     @dragend="handleDragEnd($event)"
+                                                     @click="handleClick($event, tool)"
+                                                     @dragover.prevent=""
+                                                     @dragenter.prevent="" 
+                                                     @drop="handleDrop($event, tool)"
+                                                     title="Click to append to bottom, or drag to position anywhere">
                                                     <div class="tool-icon" x-html="tool.icon"></div>
                                                     <div class="tool-name" x-text="tool.name"></div>
                                                 </div>

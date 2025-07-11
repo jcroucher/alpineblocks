@@ -5,13 +5,13 @@ class AudioPlayer extends Tool {
         super(id, updateFunction, config);
 
         this.config = {
-            url: this.config.url || '',
-            type: this.config.type || 'file', // file, spotify, soundcloud
+            url: this.config.url || 'https://open.spotify.com/track/0ouSkB2t2fGeW60MPcvmXl',
+            type: this.config.type || 'spotify', // file, spotify, soundcloud
             autoplay: this.config.autoplay || false,
             controls: this.config.controls || true,
             loop: this.config.loop || false,
-            title: this.config.title || '',
-            artist: this.config.artist || '',
+            title: this.config.title || 'Never Gonna Give You Up',
+            artist: this.config.artist || 'Rick Astley',
             showMetadata: this.config.showMetadata || true
         };
 
@@ -105,12 +105,13 @@ class AudioPlayer extends Tool {
             case 'spotify':
                 const spotifyId = this.extractSpotifyId(this.config.url);
                 return `<iframe 
-                    src="https://open.spotify.com/embed/track/${spotifyId}"
+                    src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator"
                     width="100%" 
-                    height="80"
+                    height="152"
                     frameborder="0" 
-                    allowtransparency="true" 
-                    allow="encrypted-media"></iframe>`;
+                    allowfullscreen=""
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"></iframe>`;
             
             case 'soundcloud':
                 return `<iframe 
