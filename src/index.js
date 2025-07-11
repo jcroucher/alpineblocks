@@ -136,8 +136,6 @@ document.addEventListener('alpine:init', () => {
             });
             
             this.selectedBlock = this.editor.selectedBlock;
-            // Don't override hoveredTarget - let Alpine manage it reactively
-            // this.hoveredTarget = this.editor.hoveredTarget;
         },
 
         // Expose required methods
@@ -207,8 +205,15 @@ document.addEventListener('alpine:init', () => {
 
         setActive(event, blockId) {
             if (this.editor) this.editor.setActive(event, blockId);
-        }
+        },
+
+        showDeleteConfirmation(blockId) {
+            // Dispatch event to show delete confirmation modal on window
+            window.dispatchEvent(new CustomEvent('show-delete-confirmation', { detail: { blockId: blockId } }));
+        },
+
     }));
 });
 
 Alpine.start();
+

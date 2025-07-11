@@ -21,6 +21,10 @@ export class Editor {
         this.toolConfig = toolConfig;
         this.dragThrottle = null;
         this.dragLeaveTimeout = null;
+        this.deleteConfirmation = {
+            show: false,
+            blockId: null
+        };
 
         this.toolManager = new ToolManager(toolConfig);
         this.blockManager = new BlockManager();
@@ -42,6 +46,14 @@ export class Editor {
         this.initBlock('Paragraph', true);
 
         this.inlineToolbar.init(this);
+
+        // Generate the delete confirmation modal
+        this.generateModal();
+
+        // Listen for confirm delete events
+        window.addEventListener('confirm-delete-block', (e) => {
+            this.confirmDeleteBlock(e.detail.blockId);
+        });
 
         this.$nextTick(() => {
             this.$dispatch('editor-ready', { id: this.id });
@@ -271,6 +283,105 @@ export class Editor {
         this.$nextTick(() => {
             this.$dispatch('editor-block-changed', { block_id: block });
         });
+    }
+
+    /**
+     * Show delete confirmation modal
+     * @param {string} blockId - ID of block to delete
+     */
+    showDeleteConfirmation(blockId) {
+        this.deleteConfirmation.blockId = blockId;
+        this.deleteConfirmation.show = true;
+        Debug.debug(`Delete confirmation shown for block: ${blockId}`);
+    }
+
+    /**
+     * Confirm and delete the block
+     */
+    confirmDeleteBlock(blockId) {
+        if (!blockId) return;
+
+        const blockIndex = this.blocks.findIndex(b => b.id === blockId);
+        
+        if (blockIndex !== -1) {
+            // Remove the block
+            this.blocks.splice(blockIndex, 1);
+            
+            // Clear selection if deleted block was selected
+            if (this.selectedBlock === blockId) {
+                this.selectedBlock = null;
+                this.$dispatch('editor-block-changed', { block_id: null });
+            }
+            
+            Debug.info(`Block deleted: ${blockId}`);
+            this.$dispatch('editor-updated', { id: this.id });
+        }
+
+        // Hide modal
+        window.dispatchEvent(new CustomEvent('hide-delete-confirmation'));
+    }
+
+    /**
+     * Generate and inject the delete confirmation modal
+     */
+    generateModal() {
+        // Only generate modal if it doesn't exist
+        if (document.querySelector('.modal-overlay')) {
+            return;
+        }
+
+        // Create modal HTML
+        const modalHTML = `
+        <div class="modal-overlay" 
+            x-data="{ 
+                show: false, 
+                blockId: null,
+                init() {
+                    window.addEventListener('show-delete-confirmation', (e) => {
+                        console.log('show-delete-confirmation event received:', e.detail);
+                        this.blockId = e.detail.blockId;
+                        this.show = true;
+                    });
+                    window.addEventListener('hide-delete-confirmation', () => {
+                        this.show = false;
+                        this.blockId = null;
+                    });
+                },
+            }" 
+            x-show="show" 
+            @click="show = false"
+            style="display: none;">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                    <h3 class="modal-title">Remove Block</h3>
+                </div>
+                <p class="modal-description">
+                    Are you sure you want to remove this block? This action cannot be undone.
+                </p>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-cancel" @click="show = false">
+                        Cancel
+                    </button>
+                    <button class="modal-btn modal-btn-confirm" 
+                            @click="
+                                window.dispatchEvent(new CustomEvent('confirm-delete-block', { detail: { blockId: blockId } }));
+                                show = false;
+                                blockId = null;
+                            ">
+                        Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Inject modal into body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        Debug.info('Delete confirmation modal generated and injected');
     }
 
     /**

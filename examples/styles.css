@@ -493,6 +493,47 @@ body {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Block Remove Button */
+.block-remove-btn {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--error-500);
+    color: white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    transition: var(--transition-normal);
+    z-index: 20;
+    box-shadow: var(--shadow-sm);
+}
+
+.ab-block:hover .block-remove-btn {
+    display: flex;
+}
+
+.block-remove-btn:hover {
+    background: var(--error-600);
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+.block-remove-btn:active {
+    transform: scale(0.95);
+}
+
+.block-remove-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 /* Drop Zone Indicators */
 .top-border, .bottom-border {
     position: relative;
@@ -869,10 +910,122 @@ body {
     }
 }
 
+/* Confirmation Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+/* Alpine.js cloak directive - hides elements until Alpine has loaded */
+[x-cloak] {
+    display: none !important;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-2xl);
+    max-width: 400px;
+    width: 90%;
+    padding: var(--space-6);
+    position: relative;
+    animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.modal-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--error-500);
+}
+
+.modal-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.modal-description {
+    color: var(--gray-600);
+    margin-bottom: var(--space-6);
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: var(--transition-normal);
+    border: 1px solid transparent;
+    min-width: 80px;
+    text-align: center;
+}
+
+.modal-btn-cancel {
+    background: white;
+    color: var(--gray-700);
+    border-color: var(--gray-300);
+}
+
+.modal-btn-cancel:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+}
+
+.modal-btn-confirm {
+    background: var(--error-500);
+    color: white;
+}
+
+.modal-btn-confirm:hover {
+    background: var(--error-600);
+}
+
+.modal-btn-confirm:active {
+    transform: scale(0.98);
+}
+
 /* Print Styles */
 @media print {
     .panel,
-    .header-toolbar {
+    .header-toolbar,
+    .block-remove-btn,
+    .modal-overlay {
         display: none;
     }
     
