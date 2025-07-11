@@ -38,7 +38,20 @@ jobs:
         run: npm run build
       
       - name: Build examples
-        run: npm run build:examples
+        run: |
+          # Temporarily remove conflicting package.json entries
+          cp package.json package.json.bak
+          node -e "
+            const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+            delete pkg.main;
+            delete pkg.module;
+            delete pkg.targets;
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          # Build examples
+          npx parcel build examples/index.html --public-url ./
+          # Restore package.json
+          mv package.json.bak package.json
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
