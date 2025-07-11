@@ -17,6 +17,7 @@
     "dev": "parcel examples/index.html --dist-dir ./dist-dev",
     "build": "parcel build --target main --target module",
     "build:lib": "parcel build --target main --target module",
+    "build:examples": "parcel build examples/index.html --public-url ./",
     "start": "parcel examples/index.html",
     "test": "jest",
     "test:watch": "jest --watch",
