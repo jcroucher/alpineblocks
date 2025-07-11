@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlpineBlocks - Simple Example</title>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- AlpineBlocks CSS -->
+    <link rel="stylesheet" href="./dist/index.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #1f2937;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 200px 1fr 250px;
+            min-height: 600px;
+        }
+        
+        .panel {
+            border-right: 1px solid #e5e7eb;
+            background: white;
+        }
+        
+        .panel:last-child {
+            border-right: none;
+        }
+        
+        .panel-header {
+            background: #f9fafb;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .panel-content {
+            padding: 16px;
+        }
+        
+        .tool-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: grab;
+            margin-bottom: 4px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .tool-item:hover {
+            background: #f3f4f6;
+        }
+        
+        .tool-icon {
+            width: 16px;
+            height: 16px;
+            color: #6b7280;
+        }
+        
+        .tool-name {
+            font-size: 14px;
+            color: #374151;
+        }
+        
+        .editor-content {
+            padding: 20px;
+            min-height: 400px;
+            background: #fafafa;
+        }
+        
+        .ab-block {
+            position: relative;
+            margin: 8px 0;
+            padding: 12px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .ab-block:hover {
+            border-color: #e5e7eb;
+        }
+        
+        .ab-block.selected {
+            border-color: #3b82f6;
+        }
+        
+        .block-remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ab-block:hover .block-remove-btn {
+            display: flex;
+        }
+        
+        .settings-field {
+            margin-bottom: 16px;
+        }
+        
+        .settings-field label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .settings-field input,
+        .settings-field select,
+        .settings-field textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .json-output {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .json-output pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AlpineBlocks - Simple Example</h1>
+            <p>A lightweight block editor built with Alpine.js</p>
+        </div>
+        
+        <div class="editor-layout">
+            <!-- Tools Panel -->
+            <div class="panel">
+                <div class="panel-header">Tools</div>
+                <div class="panel-content">
+                    <div id="toolbar" x-data="editorToolbar()">
+                        <template x-for="tool in tools" :key="tool.name">
+                            <div class="tool-item" 
+                                 draggable="true"
+                                 @dragstart="handleDragStart($event, tool)">
+                                <div class="tool-icon" x-html="tool.icon"></div>
+                                <div class="tool-name" x-text="tool.name"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Editor Area -->
+            <div class="panel">
+                <div class="panel-header">Editor</div>
+                <div class="editor-content" 
+                     id="editor" 
+                     x-data="alpineEditor({
+                         tools: [
+                             { 
+                                 class: 'Paragraph', 
+                                 config: { content: 'Welcome to AlpineBlocks! This is a simple paragraph block.' } 
+                             },
+                             { 
+                                 class: 'Header', 
+                                 config: { content: 'Getting Started', level: 'h2' } 
+                             },
+                             { 
+                                 class: 'List', 
+                                 config: { content: '<li>Drag blocks from the left panel</li><li>Click on blocks to select them</li><li>Use the settings panel to configure blocks</li>', type: 'ul' } 
+                             }
+                         ]
+                     })">
+                    
+                    <template x-for="block in blocks" :key="block.id">
+                        <div class="ab-block" 
+                             @click="setActive($event, block.id)"
+                             :class="{ 'selected': selectedBlock === block.id }">
+                            
+                            <!-- Remove Button -->
+                            <button class="block-remove-btn" 
+                                    @click.stop="showDeleteConfirmation(block.id)">×</button>
+                            
+                            <!-- Block Content -->
+                            <div x-html="block.editorRender()"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <!-- Settings Panel -->
+            <div class="panel">
+                <div class="panel-header">Settings</div>
+                <div class="panel-content" 
+                     id="settings" 
+                     x-data="editorSettings('editor', {})">
+                    <template x-for="setting in settings" :key="setting.name">
+                        <div class="settings-field">
+                            <label x-text="setting.label || setting.name"></label>
+                            <div x-html="setting.html"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+        
+        <!-- JSON Output -->
+        <div class="json-output" x-data="{ jsonOutput: '[]' }" 
+             x-init="setInterval(() => {
+                 const editorEl = document.getElementById('editor');
+                 if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
+                     jsonOutput = editorEl._x_dataStack[0].blocksJSON();
+                 }
+             }, 1000)">
+            <h3>JSON Output</h3>
+            <pre x-text="JSON.stringify(JSON.parse(jsonOutput), null, 2)"></pre>
+        </div>
+    </div>
+    
+    <!-- Include AlpineBlocks -->
+    <script src="./dist/index.js"></script>
+</body>
+</html>
