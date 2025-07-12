@@ -129,49 +129,122 @@ class Columns extends Tool {
         }
 
         const toolClass = blockData.class;
-        const toolConfig = blockData.config || {};
+        const nestedBlock = this.editor.initBlock(toolClass, false);
         
-        const nestedBlock = {
-            id: this.generateId(),
-            class: toolClass,
-            config: toolConfig,
-            ...this.getToolDefaults(toolClass)
-        };
-
         if (position === 'end') {
             this.config.columns[columnIndex].blocks.push(nestedBlock);
         } else {
             this.config.columns[columnIndex].blocks.unshift(nestedBlock);
         }
 
+        this.editor.setActive(null, nestedBlock.id);
         this.triggerRedraw();
     }
 
+
     /**
-     * Get default configuration for different tool types
-     * @param {string} toolClass - The tool class name
-     * @returns {Object} Default configuration object
+     * Get or create the actual tool instance for a nested block
+     * @param {Object} block - The plain block object
+     * @returns {Object} Tool instance
      */
-    getToolDefaults(toolClass) {
-        const defaults = {
-            'Paragraph': { config: { content: 'Enter paragraph text...', fontSize: '16px' } },
-            'Header': { config: { content: 'Header text', level: 'h2' } },
-            'Image': { config: { src: '', alt: 'Image', caption: '', alignment: 'center' } },
-            'List': { config: { content: 'List item', type: 'ul' } },
-            'Button': { config: { text: 'Button', type: 'primary', size: 'medium' } },
-            'Alert': { config: { content: 'Alert message', type: 'info', dismissible: false } },
-            'Quote': { config: { content: 'Quote text', attribution: '' } }
+    getToolInstance(block) {
+        // Return cached instance if available
+        if (block._toolInstance) {
+            return block._toolInstance;
+        }
+
+        // Extract the class name from the block object eg $33963d57131b26df$var$Header should be Header, it may also be a string like "Paragraph"
+        const classMatch = block.class.match(/\$([a-f0-9]+)\$var\$(\w+)/);
+        const classId = classMatch ? classMatch[1] : null;
+        const className = classMatch ? classMatch[2] : null;
+
+        // Get the tool class from the editor's tool registry
+        const editorInstance = window.alpineEditors?.editorjs;
+
+        console.log("CONFIG", editorInstance.toolConfig);
+
+        if (!editorInstance || !editorInstance.toolConfig[className]) {
+            Debug.error(`Tool class ${block.class} not found in editor registry`);
+            return null;
+        }
+
+        const ToolClass = editorInstance.toolConfig[className].class;
+        
+        // Create a nested update function that routes to our column block
+        const nestedUpdateFunction = (id, newConfig) => {
+            this.updateNestedBlock(id, newConfig);
         };
 
-        return defaults[toolClass] || { config: {} };
+        // Create the tool instance with proper context
+        const toolInstance = new ToolClass({
+            id: block.id,
+            updateFunction: nestedUpdateFunction,
+            config: block.config
+        });
+
+        // Initialize with editor context if available
+        if (editorInstance) {
+            toolInstance.init(editorInstance);
+        }
+
+        // Update the tool's settings HTML to use the composite ID for proper routing
+        this.updateNestedToolSettings(toolInstance, this.id);
+
+        // Cache the instance
+        block._toolInstance = toolInstance;
+
+        return toolInstance;
     }
 
     /**
-     * Generate unique ID for nested blocks
-     * @returns {string} Unique identifier
+     * Create fallback block when tool class is not available
+     * @param {string} toolClass - The tool class name
+     * @param {string} blockId - The block ID
+     * @param {Object} config - The tool configuration
+     * @returns {Object} Fallback block object
      */
-    generateId() {
-        return 'nested-' + Math.random().toString(36).substr(2, 9);
+    createFallbackBlock(toolClass, blockId, config) {
+        return {
+            id: blockId,
+            toolClass: toolClass, // Use toolClass instead of class to avoid confusion
+            config: config,
+            editorRender: () => `<div class="block-preview">
+                <div class="block-type-icon">📦</div>
+                <div class="block-type-name">${toolClass}</div>
+                <div class="block-type-desc">Tool not available</div>
+            </div>`,
+            settings: []
+        };
+    }
+
+    /**
+     * Update a nested block's configuration
+     * @param {string} blockId - The nested block ID
+     * @param {Object} newConfig - The new configuration
+     */
+    updateNestedBlock(blockId, newConfig) {
+        
+        // Find the nested block across all columns
+        for (let columnIndex = 0; columnIndex < this.config.columns.length; columnIndex++) {
+            const column = this.config.columns[columnIndex];
+            const blockIndex = column.blocks.findIndex(block => block.id === blockId);
+            
+            if (blockIndex !== -1) {
+                // Update only the config properties, don't touch the block object itself
+                const currentBlock = column.blocks[blockIndex];
+                
+                
+                // Update config properties directly without recreating the block
+                Object.keys(newConfig).forEach(key => {
+                    currentBlock.config[key] = newConfig[key];
+                });
+                
+                this.triggerRedraw();
+                return;
+            }
+        }
+        
+        Debug.error(`Nested block ${blockId} not found for update`);
     }
 
     /**
@@ -186,71 +259,114 @@ class Columns extends Tool {
         }
 
         return column.blocks.map(block => {
-            return `<div class="nested-block nested-block-${block.class}" data-block-id="${block.id}">
+            
+            // Create proper Alpine.js context for each nested block
+            const blockContent = this.renderNestedBlockWithContext(block);
+            
+            const compositeId = `${this.id}::${block.id}`;
+            
+            return `<div class="nested-block nested-block-${compositeId}" 
+                         data-block-id="${block.id}"
+                         data-composite-id="${compositeId}"
+                         :class="{ 'nested-block-selected': selectedBlock === '${compositeId}' }"
+                         @click.stop="handleNestedBlockClick('${block.id}')">
                 <div class="nested-block-content">
-                    ${this.renderNestedBlockContent(block)}
+                    ${blockContent}
                 </div>
                 <div class="nested-block-controls">
-                    <button class="delete-nested-block" @click="removeNestedBlock(${columnIndex}, '${block.id}')">×</button>
+                    <button class="delete-nested-block" @click.stop="removeNestedBlock(${columnIndex}, '${block.id}')">×</button>
                 </div>
             </div>`;
         }).join('');
     }
 
     /**
-     * Render the content of a nested block
-     * @param {Object} block - The block object to render
-     * @returns {string} HTML string for the block content
+     * Render nested block with proper Alpine.js context
+     * @param {Object} block - The block instance
+     * @returns {string} HTML with proper Alpine.js scope
      */
-    renderNestedBlockContent(block) {
-        switch (block.class) {
-            case 'Paragraph':
-                return `<div class="nested-paragraph" style="font-size: ${block.config.fontSize || '16px'}">
-                    <p>${block.config.content || 'Enter paragraph text...'}</p>
-                </div>`;
-            case 'Header':
-                return `<div class="nested-header">
-                    <${block.config.level || 'h2'} style="margin: 0; color: ${block.config.color || '#333'}">
-                        ${block.config.content || 'Header text'}
-                    </${block.config.level || 'h2'}>
-                </div>`;
-            case 'Image':
-                if (block.config.src) {
-                    return `<div class="nested-image" style="text-align: ${block.config.alignment || 'center'}">
-                        <img src="${block.config.src}" alt="${block.config.alt || ''}" style="max-width: 100%; height: auto;">
-                        ${block.config.caption ? `<div class="image-caption">${block.config.caption}</div>` : ''}
-                    </div>`;
-                } else {
-                    return '<div class="image-placeholder">📷 Click to add image</div>';
-                }
-            case 'List':
-                const listType = block.config.type || 'ul';
-                return `<div class="nested-list">
-                    <${listType}><li>${block.config.content || 'List item'}</li></${listType}>
-                </div>`;
-            case 'Button':
-                return `<div class="nested-button" style="text-align: center; margin: 10px 0;">
-                    <button class="btn btn-${block.config.type || 'primary'} btn-${block.config.size || 'medium'}">
-                        ${block.config.text || 'Button'}
-                    </button>
-                </div>`;
-            case 'Alert':
-                return `<div class="nested-alert alert-${block.config.type || 'info'}" style="padding: 10px; border-radius: 4px; margin: 10px 0;">
-                    ${block.config.icon ? '⚠️ ' : ''}${block.config.content || 'Alert message'}
-                </div>`;
-            case 'Quote':
-                return `<div class="nested-quote" style="border-left: 4px solid #ddd; padding-left: 16px; margin: 10px 0; font-style: italic;">
-                    <blockquote>${block.config.content || 'Quote text'}</blockquote>
-                    ${block.config.attribution ? `<cite>— ${block.config.attribution}</cite>` : ''}
-                </div>`;
-            default:
-                return `<div class="block-preview">
-                    <div class="block-type-icon">📦</div>
-                    <div class="block-type-name">${block.class}</div>
-                    <div class="block-type-desc">Block content</div>
-                </div>`;
+    renderNestedBlockWithContext(block) {
+        const compositeId = `${this.id}::${block.id}`;
+        
+        // Get the actual tool instance and its render content
+        const toolInstance = this.getToolInstance(block);
+        let toolContent = '';
+        
+        if (toolInstance && typeof toolInstance.editorRender === 'function') {
+            toolContent = toolInstance.editorRender();
+        } else {
+            toolContent = this.createFallbackRender(block);
         }
+        
+        // Create an Alpine.js component wrapper that provides the 'block' context
+        // This allows the tool's original editorRender() to work without modification
+        return `<div x-data="{ 
+                    block: ${JSON.stringify({
+                        id: block.id,
+                        config: block.config
+                    }).replace(/"/g, '&quot;')},
+                    updateNestedBlock(property, value) {
+                        this.block.config[property] = value;
+                        $dispatch('nested-update', { 
+                            blockId: '${compositeId}', 
+                            property: property, 
+                            value: value 
+                        });
+                    }
+                }" 
+                x-init="
+                    // Override block config assignments to route through updateNestedBlock
+                    $watch('block.config', (newConfig) => {
+                        // This handles reactive updates from the nested tool
+                    }, { deep: true });
+                ">
+            ${this.fixNestedToolEventHandlers(toolContent, compositeId)}
+        </div>`;
     }
+
+    /**
+     * Fix event handlers in nested tool content to work with the wrapper context
+     * @param {string} content - The tool's rendered content
+     * @param {string} compositeId - The composite ID for this nested block
+     * @returns {string} Content with fixed event handlers
+     */
+    fixNestedToolEventHandlers(content, compositeId) {
+        // Replace direct config assignments with calls to updateNestedBlock
+        content = content.replace(
+            /@blur="block\.config\.(\w+)\s*=\s*\$event\.target\.innerHTML"/g,
+            `@blur="updateNestedBlock('$1', $event.target.innerHTML)"`
+        );
+        
+        content = content.replace(
+            /@blur="block\.config\.(\w+)\s*=\s*\$event\.target\.value"/g,
+            `@blur="updateNestedBlock('$1', $event.target.value)"`
+        );
+        
+        content = content.replace(
+            /@change="block\.config\.(\w+)\s*=\s*\$event\.target\.value"/g,
+            `@change="updateNestedBlock('$1', $event.target.value)"`
+        );
+        
+        content = content.replace(
+            /@change="block\.config\.(\w+)\s*=\s*\$event\.target\.checked"/g,
+            `@change="updateNestedBlock('$1', $event.target.checked)"`
+        );
+        
+        return content;
+    }
+
+    /**
+     * Create fallback render for blocks that don't have proper tool instances
+     * @param {Object} block - The block object
+     * @returns {string} Fallback HTML content
+     */
+    createFallbackRender(block) {
+        return `<div class="block-preview">
+            <div class="block-type-icon">📦</div>
+            <div class="block-type-name">Error Loading ${block.class}</div>
+        </div>`;
+    }
+
 
     /**
      * Remove a nested block from a column
@@ -312,7 +428,7 @@ class Columns extends Tool {
                                  // Prevent the main editor from handling this drop
                                  return false;
                              } catch (e) {
-                                 Debug.error('Error handling column drop:', e);
+                                 console.error('Error handling column drop:', e);
                              }
                          },
                          removeNestedBlock(columnIndex, blockId) {
@@ -320,8 +436,37 @@ class Columns extends Tool {
                              if (columnsBlock) {
                                  columnsBlock.removeNestedBlock(columnIndex, blockId);
                              }
+                         },
+                         handleNestedBlockClick(blockId) {
+                             // Set nested block as active using composite ID
+                             const compositeId = '${this.id}::' + blockId;
+                             
+                             const editorInstance = window.alpineEditors?.editorjs;
+                             
+                             if (editorInstance) {
+                                 editorInstance.setActive(null, compositeId);
+                                 
+                                 // Force settings update
+                                 setTimeout(() => {
+                                     document.dispatchEvent(new CustomEvent('editor-block-changed', { 
+                                         detail: { block_id: compositeId } 
+                                     }));
+                                 }, 100);
+                             }
+                         },
+                         handleNestedUpdate(event) {
+                             // Handle nested block updates from child components
+                             const { blockId, property, value } = event.detail;
+                             const editorInstance = window.alpineEditors?.editorjs;
+                             if (editorInstance) {
+                                 const settingsElement = document.querySelector('#settings');
+                                 if (settingsElement && settingsElement._x_dataStack && settingsElement._x_dataStack[0]) {
+                                     settingsElement._x_dataStack[0].trigger(blockId, property, value);
+                                 }
+                             }
                          }
-                     }">
+                     }"
+                     @nested-update="handleNestedUpdate($event)">
             ${this.config.columns.map((column, index) => `
                 <div class="column column-${index}" 
                      :class="{ 'column-hovered': hoveredColumn === ${index} }">
@@ -347,6 +492,182 @@ class Columns extends Tool {
                 </div>
             `).join('')}
         </div>`;
+    }
+
+    /**
+     * Get settings for a nested block
+     * @param {string} nestedBlockId - The ID of the nested block
+     * @returns {Array|null} Array of settings or null if not found
+     */
+    getNestedBlockSettings(nestedBlockId) {
+        console.log('getNestedBlockSettings called with nestedBlockId:', nestedBlockId);
+        console.log('Available columns:', this.config.columns.length);
+        
+        // Find the nested block across all columns
+        for (let i = 0; i < this.config.columns.length; i++) {
+            const column = this.config.columns[i];
+            console.log(`Column ${i} has ${column.blocks.length} blocks`);
+            
+            const block = column.blocks.find(b => b.id === nestedBlockId);
+            if (block) {
+                console.log('Found nested block:', block);
+                
+                // Get the actual tool instance for settings
+                const toolInstance = this.getToolInstance(block);
+                if (toolInstance && toolInstance.settings && Array.isArray(toolInstance.settings)) {
+                    console.log('Returning settings from actual tool instance');
+                    return this.updateSettingsForNestedBlock(toolInstance.settings, nestedBlockId);
+                }
+                
+                // If no settings, return empty array (tool might not have settings)
+                console.log('No settings found - tool may not have configurable settings');
+                return [];
+            }
+        }
+        console.log('Nested block not found');
+        return null;
+    }
+
+    /**
+     * Update the actual tool's settings to work with nested block routing
+     * @param {Array} settings - The actual tool's settings array  
+     * @param {string} nestedBlockId - The nested block ID
+     * @returns {Array} Settings with updated composite IDs
+     */
+    updateSettingsForNestedBlock(settings, nestedBlockId) {
+        const compositeId = `${this.id}::${nestedBlockId}`;
+        
+        return settings.map(setting => {
+            if (setting.html && typeof setting.html === 'string') {
+                // Replace the block ID in trigger calls with composite ID
+                // Handle various patterns that tools might use
+                let updatedHtml = setting.html;
+                
+                // Replace trigger calls with the tool's original ID
+                const escapedId = nestedBlockId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                updatedHtml = updatedHtml.replace(
+                    new RegExp(`trigger\\('${escapedId}'`, 'g'),
+                    `trigger('${compositeId}'`
+                );
+                
+                // Also handle cases where tools use their constructor name or class name
+                // This catches any remaining trigger calls that use different ID patterns
+                updatedHtml = updatedHtml.replace(
+                    /trigger\('([^']+)',\s*'([^']+)',\s*([^)]+)\)/g,
+                    (match, id, property, value) => {
+                        // If the ID doesn't already contain our parent ID, update it
+                        if (!id.includes(this.id)) {
+                            return `trigger('${compositeId}', '${property}', ${value})`;
+                        }
+                        return match;
+                    }
+                );
+                
+                return { ...setting, html: updatedHtml };
+            }
+            return setting;
+        });
+    }
+
+    /**
+     * Update nested tool settings to use composite IDs for proper routing
+     * @param {Object} toolInstance - The nested tool instance
+     * @param {string} parentId - The parent column block ID
+     */
+    updateNestedToolSettings(toolInstance, parentId) {
+        if (!toolInstance.settings || !Array.isArray(toolInstance.settings)) {
+            return;
+        }
+
+        // Create the composite ID for this nested block
+        const compositeId = `${parentId}::${toolInstance.id}`;
+
+        // Update each setting's HTML to use the composite ID
+        toolInstance.settings.forEach(setting => {
+            if (setting.html && typeof setting.html === 'string') {
+                // Replace all instances of the original ID with the composite ID in trigger calls
+                // Escape special regex characters in the ID
+                const escapedId = toolInstance.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                setting.html = setting.html.replace(
+                    new RegExp(`trigger\\('${escapedId}'`, 'g'),
+                    `trigger('${compositeId}'`
+                );
+            }
+        });
+    }
+
+    /**
+     * Fix Alpine.js bindings in nested block content to use proper routing
+     * @param {string} blockContent - The rendered block content HTML
+     * @param {string} blockId - The nested block ID
+     * @returns {string} Fixed HTML with proper event handlers
+     */
+    fixNestedBlockBindings(blockContent, blockId) {
+        if (!blockContent || typeof blockContent !== 'string') {
+            return blockContent;
+        }
+
+        // Find the actual nested block to get its config values
+        let nestedBlock = null;
+        for (const column of this.config.columns) {
+            nestedBlock = column.blocks.find(b => b.id === blockId);
+            if (nestedBlock) break;
+        }
+
+        if (!nestedBlock) {
+            return blockContent;
+        }
+
+        const compositeId = `${this.id}::${blockId}`;
+        
+        // Fix x-html bindings - replace with actual content and make editable
+        blockContent = blockContent.replace(
+            /(<[^>]*)\s+x-html="block\.config\.(\w+)"([^>]*>)([^<]*<\/[^>]+>)/g,
+            (match, openTag, property, attributes, endPart) => {
+                const content = nestedBlock.config[property] || '';
+                const closingTagMatch = endPart.match(/<\/[^>]+>$/);
+                const closingTag = closingTagMatch ? closingTagMatch[0] : '</div>';
+                
+                // Make contenteditable and add event handler
+                const editableTag = openTag + ' contenteditable="true"' + 
+                    ` @blur="$dispatch('nested-update', { blockId: '${compositeId}', property: '${property}', value: $event.target.innerHTML })"` +
+                    attributes.replace('>', '>');
+                
+                return editableTag + content + closingTag;
+            }
+        );
+        
+        // Fix existing event handlers to use composite ID
+        blockContent = blockContent.replace(
+            /@blur="block\.config\.(\w+)\s*=\s*\$event\.target\.innerHTML"/g,
+            `@blur="$dispatch('nested-update', { blockId: '${compositeId}', property: '$1', value: $event.target.innerHTML })"`
+        );
+        
+        blockContent = blockContent.replace(
+            /@blur="block\.config\.(\w+)\s*=\s*\$event\.target\.value"/g,
+            `@blur="$dispatch('nested-update', { blockId: '${compositeId}', property: '$1', value: $event.target.value })"`
+        );
+        
+        blockContent = blockContent.replace(
+            /@change="block\.config\.(\w+)\s*=\s*\$event\.target\.value"/g,
+            `@change="$dispatch('nested-update', { blockId: '${compositeId}', property: '$1', value: $event.target.value })"`
+        );
+        
+        blockContent = blockContent.replace(
+            /@blur="block\.config\.(\w+)\s*=\s*\$event\.target\.checked"/g,
+            `@blur="$dispatch('nested-update', { blockId: '${compositeId}', property: '$1', value: $event.target.checked })"`
+        );
+
+        // Fix references to block.config to use actual values
+        Object.keys(nestedBlock.config).forEach(key => {
+            const value = nestedBlock.config[key];
+            blockContent = blockContent.replace(
+                new RegExp(`block\.config\.${key}`, 'g'),
+                typeof value === 'string' ? `'${value.replace(/'/g, "\\'")}'` : value
+            );
+        });
+
+        return blockContent;
     }
 }
 

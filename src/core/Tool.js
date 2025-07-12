@@ -16,8 +16,59 @@ export default class Tool {
      */
     triggerRedraw() {
         if (typeof this.updateFunction === 'function') {
-            this.updateFunction(this.id, JSON.parse(JSON.stringify(this.config)));
+            // Use the safe serialization method to avoid circular references
+            const cleanConfig = this.serializeConfig(this.config);
+            this.updateFunction(this.id, cleanConfig);
         }
+    }
+
+    /**
+     * Serialize config safely without circular references
+     * @param {Object} config - Configuration to serialize
+     * @returns {Object} Clean configuration
+     */
+    serializeConfig(config) {
+        if (!config || typeof config !== 'object') {
+            return config;
+        }
+
+        const serialized = {};
+        for (const [key, value] of Object.entries(config)) {
+            if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') {
+                // Skip circular references and functions
+                continue;
+            }
+
+            if (Array.isArray(value)) {
+                serialized[key] = value.map(item => {
+                    if (item && typeof item === 'object') {
+                        if (item.id && item.config) {
+                            // For nested blocks, serialize recursively
+                            // Preserve existing class property if it exists and is valid
+                            let className;
+                            if (item.class && typeof item.class === 'string' && item.class !== 'Object') {
+                                className = item.class;
+                            } else {
+                                className = item.constructor ? item.constructor.name : 'Unknown';
+                            }
+                            
+                            return {
+                                id: item.id,
+                                class: className,
+                                config: this.serializeConfig(item.config)
+                            };
+                        }
+                        return this.serializeConfig(item);
+                    }
+                    return item;
+                });
+            } else if (value && typeof value === 'object') {
+                serialized[key] = this.serializeConfig(value);
+            } else {
+                serialized[key] = value;
+            }
+        }
+        return serialized;
     }
 
     /**
@@ -30,18 +81,21 @@ export default class Tool {
         this.editor.$nextTick(() => {
             this.el = document.getElementById(this.id);
 
-            this.el.addEventListener('mouseup', (event) => {
-                const selectedText = window.getSelection().toString();
-                if (selectedText.length > 0) {
-                    this.editor.$dispatch('editor-show-inline-toolbar', { 
-                        event: event, 
-                        id: this.id, 
-                        text: selectedText 
-                    });
-                } else {
-                    this.editor.$dispatch('editor-hide-inline-toolbar');
-                }
-            });
+            // Only add event listeners if element exists (nested blocks may not have direct DOM IDs)
+            if (this.el) {
+                this.el.addEventListener('mouseup', (event) => {
+                    const selectedText = window.getSelection().toString();
+                    if (selectedText.length > 0) {
+                        this.editor.$dispatch('editor-show-inline-toolbar', { 
+                            event: event, 
+                            id: this.id, 
+                            text: selectedText 
+                        });
+                    } else {
+                        this.editor.$dispatch('editor-hide-inline-toolbar');
+                    }
+                });
+            }
         });
     }
 

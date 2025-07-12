@@ -83,19 +83,66 @@ export class Editor {
      * @returns {string} JSON string of blocks
      */
     blocksJSON(pretty = false) {
-        const data = JSON.stringify(this.blocks.map(b => {
+        const blocksData = this.blocks.map(block => {
             return {
-                id: b.id,
-                class: b.constructor.name,
-                data: b.config
+                id: block.id,
+                class: block.constructor.name,
+                data: this.serializeBlockConfig(block.config)
             };
-        }), null, 2);
+        });
+
+        const data = JSON.stringify(blocksData, null, 2);
 
         if (pretty) {
             return data.replace(/ /g, '&nbsp;').replace(/\n/g, '<br>');
         }
 
         return data;
+    }
+
+    /**
+     * Serialize block config without circular references
+     * @param {Object} config - The configuration to serialize
+     * @returns {Object} Clean configuration object
+     */
+    serializeBlockConfig(config) {
+        if (!config || typeof config !== 'object') {
+            return config;
+        }
+        
+        const serialized = {};
+        for (const [key, value] of Object.entries(config)) {
+            if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') {
+                // Skip circular references and functions
+                continue;
+            }
+            
+            if (Array.isArray(value)) {
+                // Handle arrays (like columns with nested blocks)
+                serialized[key] = value.map(item => {
+                    if (item && typeof item === 'object') {
+                        // For nested blocks, only include serializable properties
+                        if (item.id && item.constructor && item.config) {
+                            return {
+                                id: item.id,
+                                class: item.constructor.name,
+                                config: this.serializeBlockConfig(item.config)
+                            };
+                        }
+                        // For other objects, recursively serialize
+                        return this.serializeBlockConfig(item);
+                    }
+                    return item;
+                });
+            } else if (value && typeof value === 'object') {
+                // Recursively serialize nested objects
+                serialized[key] = this.serializeBlockConfig(value);
+            } else {
+                // Primitive values
+                serialized[key] = value;
+            }
+        }
+        return serialized;
     }
 
     /**
@@ -115,13 +162,44 @@ export class Editor {
     }
 
     /**
-     * Get settings for a specific block
-     * @param {string} blockId - ID of the block
+     * Get settings for a specific block (including nested blocks)
+     * @param {string} blockId - ID of the block (may be composite for nested blocks)
      * @returns {Array|null} Array of settings or null if not found
      */
     getSettings(blockId) {
+        console.log('getSettings called with blockId:', blockId);
+        
+        if (!blockId) {
+            console.log('No blockId provided, returning null');
+            return null;
+        }
+        
+        // Check if this is a nested block (format: parentId::nestedId)
+        if (blockId.includes('::')) {
+            console.log('Nested block detected');
+            const [parentId, nestedId] = blockId.split('::');
+            console.log('Parent ID:', parentId, 'Nested ID:', nestedId);
+            
+            const parentBlock = this.blockManager.blocks.find(b => b.id === parentId);
+            console.log('Parent block found:', !!parentBlock);
+            
+            if (parentBlock && typeof parentBlock.getNestedBlockSettings === 'function') {
+                console.log('Calling getNestedBlockSettings on parent block');
+                const nestedSettings = parentBlock.getNestedBlockSettings(nestedId);
+                console.log('Nested settings returned:', nestedSettings);
+                return nestedSettings;
+            } else {
+                console.log('Parent block or getNestedBlockSettings method not found');
+            }
+        }
+        
+        // Regular top-level block
+        console.log('Looking for regular top-level block');
         const block = this.blockManager.blocks.find(b => b.id === blockId);
-        return block ? block.settings : null;
+        console.log('Block found:', !!block);
+        const settings = block ? block.settings : null;
+        console.log('Settings returned:', settings);
+        return settings;
     }
 
 
@@ -270,9 +348,9 @@ export class Editor {
     }
 
     /**
-     * Set the active block
+     * Set the active block (supports nested blocks)
      * @param {Event|null} event - Event that triggered the change
-     * @param {string} block - Block ID to set as active
+     * @param {string} block - Block ID to set as active (may be composite for nested blocks)
      */
     setActive(event, block) {
         if (this.selectedBlock === block) return;

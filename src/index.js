@@ -95,7 +95,32 @@ function getToolConfigFromDOM() {
 // Initialize Alpine with tool loading
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('editorToolbar', () => new Toolbar);
-    window.Alpine.data('editorSettings', (editorId, settings) => new Settings(editorId, settings));
+    window.Alpine.data('editorSettings', (editorId, initialSettings) => ({
+        settingsInstance: null,
+        settings: initialSettings || [],
+        
+        init() {
+            console.log('Alpine editorSettings component initialized for editor:', editorId);
+            this.settingsInstance = new Settings(editorId, this.settings);
+            this.settingsInstance.init();
+            
+            // Listen for settings updates
+            document.addEventListener('settings-updated', (event) => {
+                console.log('Alpine settings: settings-updated event received:', event.detail);
+                if (event.detail.editorId === editorId) {
+                    console.log('Alpine settings: updating settings to:', event.detail.settings);
+                    this.settings = event.detail.settings || [];
+                }
+            });
+        },
+        
+        trigger(blockId, property, value) {
+            console.log('Alpine settings: trigger called:', blockId, property, value);
+            if (this.settingsInstance) {
+                this.settingsInstance.trigger(blockId, property, value);
+            }
+        }
+    }));
     window.Alpine.data('alpineEditor', () => ({
         editor: null,
         blocks: [],
@@ -136,21 +161,73 @@ document.addEventListener('alpine:init', () => {
             });
             
             this.selectedBlock = this.editor.selectedBlock;
+            
+            // Watch for selectedBlock changes to sync with editor
+            $watch('selectedBlock', (newValue) => {
+                if (this.editor && this.editor.selectedBlock !== newValue) {
+                    this.editor.selectedBlock = newValue;
+                }
+            });
         },
 
         // Expose required methods
         blocksJSON(pretty = false) {
             if (!this.editor) return '[]';
             
-            const blocksData = this.blocks.map(block => ({
-                id: block.id,
-                class: block.constructor.name,
-                data: block.config
-            }));
+            const blocksData = this.blocks.map(block => {
+                // Create a clean object without circular references
+                const cleanBlock = {
+                    id: block.id,
+                    class: block.constructor.name,
+                    data: this.serializeBlockConfig(block.config)
+                };
+                return cleanBlock;
+            });
             
             return pretty 
                 ? JSON.stringify(blocksData, null, 2).replace(/ /g, '&nbsp;').replace(/\n/g, '<br>')
                 : JSON.stringify(blocksData);
+        },
+
+        // Helper method to serialize block config without circular references
+        serializeBlockConfig(config) {
+            if (!config || typeof config !== 'object') {
+                return config;
+            }
+            
+            const serialized = {};
+            for (const [key, value] of Object.entries(config)) {
+                if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') {
+                    // Skip circular references and functions
+                    continue;
+                }
+                
+                if (Array.isArray(value)) {
+                    // Handle arrays (like columns with nested blocks)
+                    serialized[key] = value.map(item => {
+                        if (item && typeof item === 'object') {
+                            // For nested blocks, only include serializable properties
+                            if (item.id && item.constructor && item.config) {
+                                return {
+                                    id: item.id,
+                                    class: item.constructor.name,
+                                    config: this.serializeBlockConfig(item.config)
+                                };
+                            }
+                            // For other objects, recursively serialize
+                            return this.serializeBlockConfig(item);
+                        }
+                        return item;
+                    });
+                } else if (value && typeof value === 'object') {
+                    // Recursively serialize nested objects
+                    serialized[key] = this.serializeBlockConfig(value);
+                } else {
+                    // Primitive values
+                    serialized[key] = value;
+                }
+            }
+            return serialized;
         },
 
         handleDragOver(event, blockId) {
@@ -204,7 +281,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         setActive(event, blockId) {
-            if (this.editor) this.editor.setActive(event, blockId);
+            if (this.editor) {
+                this.editor.setActive(event, blockId);
+                // Sync with Alpine component state
+                this.selectedBlock = blockId;
+            }
         },
 
         showDeleteConfirmation(blockId) {

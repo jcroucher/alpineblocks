@@ -1123,6 +1123,7 @@ body {
     line-height: 1.6;
     color: var(--gray-700);
     font-size: var(--text-base);
+    text-align: left;
 }
 
 .wysiwyg-content:focus {
@@ -2252,4 +2253,10 @@ body {
     .wysiwyg-content {
         padding: 0;
     }
+}
+/* Nested block selection styling */
+.nested-block-selected {
+    border-color: var(--primary-500) \!important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) \!important;
+    background: var(--primary-50) \!important;
 }
