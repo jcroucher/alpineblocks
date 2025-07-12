@@ -29,7 +29,7 @@ class Image extends Tool {
                 label: 'Image URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'src', $event.target.value)"
-                    :value="block.config.src"
+                    value="${this.config.src}"
                     placeholder="Enter image URL">`
             },
             {
@@ -37,7 +37,7 @@ class Image extends Tool {
                 label: 'Alt Text',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'alt', $event.target.value)"
-                    :value="block.config.alt"
+                    value="${this.config.alt}"
                     placeholder="Enter alt text">`
             },
             {
@@ -45,16 +45,16 @@ class Image extends Tool {
                 label: 'Caption',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'caption', $event.target.value)"
-                    :value="block.config.caption"
+                    value="${this.config.caption}"
                     placeholder="Enter image caption">`
             },
             {
                 name: 'alignment',
                 label: 'Alignment',
                 html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
+                    <option value="left" ${this.config.alignment === 'left' ? 'selected' : ''}>Left</option>
+                    <option value="center" ${this.config.alignment === 'center' ? 'selected' : ''}>Center</option>
+                    <option value="right" ${this.config.alignment === 'right' ? 'selected' : ''}>Right</option>
                 </select>`
             },
             {
@@ -62,7 +62,7 @@ class Image extends Tool {
                 label: 'Width',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'width', $event.target.value)"
-                    :value="block.config.width"
+                    value="${this.config.width}"
                     placeholder="auto, 100%, or specific px">`
             }
         ];
