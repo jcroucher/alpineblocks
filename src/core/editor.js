@@ -2,6 +2,7 @@ import { ToolManager } from "./editor_modules/ToolManager";
 import { BlockManager } from "./editor_modules/BlockManager";
 import { InlineToolbar } from "./editor_modules/InlineToolbar";
 import { HistoryManager } from "./HistoryManager";
+import { HeaderToolbar } from "./HeaderToolbar";
 import { Debug } from "./utils/Debug";
 
 const { v4: uuidv4 } = require('uuid');
@@ -31,6 +32,7 @@ export class Editor {
         this.blockManager = new BlockManager();
         this.inlineToolbar = new InlineToolbar();
         this.historyManager = new HistoryManager(this, historySize);
+        this.headerToolbar = null; // Will be initialized after editor ID is set
         
         // Debounced state saving for property updates
         this.debouncedSaveState = this.debounce(() => {
@@ -48,6 +50,10 @@ export class Editor {
 
         window.alpineEditors = window.alpineEditors || {};
         window.alpineEditors[this.id] = this;
+
+        // Initialize header toolbar now that we have the ID
+        this.headerToolbar = new HeaderToolbar(this.id);
+        this.headerToolbar.init();
 
         this.toolManager.loadTools();
         
@@ -152,6 +158,17 @@ export class Editor {
     }
 
     /**
+     * Get header toolbar HTML
+     * @returns {string} HTML string for the header toolbar
+     */
+    getHeaderToolbar() {
+        if (!this.headerToolbar) {
+            return '<div class="header-toolbar"><!-- Header toolbar not yet initialized --></div>';
+        }
+        return this.headerToolbar.render();
+    }
+
+    /**
      * Get all blocks in the editor
      * @returns {Array} Array of block instances
      */
@@ -165,26 +182,44 @@ export class Editor {
      * @returns {string} JSON string of blocks
      */
     blocksJSON(pretty = false) {
-        const blocksData = this.blocks.map(block => {
+        console.log('=== BLOCKS JSON DEBUG START ===');
+        console.log('1. blocksJSON called, blocks count:', this.blocks.length);
+        
+        const blocksData = this.blocks.map((block, index) => {
+            console.log(`2. Processing block ${index}:`, block);
+            console.log(`3. block.class:`, block.class);
+            console.log(`4. block.constructor.name:`, block.constructor.name);
+            
             // Use the preserved class name if available, otherwise extract from constructor name
             let className = block.class || block.constructor.name;
+            console.log(`5. className (initial):`, className);
             
             // If we get a bundled class name, try to extract the real name
             if (className.includes('$var$')) {
                 const match = className.match(/\$var\$(\w+)$/);
                 if (match) {
                     className = match[1];
+                    console.log(`6. className after bundled extraction:`, className);
                 }
             }
             
-            return {
+            console.log(`7. About to serialize block config for block ${index}`);
+            const serializedConfig = this.serializeBlockConfig(block.config);
+            
+            const blockData = {
                 id: block.id,
                 class: className,
-                data: this.serializeBlockConfig(block.config)
+                data: serializedConfig
             };
+            console.log(`8. Final block data for block ${index}:`, blockData);
+            
+            return blockData;
         });
 
+        console.log('9. All blocks data:', blocksData);
         const data = JSON.stringify(blocksData, null, 2);
+        console.log('10. Final JSON string length:', data.length);
+        console.log('=== BLOCKS JSON DEBUG END ===');
 
         if (pretty) {
             return data.replace(/ /g, '&nbsp;').replace(/\n/g, '<br>');
@@ -199,42 +234,86 @@ export class Editor {
      * @returns {Object} Clean configuration object
      */
     serializeBlockConfig(config) {
+        console.log('=== SERIALIZE BLOCK CONFIG DEBUG START ===');
+        console.log('1. serializeBlockConfig called with:', config);
+        
         if (!config || typeof config !== 'object') {
+            console.log('2. Config is not object, returning as-is:', config);
             return config;
         }
         
         const serialized = {};
         for (const [key, value] of Object.entries(config)) {
+            console.log(`3. Processing key: ${key}, value:`, value);
+            
             if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') {
                 // Skip circular references and functions
+                console.log(`4. Skipping key ${key} (circular ref or function)`);
                 continue;
             }
             
             if (Array.isArray(value)) {
+                console.log(`5. Processing array for key ${key}, length:`, value.length);
                 // Handle arrays (like columns with nested blocks)
-                serialized[key] = value.map(item => {
+                serialized[key] = value.map((item, index) => {
+                    console.log(`6. Processing array item ${index}:`, item);
+                    
                     if (item && typeof item === 'object') {
                         // For nested blocks, only include serializable properties
-                        if (item.id && item.constructor && item.config) {
-                            return {
+                        if (item.id && item.config) {
+                            console.log(`7. Found nested block with id: ${item.id}`);
+                            console.log(`8. item.class:`, item.class);
+                            console.log(`9. item.constructor:`, item.constructor);
+                            console.log(`10. item.constructor.name:`, item.constructor?.name);
+                            
+                            // Use the preserved class name if available, otherwise extract from constructor name
+                            let className = item.class || (item.constructor && item.constructor.name) || 'Unknown';
+                            console.log(`11. className derived:`, className);
+                            
+                            // Handle bundled class names - check both class property and constructor name
+                            if (className.includes('$var$')) {
+                                const match = className.match(/\$var\$(\w+)$/);
+                                if (match) {
+                                    className = match[1];
+                                    console.log(`12. className after bundled name extraction:`, className);
+                                }
+                            } else if (item.constructor && item.constructor.name && item.constructor.name.includes('$var$')) {
+                                // Handle case where class property is clean but constructor name is bundled
+                                const match = item.constructor.name.match(/\$var\$(\w+)$/);
+                                if (match) {
+                                    className = match[1];
+                                    console.log(`12b. className extracted from bundled constructor name:`, className);
+                                }
+                            }
+                            
+                            const serializedBlock = {
                                 id: item.id,
-                                class: item.constructor.name,
+                                class: className,
                                 config: this.serializeBlockConfig(item.config)
                             };
+                            console.log(`13. Serialized nested block:`, serializedBlock);
+                            
+                            return serializedBlock;
                         }
                         // For other objects, recursively serialize
+                        console.log(`14. Recursively serializing object item:`, item);
                         return this.serializeBlockConfig(item);
                     }
+                    console.log(`15. Returning array item as-is:`, item);
                     return item;
                 });
             } else if (value && typeof value === 'object') {
                 // Recursively serialize nested objects
+                console.log(`16. Recursively serializing object value for key ${key}`);
                 serialized[key] = this.serializeBlockConfig(value);
             } else {
                 // Primitive values
+                console.log(`17. Setting primitive value for key ${key}:`, value);
                 serialized[key] = value;
             }
         }
+        console.log('18. Final serialized object:', serialized);
+        console.log('=== SERIALIZE BLOCK CONFIG DEBUG END ===');
         return serialized;
     }
 
@@ -357,27 +436,59 @@ export class Editor {
      * @returns {Object} New block instance
      */
     initBlock(blockName, push = false, existingId = null) {
+        console.log('=== INITBLOCK DEBUG START ===');
+        console.log('1. initBlock called with blockName:', blockName);
+        console.log('2. push:', push);
+        console.log('3. existingId:', existingId);
+        
         if (!this.toolConfig || !this.toolConfig[blockName]) {
             Debug.error(`Tool configuration for ${blockName} not found`);
+            console.log('4. Tool configuration not found, returning null');
             return null;
         }
 
+        console.log('5. Tool config found:', this.toolConfig[blockName]);
         const BlockClass = this.toolConfig[blockName].class;
+        console.log('6. BlockClass:', BlockClass);
+        console.log('7. BlockClass.name:', BlockClass.name);
+        
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
+        console.log('8. Config for new block:', config);
+        
         const newBlock = new BlockClass({
             id: existingId || uuidv4(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
 
+        console.log('9. New block created');
+        console.log('10. newBlock.constructor.name BEFORE class assignment:', newBlock.constructor.name);
+        console.log('11. newBlock.class BEFORE assignment:', newBlock.class);
+
         // Preserve the clean class name
         newBlock.class = blockName;
         
+        console.log('12. newBlock.class AFTER assignment:', newBlock.class);
+        console.log('13. newBlock.constructor.name AFTER assignment:', newBlock.constructor.name);
+        
         newBlock.init(this);
+
+        console.log('14. After init() call:');
+        console.log('15. newBlock.class:', newBlock.class);
+        console.log('16. newBlock.constructor.name:', newBlock.constructor.name);
 
         if (push) {
             this.blocks.push(newBlock);
+            console.log('17. Block pushed to blocks array');
         }
+
+        console.log('18. Final newBlock object:', JSON.stringify({
+            id: newBlock.id,
+            class: newBlock.class,
+            constructorName: newBlock.constructor.name,
+            config: newBlock.config
+        }, null, 2));
+        console.log('=== INITBLOCK DEBUG END ===');
 
         return newBlock;
     }
@@ -448,14 +559,89 @@ export class Editor {
      * @param {Object} config - New configuration
      */
     updateFunction(id, config) {
+        console.log('=== UPDATE FUNCTION DEBUG START ===');
+        console.log('1. updateFunction called with id:', id);
+        console.log('2. config received:', config);
+        
         const block = this.blockManager.blocks.find(b => b.id === id);
+        console.log('3. block found:', !!block);
+        
         if (block) {
-            block.config = config;
+            console.log('4. block.config BEFORE merge:', block.config);
+            // Merge config while preserving Tool instances in arrays
+            this.mergeConfigPreservingToolInstances(block.config, config);
+            console.log('5. block.config AFTER merge:', block.config);
+            
             this.$dispatch('editor-updated', { id: this.id });
             
             // Use debounced save for property updates
             this.debouncedSaveState();
         }
+        console.log('=== UPDATE FUNCTION DEBUG END ===');
+    }
+
+    /**
+     * Merge config while preserving Tool instances in arrays
+     * @param {Object} target - Target config to update
+     * @param {Object} source - Source config with updates
+     */
+    mergeConfigPreservingToolInstances(target, source) {
+        console.log('=== MERGE CONFIG DEBUG START ===');
+        console.log('1. Target keys:', Object.keys(target));
+        console.log('2. Source keys:', Object.keys(source));
+        
+        for (const [key, value] of Object.entries(source)) {
+            console.log(`3. Processing key: ${key}`);
+            console.log(`4. Value type: ${Array.isArray(value) ? 'array' : typeof value}`);
+            
+            if (Array.isArray(value) && Array.isArray(target[key])) {
+                console.log(`5. Processing array for key ${key}, source length: ${value.length}, target length: ${target[key].length}`);
+                
+                // For arrays, preserve existing Tool instances where possible
+                value.forEach((item, index) => {
+                    console.log(`6. Processing array item ${index}:`, item);
+                    
+                    if (item && typeof item === 'object' && item.id) {
+                        console.log(`7. Found object with ID: ${item.id}`);
+                        
+                        // Find existing Tool instance with same ID
+                        const existingTool = target[key].find(t => t && t.id === item.id);
+                        console.log(`8. Existing tool found:`, existingTool ? 'YES' : 'NO');
+                        console.log(`9. Existing tool has serializeConfig:`, existingTool && typeof existingTool.serializeConfig === 'function' ? 'YES' : 'NO');
+                        
+                        if (existingTool && typeof existingTool.serializeConfig === 'function') {
+                            console.log(`10. Updating existing Tool instance config instead of replacing`);
+                            // Update the existing Tool instance's config instead of replacing it
+                            this.mergeConfigPreservingToolInstances(existingTool.config, item.config || {});
+                            // Don't replace the Tool instance
+                            return;
+                        } else {
+                            console.log(`11. Replacing with serialized object`);
+                        }
+                    }
+                    // For non-Tool items or new items, just assign
+                    console.log(`12. Assigning value at index ${index}`);
+                    target[key][index] = value[index];
+                });
+                
+                // Handle array length changes
+                if (value.length !== target[key].length) {
+                    console.log(`13. Adjusting array length from ${target[key].length} to ${value.length}`);
+                    target[key].length = value.length;
+                }
+            } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                // For nested objects, recurse
+                if (!target[key] || typeof target[key] !== 'object') {
+                    target[key] = {};
+                }
+                this.mergeConfigPreservingToolInstances(target[key], value);
+            } else {
+                // For primitive values, just assign
+                console.log(`14. Assigning primitive value for key ${key}`);
+                target[key] = value;
+            }
+        }
+        console.log('=== MERGE CONFIG DEBUG END ===');
     }
 
     /**

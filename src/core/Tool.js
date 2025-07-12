@@ -43,13 +43,43 @@ export default class Tool {
                 serialized[key] = value.map(item => {
                     if (item && typeof item === 'object') {
                         if (item.id && item.config) {
-                            // For nested blocks, serialize recursively
-                            // Preserve existing class property if it exists and is valid
+                            // For nested blocks, use their own serializeConfig if available
+                            if (typeof item.serializeConfig === 'function') {
+                                // Extract class name properly from Tool instances
+                                let className = item.class;
+                                if (!className && item.constructor && item.constructor.name) {
+                                    className = item.constructor.name;
+                                    // Handle bundled class names like $var$Header
+                                    if (className.includes('$var$')) {
+                                        const match = className.match(/\$var\$(\w+)$/);
+                                        if (match) {
+                                            className = match[1];
+                                        }
+                                    }
+                                }
+                                
+                                return {
+                                    id: item.id,
+                                    class: className || 'Unknown',
+                                    config: item.serializeConfig(item.config)
+                                };
+                            }
+                            
+                            // Fallback for plain objects from previous serialization
                             let className;
                             if (item.class && typeof item.class === 'string' && item.class !== 'Object') {
                                 className = item.class;
+                            } else if (item.constructor && item.constructor.name && item.constructor.name !== 'Object') {
+                                className = item.constructor.name;
+                                // Handle bundled class names
+                                if (className.includes('$var$')) {
+                                    const match = className.match(/\$var\$(\w+)$/);
+                                    if (match) {
+                                        className = match[1];
+                                    }
+                                }
                             } else {
-                                className = item.constructor ? item.constructor.name : 'Unknown';
+                                className = 'Unknown';
                             }
                             
                             return {

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpine Blocks Debug Test</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-console { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            margin: 20px 0; 
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .step { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: white; 
+            border-left: 4px solid #007cba; 
+        }
+        .alert { 
+            background: #ffe6e6; 
+            border-left-color: #d63031; 
+            color: #d63031; 
+        }
+        .success { 
+            background: #e6ffe6; 
+            border-left-color: #00b894; 
+            color: #00b894; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Alpine Blocks - Nested Block Class Name Debug Test</h1>
+    
+    <div class="debug-console">
+        <h3>Debug Instructions</h3>
+        <div class="step">
+            <strong>Step 1:</strong> Open your browser's Developer Console (F12 → Console tab)
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> Load your Alpine Blocks editor with a Columns block
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> Drag and drop a block (e.g., Paragraph, Header) into a column
+        </div>
+        <div class="step alert">
+            <strong>Step 4:</strong> Watch the console for debug output with these prefixes:
+            <ul>
+                <li><code>=== COLUMN DROP DEBUG START ===</code> - Shows what happens during drop</li>
+                <li><code>=== INITBLOCK DEBUG START ===</code> - Shows block creation in Editor</li>
+                <li><code>=== RENDER NESTED BLOCKS DEBUG START ===</code> - Shows rendering process</li>
+                <li><code>=== GET TOOL INSTANCE DEBUG START ===</code> - Shows tool instance creation</li>
+                <li><code>=== SERIALIZE BLOCK CONFIG DEBUG START ===</code> - Shows serialization process</li>
+                <li><code>=== BLOCKS JSON DEBUG START ===</code> - Shows final JSON export</li>
+            </ul>
+        </div>
+        <div class="step">
+            <strong>Step 5:</strong> Try exporting the blocks as JSON to trigger serialization
+        </div>
+        <div class="step success">
+            <strong>What to Look For:</strong> Find where <code>block.class</code> changes from the proper class name (e.g., "Paragraph") to "Object"
+        </div>
+    </div>
+
+    <div class="debug-console">
+        <h3>Key Debug Points to Monitor</h3>
+        <ol>
+            <li><strong>Initial Drop:</strong> Check if <code>blockData.class</code> is correct when dropped</li>
+            <li><strong>After initBlock:</strong> Verify <code>nestedBlock.class</code> is preserved</li>
+            <li><strong>After Adding to Column:</strong> Check if class is still correct in column array</li>
+            <li><strong>During Rendering:</strong> See if class remains correct during render cycles</li>
+            <li><strong>During Serialization:</strong> Identify where class becomes "Object"</li>
+        </ol>
+    </div>
+
+    <div class="debug-console">
+        <h3>Expected Flow</h3>
+        <p>The debug logs will show you the exact moment when the class property changes from the intended class name to "Object". This typically happens due to:</p>
+        <ul>
+            <li>JSON serialization/deserialization losing the class property</li>
+            <li>Object cloning without preserving the class</li>
+            <li>Alpine.js reactive updates that modify the object</li>
+            <li>A merge operation that doesn't preserve the class property</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('🔍 Debug test page loaded. Ready to trace nested block class issues.');
+        console.log('📋 Open Alpine Blocks editor and follow the debug instructions above.');
+    </script>
+</body>
+</html>

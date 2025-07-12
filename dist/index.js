@@ -210,11 +210,11 @@ class $bc5955414cf94f77$export$a268db361d674bec {
  * History Manager for undo/redo functionality
  * Tracks changes to the editor blocks and allows reverting to previous states
  */ class $0230982e13623baf$export$9572cf7a37405cc {
-    constructor(editor){
+    constructor(editor, maxHistorySize = 30){
         this.editor = editor;
         this.history = [];
         this.currentIndex = -1;
-        this.maxHistorySize = 50;
+        this.maxHistorySize = maxHistorySize; // Configurable, default 30
         this.isApplyingState = false; // Prevent recursive history tracking
         // Save initial state
         this.saveState();
@@ -237,7 +237,6 @@ class $bc5955414cf94f77$export$a268db361d674bec {
         // Keep history size manageable
         if (this.history.length > this.maxHistorySize) this.history.shift();
         else this.currentIndex++;
-        console.log(`History: Saved state "${action}" (${this.currentIndex + 1}/${this.history.length})`);
         this.notifyHistoryChange();
     }
     /**
@@ -247,7 +246,6 @@ class $bc5955414cf94f77$export$a268db361d674bec {
         if (!this.canUndo()) return false;
         this.currentIndex--;
         this.applyState(this.history[this.currentIndex]);
-        console.log(`History: Undo to "${this.history[this.currentIndex].action}" (${this.currentIndex + 1}/${this.history.length})`);
         this.notifyHistoryChange();
         return true;
     }
@@ -258,7 +256,6 @@ class $bc5955414cf94f77$export$a268db361d674bec {
         if (!this.canRedo()) return false;
         this.currentIndex++;
         this.applyState(this.history[this.currentIndex]);
-        console.log(`History: Redo to "${this.history[this.currentIndex].action}" (${this.currentIndex + 1}/${this.history.length})`);
         this.notifyHistoryChange();
         return true;
     }
@@ -958,6 +955,116 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
 }
 
 
+/**
+ * Header Toolbar component for editor actions like undo/redo, preview, etc.
+ */ class $ebbb859655ae7d1c$export$3c11ee1da7b7384 {
+    constructor(editorId){
+        this.editorId = editorId;
+        this.canUndo = false;
+        this.canRedo = false;
+    }
+    /**
+   * Initialize the header toolbar
+   */ init() {
+        // Listen for history changes to update button states
+        document.addEventListener('history-changed', (e)=>{
+            this.canUndo = e.detail.canUndo;
+            this.canRedo = e.detail.canRedo;
+            // Force Alpine to update by dispatching a custom event
+            document.dispatchEvent(new CustomEvent('header-toolbar-updated', {
+                detail: {
+                    editorId: this.editorId,
+                    canUndo: this.canUndo,
+                    canRedo: this.canRedo
+                }
+            }));
+        });
+    }
+    /**
+   * Handle undo action
+   */ handleUndo() {
+        const editor = window.alpineEditors?.[this.editorId];
+        if (editor) editor.undo();
+    }
+    /**
+   * Handle redo action
+   */ handleRedo() {
+        const editor = window.alpineEditors?.[this.editorId];
+        if (editor) editor.redo();
+    }
+    /**
+   * Handle preview action
+   */ handlePreview() {
+        const editor = window.alpineEditors?.[this.editorId];
+        if (editor) // Dispatch preview event for custom handling
+        document.dispatchEvent(new CustomEvent('editor-preview', {
+            detail: {
+                editorId: this.editorId,
+                content: editor.getEditorContent(),
+                json: editor.blocksJSON()
+            }
+        }));
+    }
+    /**
+   * Handle settings action
+   */ handleSettings() {
+        const editor = window.alpineEditors?.[this.editorId];
+        if (editor) // Dispatch settings event for custom handling
+        document.dispatchEvent(new CustomEvent('editor-settings', {
+            detail: {
+                editorId: this.editorId
+            }
+        }));
+    }
+    /**
+   * Get the toolbar HTML
+   * @returns {string} HTML string for the toolbar
+   */ render() {
+        return `
+            <div class="header-toolbar" 
+                 x-data="headerToolbar('${this.editorId}')"
+                 x-init="init()">
+                <button class="header-btn" 
+                        :disabled="!canUndo"
+                        :class="{ 'header-btn-disabled': !canUndo }"
+                        @click="handleUndo()"
+                        title="Undo (Ctrl+Z)">
+                    <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path fill="currentColor" d="M125.7 160H176c17.7 0 32 14.3 32 32s-14.3 32-32 32H48c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32s32 14.3 32 32v51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"/>
+                    </svg>
+                </button>
+                <button class="header-btn" 
+                        :disabled="!canRedo"
+                        :class="{ 'header-btn-disabled': !canRedo }"
+                        @click="handleRedo()"
+                        title="Redo (Ctrl+Y)">
+                    <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path fill="currentColor" d="M386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H464c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0s-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3s163.8-62.5 226.3 0L386.3 160z"/>
+                    </svg>
+                </button>
+                <div class="header-divider"></div>
+                <button class="header-btn" 
+                        @click="handlePreview()"
+                        title="Preview">
+                    <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                <button class="header-btn" 
+                        @click="handleSettings()"
+                        title="Editor Settings">
+                    <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }
+}
+
+
 
 /**
  * Base class for all AlpineBlocks tools
@@ -991,11 +1098,35 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
             if (Array.isArray(value)) serialized[key] = value.map((item)=>{
                 if (item && typeof item === 'object') {
                     if (item.id && item.config) {
-                        // For nested blocks, serialize recursively
-                        // Preserve existing class property if it exists and is valid
+                        // For nested blocks, use their own serializeConfig if available
+                        if (typeof item.serializeConfig === 'function') {
+                            // Extract class name properly from Tool instances
+                            let className = item.class;
+                            if (!className && item.constructor && item.constructor.name) {
+                                className = item.constructor.name;
+                                // Handle bundled class names like $var$Header
+                                if (className.includes('$var$')) {
+                                    const match = className.match(/\$var\$(\w+)$/);
+                                    if (match) className = match[1];
+                                }
+                            }
+                            return {
+                                id: item.id,
+                                class: className || 'Unknown',
+                                config: item.serializeConfig(item.config)
+                            };
+                        }
+                        // Fallback for plain objects from previous serialization
                         let className;
                         if (item.class && typeof item.class === 'string' && item.class !== 'Object') className = item.class;
-                        else className = item.constructor ? item.constructor.name : 'Unknown';
+                        else if (item.constructor && item.constructor.name && item.constructor.name !== 'Object') {
+                            className = item.constructor.name;
+                            // Handle bundled class names
+                            if (className.includes('$var$')) {
+                                const match = className.match(/\$var\$(\w+)$/);
+                                if (match) className = match[1];
+                            }
+                        } else className = 'Unknown';
                         return {
                             id: item.id,
                             class: className,
@@ -2649,37 +2780,114 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
    * @param {Object} blockData - The block data from drag operation
    * @param {string} position - Position to insert ('end' or 'start')
    */ handleColumnDrop(columnIndex, blockData, position = 'end') {
-        if (!this.config.columns[columnIndex]) return;
+        console.log('=== COLUMN DROP DEBUG START ===');
+        console.log('1. Input blockData:', JSON.stringify(blockData, null, 2));
+        console.log('2. toolClass extracted:', blockData.class);
+        if (!this.config.columns[columnIndex]) {
+            console.log('3. Column not found at index:', columnIndex);
+            return;
+        }
         const toolClass = blockData.class;
+        console.log('4. About to call editor.initBlock with toolClass:', toolClass);
         const nestedBlock = this.editor.initBlock(toolClass, false);
+        console.log('5. initBlock returned:', nestedBlock);
+        console.log('6. nestedBlock.class:', nestedBlock?.class);
+        console.log('7. nestedBlock.constructor.name:', nestedBlock?.constructor?.name);
+        console.log('8. nestedBlock complete object:', JSON.stringify({
+            id: nestedBlock?.id,
+            class: nestedBlock?.class,
+            constructorName: nestedBlock?.constructor?.name,
+            config: nestedBlock?.config
+        }, null, 2));
         if (!nestedBlock) {
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).error(`Failed to create nested block of type ${toolClass}`);
             return;
         }
+        console.log('9. About to add to column. Current column blocks:', this.config.columns[columnIndex].blocks.length);
         if (position === 'end') this.config.columns[columnIndex].blocks.push(nestedBlock);
         else this.config.columns[columnIndex].blocks.unshift(nestedBlock);
+        console.log('10. After adding to column. Block in column:');
+        const addedBlock = this.config.columns[columnIndex].blocks[this.config.columns[columnIndex].blocks.length - 1];
+        console.log('11. addedBlock.class:', addedBlock?.class);
+        console.log('12. addedBlock.constructor.name:', addedBlock?.constructor?.name);
+        console.log('13. addedBlock complete:', JSON.stringify({
+            id: addedBlock?.id,
+            class: addedBlock?.class,
+            constructorName: addedBlock?.constructor?.name,
+            config: addedBlock?.config
+        }, null, 2));
         this.editor.setActive(null, nestedBlock.id);
+        console.log('14. About to trigger redraw');
         this.triggerRedraw();
+        console.log('15. After triggerRedraw, checking column blocks again:');
+        const finalBlock = this.config.columns[columnIndex].blocks[this.config.columns[columnIndex].blocks.length - 1];
+        console.log('16. finalBlock.class:', finalBlock?.class);
+        console.log('17. finalBlock.constructor.name:', finalBlock?.constructor?.name);
+        console.log('=== COLUMN DROP DEBUG END ===');
+    }
+    /**
+   * Override serializeConfig to preserve nested Tool instances
+   * @param {Object} config - Configuration to serialize
+   * @returns {Object} Clean configuration with Tool instances preserved
+   */ serializeConfig(config) {
+        console.log('=== COLUMNS SERIALIZE CONFIG DEBUG START ===');
+        console.log('1. Serializing Columns config:', config);
+        if (!config || typeof config !== 'object') return config;
+        const serialized = {};
+        for (const [key, value] of Object.entries(config)){
+            if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') continue;
+            if (key === 'columns' && Array.isArray(value)) {
+                console.log('2. Processing columns array');
+                // Special handling for columns to preserve Tool instances
+                serialized[key] = value.map((column, colIndex)=>{
+                    console.log(`3. Processing column ${colIndex}:`, column);
+                    if (column.blocks && Array.isArray(column.blocks)) {
+                        console.log(`4. Column ${colIndex} has ${column.blocks.length} blocks`);
+                        // DON'T serialize the nested Tool instances - keep them as-is
+                        return {
+                            ...column,
+                            blocks: column.blocks // Keep Tool instances intact
+                        };
+                    }
+                    return column;
+                });
+            } else // For other properties, use the parent serialization
+            serialized[key] = value;
+        }
+        console.log('5. Serialized config (Tool instances preserved):', serialized);
+        console.log('=== COLUMNS SERIALIZE CONFIG DEBUG END ===');
+        return serialized;
     }
     /**
    * Get or create the actual tool instance for a nested block
    * @param {Object} block - The plain block object
    * @returns {Object} Tool instance
    */ getToolInstance(block) {
+        console.log('=== GET TOOL INSTANCE DEBUG START ===');
+        console.log('1. getToolInstance called with block:', block);
+        console.log('2. block.class:', block.class);
+        console.log('3. block.constructor.name:', block.constructor?.name);
         // Return cached instance if available
-        if (block._toolInstance) return block._toolInstance;
+        if (block._toolInstance) {
+            console.log('4. Returning cached tool instance');
+            return block._toolInstance;
+        }
         // Extract the class name from the block object eg $33963d57131b26df$var$Header should be Header, it may also be a string like "Paragraph"
-        const classMatch = block.class.match(/\$([a-f0-9]+)\$var\$(\w+)/);
-        const classId = classMatch ? classMatch[1] : null;
-        const className = classMatch ? classMatch[2] : null;
+        //const classMatch = block.class.match(/\$([a-f0-9]+)\$var\$(\w+)/);
+        //const classId = classMatch ? classMatch[1] : null;
+        //const className = classMatch ? classMatch[2] : null;
         // Get the tool class from the editor's tool registry
         const editorInstance = window.alpineEditors?.editorjs;
-        console.log("CONFIG", editorInstance.toolConfig);
+        const className = block.class;
+        console.log('5. className for tool lookup:', className);
         if (!editorInstance || !editorInstance.toolConfig[className]) {
+            console.log('6. Tool class not found. editorInstance:', !!editorInstance);
+            console.log('7. Available tool classes:', editorInstance ? Object.keys(editorInstance.toolConfig) : 'N/A');
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).error(`Tool class ${block.class} not found in editor registry`);
             return null;
         }
         const ToolClass = editorInstance.toolConfig[className].class;
+        console.log('8. ToolClass found:', ToolClass);
         // Create a nested update function that routes to our column block
         const nestedUpdateFunction = (id, newConfig)=>{
             this.updateNestedBlock(id, newConfig);
@@ -2690,12 +2898,17 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
             updateFunction: nestedUpdateFunction,
             config: block.config
         });
+        console.log('9. Tool instance created:', toolInstance);
+        console.log('10. toolInstance.class:', toolInstance.class);
+        console.log('11. toolInstance.constructor.name:', toolInstance.constructor.name);
         // Initialize with editor context if available
         if (editorInstance) toolInstance.init(editorInstance);
         // Update the tool's settings HTML to use the composite ID for proper routing
         this.updateNestedToolSettings(toolInstance, this.id);
         // Cache the instance
         block._toolInstance = toolInstance;
+        console.log('12. Tool instance cached');
+        console.log('=== GET TOOL INSTANCE DEBUG END ===');
         return toolInstance;
     }
     /**
@@ -2723,6 +2936,9 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
    * @param {string} blockId - The nested block ID
    * @param {Object} newConfig - The new configuration
    */ updateNestedBlock(blockId, newConfig) {
+        console.log('=== UPDATE NESTED BLOCK DEBUG START ===');
+        console.log('1. updateNestedBlock called with blockId:', blockId);
+        console.log('2. newConfig:', newConfig);
         // Find the nested block across all columns
         for(let columnIndex = 0; columnIndex < this.config.columns.length; columnIndex++){
             const column = this.config.columns[columnIndex];
@@ -2730,24 +2946,48 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
             if (blockIndex !== -1) {
                 // Update only the config properties, don't touch the block object itself
                 const currentBlock = column.blocks[blockIndex];
+                console.log('3. Found block to update:', currentBlock);
+                console.log('4. currentBlock.class before update:', currentBlock.class);
+                console.log('5. currentBlock.constructor.name before update:', currentBlock.constructor?.name);
                 // Update config properties directly without recreating the block
                 Object.keys(newConfig).forEach((key)=>{
                     currentBlock.config[key] = newConfig[key];
                 });
+                console.log('6. currentBlock.class after config update:', currentBlock.class);
+                console.log('7. currentBlock.constructor.name after config update:', currentBlock.constructor?.name);
                 this.triggerRedraw();
+                console.log('8. currentBlock.class after triggerRedraw:', currentBlock.class);
+                console.log('9. currentBlock.constructor.name after triggerRedraw:', currentBlock.constructor?.name);
+                // Trigger debounced state save for nested block updates
+                if (this.editor && this.editor.debouncedSaveState) this.editor.debouncedSaveState();
+                console.log('=== UPDATE NESTED BLOCK DEBUG END ===');
                 return;
             }
         }
         (0, $7294c730f5636c35$export$153e5dc2c098b35c).error(`Nested block ${blockId} not found for update`);
+        console.log('=== UPDATE NESTED BLOCK DEBUG END (NOT FOUND) ===');
     }
     /**
    * Render nested blocks within a column
    * @param {number} columnIndex - The index of the column
    * @returns {string} HTML string for nested blocks
    */ renderNestedBlocks(columnIndex) {
+        console.log('=== RENDER NESTED BLOCKS DEBUG START ===');
+        console.log('1. renderNestedBlocks called for column:', columnIndex);
         const column = this.config.columns[columnIndex];
-        if (!column || !column.blocks || column.blocks.length === 0) return '<div class="column-placeholder">Drop blocks here</div>';
-        return column.blocks.map((block)=>{
+        if (!column || !column.blocks || column.blocks.length === 0) {
+            console.log('2. No blocks in column, returning placeholder');
+            return '<div class="column-placeholder">Drop blocks here</div>';
+        }
+        console.log('3. Column blocks count:', column.blocks.length);
+        column.blocks.forEach((block, index)=>{
+            console.log(`4. Block ${index} - class:`, block.class);
+            console.log(`5. Block ${index} - constructor.name:`, block.constructor?.name);
+        });
+        const renderedBlocks = column.blocks.map((block, blockIndex)=>{
+            console.log(`6. Rendering block ${blockIndex}:`);
+            console.log(`7. block.class:`, block.class);
+            console.log(`8. block.constructor.name:`, block.constructor?.name);
             // Create proper Alpine.js context for each nested block
             const blockContent = this.renderNestedBlockWithContext(block);
             const compositeId = `${this.id}::${block.id}`;
@@ -2763,7 +3003,10 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                     <button class="delete-nested-block" @click.stop="removeNestedBlock(${columnIndex}, '${block.id}')">\xd7</button>
                 </div>
             </div>`;
-        }).join('');
+        });
+        console.log('9. Finished rendering all blocks');
+        console.log('=== RENDER NESTED BLOCKS DEBUG END ===');
+        return renderedBlocks.join('');
     }
     /**
    * Render nested block with proper Alpine.js context
@@ -2950,27 +3193,17 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
    * @param {string} nestedBlockId - The ID of the nested block
    * @returns {Array|null} Array of settings or null if not found
    */ getNestedBlockSettings(nestedBlockId) {
-        console.log('getNestedBlockSettings called with nestedBlockId:', nestedBlockId);
-        console.log('Available columns:', this.config.columns.length);
         // Find the nested block across all columns
         for(let i = 0; i < this.config.columns.length; i++){
             const column = this.config.columns[i];
-            console.log(`Column ${i} has ${column.blocks.length} blocks`);
             const block = column.blocks.find((b)=>b.id === nestedBlockId);
             if (block) {
-                console.log('Found nested block:', block);
                 // Get the actual tool instance for settings
                 const toolInstance = this.getToolInstance(block);
-                if (toolInstance && toolInstance.settings && Array.isArray(toolInstance.settings)) {
-                    console.log('Returning settings from actual tool instance');
-                    return this.updateSettingsForNestedBlock(toolInstance.settings, nestedBlockId);
-                }
-                // If no settings, return empty array (tool might not have settings)
-                console.log('No settings found - tool may not have configurable settings');
+                if (toolInstance && toolInstance.settings && Array.isArray(toolInstance.settings)) return this.updateSettingsForNestedBlock(toolInstance.settings, nestedBlockId);
                 return [];
             }
         }
-        console.log('Nested block not found');
         return null;
     }
     /**
@@ -3848,6 +4081,34 @@ const $4fa36e821943b400$var$toolModules = {
 // Initialize Alpine with tool loading
 document.addEventListener('alpine:init', ()=>{
     window.Alpine.data('editorToolbar', ()=>new (0, $9aa7d1866d5cf0e4$export$4c260019440d418f)());
+    window.Alpine.data('headerToolbar', (editorId)=>({
+            toolbarInstance: null,
+            canUndo: false,
+            canRedo: false,
+            init () {
+                this.toolbarInstance = new (0, $ebbb859655ae7d1c$export$3c11ee1da7b7384)(editorId);
+                this.toolbarInstance.init();
+                // Listen for header toolbar updates
+                document.addEventListener('header-toolbar-updated', (event)=>{
+                    if (event.detail.editorId === editorId) {
+                        this.canUndo = event.detail.canUndo;
+                        this.canRedo = event.detail.canRedo;
+                    }
+                });
+            },
+            handleUndo () {
+                if (this.toolbarInstance) this.toolbarInstance.handleUndo();
+            },
+            handleRedo () {
+                if (this.toolbarInstance) this.toolbarInstance.handleRedo();
+            },
+            handlePreview () {
+                if (this.toolbarInstance) this.toolbarInstance.handlePreview();
+            },
+            handleSettings () {
+                if (this.toolbarInstance) this.toolbarInstance.handleSettings();
+            }
+        }));
     window.Alpine.data('editorSettings', (editorId, initialSettings)=>({
             settingsInstance: null,
             settings: initialSettings || [],
@@ -3882,42 +4143,76 @@ document.addEventListener('alpine:init', ()=>{
                 const $dispatch = this.$dispatch;
                 const $nextTick = this.$nextTick;
                 const $watch = this.$watch;
-                this.toolConfig = $4fa36e821943b400$var$getToolConfigFromDOM();
-                (0, $7294c730f5636c35$export$153e5dc2c098b35c).info('Tool config loaded:', Object.keys(this.toolConfig));
-                this.editor = new (0, $37b4af5c79573adf$export$7cda8d932e2f33c0)(this.toolConfig);
-                // Add Alpine utilities to editor
-                this.editor.$el = $el;
-                this.editor.$dispatch = $dispatch;
-                this.editor.$nextTick = $nextTick;
-                this.editor.$watch = $watch;
-                // Initialize the editor
-                this.editor.init();
-                // Create a proxy for the blocks array to handle updates
-                const self = this;
-                this.blocks = new Proxy(this.editor.blocks, {
-                    set (target, property, value) {
-                        target[property] = value;
-                        if (self.editor) self.editor.blockManager.blocks = target;
-                        return true;
-                    }
-                });
-                this.selectedBlock = this.editor.selectedBlock;
-                // Watch for selectedBlock changes to sync with editor
-                $watch('selectedBlock', (newValue)=>{
-                    if (this.editor && this.editor.selectedBlock !== newValue) this.editor.selectedBlock = newValue;
-                });
+                try {
+                    this.toolConfig = $4fa36e821943b400$var$getToolConfigFromDOM();
+                    (0, $7294c730f5636c35$export$153e5dc2c098b35c).info('Tool config loaded:', Object.keys(this.toolConfig));
+                    this.editor = new (0, $37b4af5c79573adf$export$7cda8d932e2f33c0)(this.toolConfig);
+                    // Add Alpine utilities to editor (not reactive references)
+                    this.editor.$el = $el;
+                    this.editor.$dispatch = $dispatch;
+                    this.editor.$nextTick = $nextTick;
+                    this.editor.$watch = $watch;
+                    // Initialize the editor
+                    this.editor.init();
+                    // Set up blocks array without circular references
+                    this.syncBlocksFromEditor();
+                    // Ensure the editor is available in Alpine's context
+                    this.$nextTick(()=>{
+                        // Force a re-render to show the toolbar now that editor is initialized
+                        this.editor = this.editor;
+                    });
+                    this.selectedBlock = this.editor.selectedBlock;
+                    // Watch for selectedBlock changes to sync with editor
+                    $watch('selectedBlock', (newValue)=>{
+                        if (this.editor && this.editor.selectedBlock !== newValue) this.editor.selectedBlock = newValue;
+                    });
+                    // Watch for block config changes to trigger debounced state saves
+                    $watch('blocks', ()=>{
+                        if (this.editor && this.editor.debouncedSaveState) this.editor.debouncedSaveState();
+                    }, {
+                        deep: true
+                    });
+                    // Listen for editor updates to sync blocks
+                    document.addEventListener('editor-updated', (event)=>{
+                        if (event.detail.id === this.editor.id) this.syncBlocksFromEditor();
+                    });
+                    document.addEventListener('editor-drop', (event)=>{
+                        if (event.detail.id === this.editor.id) this.syncBlocksFromEditor();
+                    });
+                } catch (error) {
+                    (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Error initializing editor:', error);
+                }
+            },
+            // Sync blocks array from editor without circular references
+            syncBlocksFromEditor () {
+                if (!this.editor) return;
+                // Update the simple blocks array for Alpine's reactivity without circular refs
+                this.blocks = this.editor.blocks.map((block)=>({
+                        id: block.id,
+                        class: block.class || block.constructor.name,
+                        // Just track the count to trigger reactivity
+                        _updateCount: Date.now()
+                    }));
             },
             // Expose required methods
             blocksJSON (pretty = false) {
                 if (!this.editor) return '[]';
-                const blocksData = this.blocks.map((block)=>{
-                    // Create a clean object without circular references
-                    const cleanBlock = {
+                // Use the editor's blocksJSON method directly for correct serialization
+                if (typeof this.editor.blocksJSON === 'function') return this.editor.blocksJSON(pretty);
+                // Fallback: manually serialize using actual editor blocks
+                const blocksData = this.editor.blocks.map((block)=>{
+                    // Use the preserved class name if available, otherwise extract from constructor name
+                    let className = block.class || block.constructor.name;
+                    // If we get a bundled class name, try to extract the real name
+                    if (className.includes('$var$')) {
+                        const match = className.match(/\$var\$(\w+)$/);
+                        if (match) className = match[1];
+                    }
+                    return {
                         id: block.id,
-                        class: block.constructor.name,
+                        class: className,
                         data: this.serializeBlockConfig(block.config)
                     };
-                    return cleanBlock;
                 });
                 return pretty ? JSON.stringify(blocksData, null, 2).replace(/ /g, '&nbsp;').replace(/\n/g, '<br>') : JSON.stringify(blocksData);
             },
@@ -3931,11 +4226,20 @@ document.addEventListener('alpine:init', ()=>{
                     serialized[key] = value.map((item)=>{
                         if (item && typeof item === 'object') {
                             // For nested blocks, only include serializable properties
-                            if (item.id && item.constructor && item.config) return {
-                                id: item.id,
-                                class: item.constructor.name,
-                                config: this.serializeBlockConfig(item.config)
-                            };
+                            if (item.id && item.config) {
+                                // Use the preserved class name if available, otherwise extract from constructor name
+                                let className = item.class || item.constructor && item.constructor.name || 'Unknown';
+                                // Handle bundled class names
+                                if (className.includes('$var$')) {
+                                    const match = className.match(/\$var\$(\w+)$/);
+                                    if (match) className = match[1];
+                                }
+                                return {
+                                    id: item.id,
+                                    class: className,
+                                    config: this.serializeBlockConfig(item.config)
+                                };
+                            }
                             // For other objects, recursively serialize
                             return this.serializeBlockConfig(item);
                         }
@@ -3997,6 +4301,78 @@ document.addEventListener('alpine:init', ()=>{
                         blockId: blockId
                     }
                 }));
+            },
+            // Get header toolbar HTML
+            getHeaderToolbar () {
+                if (!this.editor) return '<div class="header-toolbar"><!-- Editor not initialized --></div>';
+                // Try to get the method from the editor
+                let getHeaderToolbarMethod = this.editor.getHeaderToolbar;
+                if (!getHeaderToolbarMethod && this.editor.headerToolbar) // Fallback: call the headerToolbar render method directly
+                try {
+                    return this.editor.headerToolbar.render();
+                } catch (error) {
+                    console.error('Error calling headerToolbar.render():', error);
+                }
+                if (typeof getHeaderToolbarMethod !== 'function') {
+                    console.error('Editor getHeaderToolbar method not found:', this.editor);
+                    console.log('Available methods:', Object.getOwnPropertyNames(this.editor));
+                    // Provide a fallback toolbar
+                    return this.getFallbackHeaderToolbar();
+                }
+                try {
+                    return getHeaderToolbarMethod.call(this.editor);
+                } catch (error) {
+                    console.error('Error getting header toolbar:', error);
+                    return this.getFallbackHeaderToolbar();
+                }
+            },
+            // Fallback header toolbar when editor method isn't available
+            getFallbackHeaderToolbar () {
+                const editorId = this.editor ? this.editor.id : 'unknown';
+                return `
+                <div class="header-toolbar" x-data="headerToolbar('${editorId}')">
+                    <button class="header-btn" 
+                            :disabled="!canUndo"
+                            :class="{ 'header-btn-disabled': !canUndo }"
+                            @click="handleUndo()"
+                            title="Undo (Ctrl+Z)">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <path fill="currentColor" d="M125.7 160H176c17.7 0 32 14.3 32 32s-14.3 32-32 32H48c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32s32 14.3 32 32v51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"/>
+                        </svg>
+                    </button>
+                    <button class="header-btn" 
+                            :disabled="!canRedo"
+                            :class="{ 'header-btn-disabled': !canRedo }"
+                            @click="handleRedo()"
+                            title="Redo (Ctrl+Y)">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <path fill="currentColor" d="M386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H464c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0s-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3s163.8-62.5 226.3 0L386.3 160z"/>
+                        </svg>
+                    </button>
+                    <div class="header-divider"></div>
+                    <button class="header-btn" 
+                            @click="handlePreview()"
+                            title="Preview">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="header-btn" 
+                            @click="handleSettings()"
+                            title="Editor Settings">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            },
+            // Get actual blocks for rendering (not the cleaned version)
+            getEditorBlocks () {
+                if (!this.editor) return [];
+                return this.editor.blocks;
             }
         }));
 });

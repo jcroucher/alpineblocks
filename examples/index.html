@@ -196,64 +196,6 @@
                             </div>
                             <!-- Editor Area -->
                             <div class="panel editor-area">
-                                <div class="header-toolbar" 
-                                     x-data="{ 
-                                         canUndo: false, 
-                                         canRedo: false,
-                                         init() {
-                                             // Listen for history changes
-                                             document.addEventListener('history-changed', (e) => {
-                                                 this.canUndo = e.detail.canUndo;
-                                                 this.canRedo = e.detail.canRedo;
-                                             });
-                                         },
-                                         handleUndo() {
-                                             const editor = window.alpineEditors?.editorjs;
-                                             if (editor) {
-                                                 editor.undo();
-                                             }
-                                         },
-                                         handleRedo() {
-                                             const editor = window.alpineEditors?.editorjs;
-                                             if (editor) {
-                                                 editor.redo();
-                                             }
-                                         }
-                                     }">
-                                    <button class="header-btn" 
-                                            :disabled="!canUndo"
-                                            :class="{ 'header-btn-disabled': !canUndo }"
-                                            @click="handleUndo()"
-                                            title="Undo (Ctrl+Z)">
-                                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M3 7v6h6"/>
-                                            <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
-                                        </svg>
-                                    </button>
-                                    <button class="header-btn" 
-                                            :disabled="!canRedo"
-                                            :class="{ 'header-btn-disabled': !canRedo }"
-                                            @click="handleRedo()"
-                                            title="Redo (Ctrl+Y)">
-                                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M21 7v6h-6"/>
-                                            <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>
-                                        </svg>
-                                    </button>
-                                    <div class="header-divider"></div>
-                                    <button class="header-btn" title="Preview">
-                                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    <button class="header-btn" title="Settings">
-                                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="12" cy="12" r="3"/>
-                                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
-                                        </svg>
-                                    </button>
-                                </div>
                                 <div class="editor-content" id="editorjs"
                                              x-data="alpineEditor({
                                                   tools: [
@@ -385,7 +327,12 @@
                                                 ]
                                               })"
                                              >
-                                            <template x-for="block in blocks" :key="block.id">
+                                            <!-- Header toolbar rendered from editor - can be placed anywhere -->
+                                            <template x-if="editor">
+                                                <div x-html="getHeaderToolbar()"></div>
+                                            </template>
+                                            
+                                            <template x-for="block in getEditorBlocks()" :key="block.id">
                                                 <div class="drop-target ab-block"
                                                      @dragover.prevent="handleDragOver($event, block.id)"
                                                      @drop="handleDrop($event, 'end', block.id)"

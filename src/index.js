@@ -5,6 +5,7 @@ window.Alpine = Alpine;
 import { Editor } from './core/Editor';
 import { Toolbar } from './core/Toolbar';
 import { Settings } from './core/Settings';
+import { HeaderToolbar } from './core/HeaderToolbar';
 import { Debug } from './core/utils/Debug';
 
 /**
@@ -131,6 +132,48 @@ function getToolConfigFromDOM() {
 // Initialize Alpine with tool loading
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('editorToolbar', () => new Toolbar);
+    window.Alpine.data('headerToolbar', (editorId) => ({
+        toolbarInstance: null,
+        canUndo: false,
+        canRedo: false,
+        
+        init() {
+            this.toolbarInstance = new HeaderToolbar(editorId);
+            this.toolbarInstance.init();
+            
+            // Listen for header toolbar updates
+            document.addEventListener('header-toolbar-updated', (event) => {
+                if (event.detail.editorId === editorId) {
+                    this.canUndo = event.detail.canUndo;
+                    this.canRedo = event.detail.canRedo;
+                }
+            });
+        },
+        
+        handleUndo() {
+            if (this.toolbarInstance) {
+                this.toolbarInstance.handleUndo();
+            }
+        },
+        
+        handleRedo() {
+            if (this.toolbarInstance) {
+                this.toolbarInstance.handleRedo();
+            }
+        },
+        
+        handlePreview() {
+            if (this.toolbarInstance) {
+                this.toolbarInstance.handlePreview();
+            }
+        },
+        
+        handleSettings() {
+            if (this.toolbarInstance) {
+                this.toolbarInstance.handleSettings();
+            }
+        }
+    }));
     window.Alpine.data('editorSettings', (editorId, initialSettings) => ({
         settingsInstance: null,
         settings: initialSettings || [],
@@ -172,60 +215,103 @@ document.addEventListener('alpine:init', () => {
             const $nextTick = this.$nextTick;
             const $watch = this.$watch;
             
-            this.toolConfig = getToolConfigFromDOM();
-            Debug.info('Tool config loaded:', Object.keys(this.toolConfig));
-            this.editor = new Editor(this.toolConfig);
-            
-            // Add Alpine utilities to editor
-            this.editor.$el = $el;
-            this.editor.$dispatch = $dispatch;
-            this.editor.$nextTick = $nextTick;
-            this.editor.$watch = $watch;
-            
-            // Initialize the editor
-            this.editor.init();
-            
-            // Create a proxy for the blocks array to handle updates
-            const self = this;
-            this.blocks = new Proxy(this.editor.blocks, {
-                set(target, property, value) {
-                    target[property] = value;
-                    if (self.editor) {
-                        self.editor.blockManager.blocks = target;
+            try {
+                this.toolConfig = getToolConfigFromDOM();
+                Debug.info('Tool config loaded:', Object.keys(this.toolConfig));
+                this.editor = new Editor(this.toolConfig);
+                
+                // Add Alpine utilities to editor (not reactive references)
+                this.editor.$el = $el;
+                this.editor.$dispatch = $dispatch;
+                this.editor.$nextTick = $nextTick;
+                this.editor.$watch = $watch;
+                
+                // Initialize the editor
+                this.editor.init();
+                
+                // Set up blocks array without circular references
+                this.syncBlocksFromEditor();
+                
+                // Ensure the editor is available in Alpine's context
+                this.$nextTick(() => {
+                    // Force a re-render to show the toolbar now that editor is initialized
+                    this.editor = this.editor;
+                });
+                
+                this.selectedBlock = this.editor.selectedBlock;
+                
+                // Watch for selectedBlock changes to sync with editor
+                $watch('selectedBlock', (newValue) => {
+                    if (this.editor && this.editor.selectedBlock !== newValue) {
+                        this.editor.selectedBlock = newValue;
                     }
-                    return true;
-                }
-            });
+                });
+                
+                // Watch for block config changes to trigger debounced state saves
+                $watch('blocks', () => {
+                    if (this.editor && this.editor.debouncedSaveState) {
+                        this.editor.debouncedSaveState();
+                    }
+                }, { deep: true });
+                
+                // Listen for editor updates to sync blocks
+                document.addEventListener('editor-updated', (event) => {
+                    if (event.detail.id === this.editor.id) {
+                        this.syncBlocksFromEditor();
+                    }
+                });
+                
+                document.addEventListener('editor-drop', (event) => {
+                    if (event.detail.id === this.editor.id) {
+                        this.syncBlocksFromEditor();
+                    }
+                });
+                
+            } catch (error) {
+                Debug.error('Error initializing editor:', error);
+            }
+        },
+        
+        // Sync blocks array from editor without circular references
+        syncBlocksFromEditor() {
+            if (!this.editor) return;
             
-            this.selectedBlock = this.editor.selectedBlock;
-            
-            // Watch for selectedBlock changes to sync with editor
-            $watch('selectedBlock', (newValue) => {
-                if (this.editor && this.editor.selectedBlock !== newValue) {
-                    this.editor.selectedBlock = newValue;
-                }
-            });
-            
-            // Watch for block config changes to trigger debounced state saves
-            $watch('blocks', (newBlocks) => {
-                if (this.editor && this.editor.debouncedSaveState) {
-                    this.editor.debouncedSaveState();
-                }
-            }, { deep: true });
+            // Update the simple blocks array for Alpine's reactivity without circular refs
+            this.blocks = this.editor.blocks.map(block => ({
+                id: block.id,
+                class: block.class || block.constructor.name,
+                // Just track the count to trigger reactivity
+                _updateCount: Date.now()
+            }));
         },
 
         // Expose required methods
         blocksJSON(pretty = false) {
             if (!this.editor) return '[]';
             
-            const blocksData = this.blocks.map(block => {
-                // Create a clean object without circular references
-                const cleanBlock = {
+            // Use the editor's blocksJSON method directly for correct serialization
+            if (typeof this.editor.blocksJSON === 'function') {
+                return this.editor.blocksJSON(pretty);
+            }
+            
+            // Fallback: manually serialize using actual editor blocks
+            const blocksData = this.editor.blocks.map(block => {
+                // Use the preserved class name if available, otherwise extract from constructor name
+                let className = block.class || block.constructor.name;
+                
+                // If we get a bundled class name, try to extract the real name
+                if (className.includes('$var$')) {
+                    const match = className.match(/\$var\$(\w+)$/);
+                    if (match) {
+                        className = match[1];
+                    }
+                }
+                
+                return {
                     id: block.id,
-                    class: block.constructor.name,
+                    class: className,
                     data: this.serializeBlockConfig(block.config)
                 };
-                return cleanBlock;
             });
             
             return pretty 
@@ -251,10 +337,21 @@ document.addEventListener('alpine:init', () => {
                     serialized[key] = value.map(item => {
                         if (item && typeof item === 'object') {
                             // For nested blocks, only include serializable properties
-                            if (item.id && item.constructor && item.config) {
+                            if (item.id && item.config) {
+                                // Use the preserved class name if available, otherwise extract from constructor name
+                                let className = item.class || (item.constructor && item.constructor.name) || 'Unknown';
+                                
+                                // Handle bundled class names
+                                if (className.includes('$var$')) {
+                                    const match = className.match(/\$var\$(\w+)$/);
+                                    if (match) {
+                                        className = match[1];
+                                    }
+                                }
+                                
                                 return {
                                     id: item.id,
-                                    class: item.constructor.name,
+                                    class: className,
                                     config: this.serializeBlockConfig(item.config)
                                 };
                             }
@@ -335,6 +432,89 @@ document.addEventListener('alpine:init', () => {
         showDeleteConfirmation(blockId) {
             // Dispatch event to show delete confirmation modal on window
             window.dispatchEvent(new CustomEvent('show-delete-confirmation', { detail: { blockId: blockId } }));
+        },
+
+        // Get header toolbar HTML
+        getHeaderToolbar() {
+            if (!this.editor) {
+                return '<div class="header-toolbar"><!-- Editor not initialized --></div>';
+            }
+            
+            // Try to get the method from the editor
+            let getHeaderToolbarMethod = this.editor.getHeaderToolbar;
+            if (!getHeaderToolbarMethod && this.editor.headerToolbar) {
+                // Fallback: call the headerToolbar render method directly
+                try {
+                    return this.editor.headerToolbar.render();
+                } catch (error) {
+                    console.error('Error calling headerToolbar.render():', error);
+                }
+            }
+            
+            if (typeof getHeaderToolbarMethod !== 'function') {
+                console.error('Editor getHeaderToolbar method not found:', this.editor);
+                console.log('Available methods:', Object.getOwnPropertyNames(this.editor));
+                
+                // Provide a fallback toolbar
+                return this.getFallbackHeaderToolbar();
+            }
+            
+            try {
+                return getHeaderToolbarMethod.call(this.editor);
+            } catch (error) {
+                console.error('Error getting header toolbar:', error);
+                return this.getFallbackHeaderToolbar();
+            }
+        },
+
+        // Fallback header toolbar when editor method isn't available
+        getFallbackHeaderToolbar() {
+            const editorId = this.editor ? this.editor.id : 'unknown';
+            return `
+                <div class="header-toolbar" x-data="headerToolbar('${editorId}')">
+                    <button class="header-btn" 
+                            :disabled="!canUndo"
+                            :class="{ 'header-btn-disabled': !canUndo }"
+                            @click="handleUndo()"
+                            title="Undo (Ctrl+Z)">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <path fill="currentColor" d="M125.7 160H176c17.7 0 32 14.3 32 32s-14.3 32-32 32H48c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32s32 14.3 32 32v51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"/>
+                        </svg>
+                    </button>
+                    <button class="header-btn" 
+                            :disabled="!canRedo"
+                            :class="{ 'header-btn-disabled': !canRedo }"
+                            @click="handleRedo()"
+                            title="Redo (Ctrl+Y)">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <path fill="currentColor" d="M386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H464c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0s-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3s163.8-62.5 226.3 0L386.3 160z"/>
+                        </svg>
+                    </button>
+                    <div class="header-divider"></div>
+                    <button class="header-btn" 
+                            @click="handlePreview()"
+                            title="Preview">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="header-btn" 
+                            @click="handleSettings()"
+                            title="Editor Settings">
+                        <svg class="header-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+        },
+
+        // Get actual blocks for rendering (not the cleaned version)
+        getEditorBlocks() {
+            if (!this.editor) return [];
+            return this.editor.blocks;
         },
 
     }));
