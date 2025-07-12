@@ -179,22 +179,18 @@ document.addEventListener('alpine:init', () => {
         settings: initialSettings || [],
         
         init() {
-            console.log('Alpine editorSettings component initialized for editor:', editorId);
             this.settingsInstance = new Settings(editorId, this.settings);
             this.settingsInstance.init();
             
             // Listen for settings updates
             document.addEventListener('settings-updated', (event) => {
-                console.log('Alpine settings: settings-updated event received:', event.detail);
                 if (event.detail.editorId === editorId) {
-                    console.log('Alpine settings: updating settings to:', event.detail.settings);
                     this.settings = event.detail.settings || [];
                 }
             });
         },
         
         trigger(blockId, property, value) {
-            console.log('Alpine settings: trigger called:', blockId, property, value);
             if (this.settingsInstance) {
                 this.settingsInstance.trigger(blockId, property, value);
             }
@@ -447,14 +443,11 @@ document.addEventListener('alpine:init', () => {
                 try {
                     return this.editor.headerToolbar.render();
                 } catch (error) {
-                    console.error('Error calling headerToolbar.render():', error);
+                    // Silently fall through to fallback
                 }
             }
             
             if (typeof getHeaderToolbarMethod !== 'function') {
-                console.error('Editor getHeaderToolbar method not found:', this.editor);
-                console.log('Available methods:', Object.getOwnPropertyNames(this.editor));
-                
                 // Provide a fallback toolbar
                 return this.getFallbackHeaderToolbar();
             }
@@ -462,7 +455,6 @@ document.addEventListener('alpine:init', () => {
             try {
                 return getHeaderToolbarMethod.call(this.editor);
             } catch (error) {
-                console.error('Error getting header toolbar:', error);
                 return this.getFallbackHeaderToolbar();
             }
         },

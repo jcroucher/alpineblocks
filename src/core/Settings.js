@@ -14,10 +14,8 @@ export class Settings {
      */
     init() {
         window.addEventListener('editor-block-changed', event => {
-            console.log('Settings: editor-block-changed event received:', event.detail);
             if (window.alpineEditors[this.editorId]) {
                 const newSettings = window.alpineEditors[this.editorId].getSettings(event.detail.block_id);
-                console.log('Settings: new settings from editor:', newSettings);
                 this.settings = newSettings || [];
                 
                 // Force Alpine to update by dispatching a custom event

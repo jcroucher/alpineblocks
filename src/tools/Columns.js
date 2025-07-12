@@ -124,36 +124,20 @@ class Columns extends Tool {
      * @param {string} position - Position to insert ('end' or 'start')
      */
     handleColumnDrop(columnIndex, blockData, position = 'end') {
-        console.log('=== COLUMN DROP DEBUG START ===');
-        console.log('1. Input blockData:', JSON.stringify(blockData, null, 2));
-        console.log('2. toolClass extracted:', blockData.class);
         
         if (!this.config.columns[columnIndex]) {
-            console.log('3. Column not found at index:', columnIndex);
             return;
         }
 
         const toolClass = blockData.class;
-        console.log('4. About to call editor.initBlock with toolClass:', toolClass);
         
         const nestedBlock = this.editor.initBlock(toolClass, false);
-        
-        console.log('5. initBlock returned:', nestedBlock);
-        console.log('6. nestedBlock.class:', nestedBlock?.class);
-        console.log('7. nestedBlock.constructor.name:', nestedBlock?.constructor?.name);
-        console.log('8. nestedBlock complete object:', JSON.stringify({
-            id: nestedBlock?.id,
-            class: nestedBlock?.class,
-            constructorName: nestedBlock?.constructor?.name,
-            config: nestedBlock?.config
-        }, null, 2));
         
         if (!nestedBlock) {
             Debug.error(`Failed to create nested block of type ${toolClass}`);
             return;
         }
         
-        console.log('9. About to add to column. Current column blocks:', this.config.columns[columnIndex].blocks.length);
         
         if (position === 'end') {
             this.config.columns[columnIndex].blocks.push(nestedBlock);
@@ -161,27 +145,8 @@ class Columns extends Tool {
             this.config.columns[columnIndex].blocks.unshift(nestedBlock);
         }
 
-        console.log('10. After adding to column. Block in column:');
-        const addedBlock = this.config.columns[columnIndex].blocks[this.config.columns[columnIndex].blocks.length - 1];
-        console.log('11. addedBlock.class:', addedBlock?.class);
-        console.log('12. addedBlock.constructor.name:', addedBlock?.constructor?.name);
-        console.log('13. addedBlock complete:', JSON.stringify({
-            id: addedBlock?.id,
-            class: addedBlock?.class,
-            constructorName: addedBlock?.constructor?.name,
-            config: addedBlock?.config
-        }, null, 2));
-
         this.editor.setActive(null, nestedBlock.id);
-        
-        console.log('14. About to trigger redraw');
         this.triggerRedraw();
-        
-        console.log('15. After triggerRedraw, checking column blocks again:');
-        const finalBlock = this.config.columns[columnIndex].blocks[this.config.columns[columnIndex].blocks.length - 1];
-        console.log('16. finalBlock.class:', finalBlock?.class);
-        console.log('17. finalBlock.constructor.name:', finalBlock?.constructor?.name);
-        console.log('=== COLUMN DROP DEBUG END ===');
     }
 
     /**
@@ -190,9 +155,6 @@ class Columns extends Tool {
      * @returns {Object} Clean configuration with Tool instances preserved
      */
     serializeConfig(config) {
-        console.log('=== COLUMNS SERIALIZE CONFIG DEBUG START ===');
-        console.log('1. Serializing Columns config:', config);
-        
         if (!config || typeof config !== 'object') {
             return config;
         }
@@ -204,14 +166,9 @@ class Columns extends Tool {
             }
 
             if (key === 'columns' && Array.isArray(value)) {
-                console.log('2. Processing columns array');
                 // Special handling for columns to preserve Tool instances
-                serialized[key] = value.map((column, colIndex) => {
-                    console.log(`3. Processing column ${colIndex}:`, column);
-                    
+                serialized[key] = value.map((column) => {
                     if (column.blocks && Array.isArray(column.blocks)) {
-                        console.log(`4. Column ${colIndex} has ${column.blocks.length} blocks`);
-                        
                         // DON'T serialize the nested Tool instances - keep them as-is
                         return {
                             ...column,
@@ -226,8 +183,6 @@ class Columns extends Tool {
             }
         }
         
-        console.log('5. Serialized config (Tool instances preserved):', serialized);
-        console.log('=== COLUMNS SERIALIZE CONFIG DEBUG END ===');
         return serialized;
     }
 
@@ -237,14 +192,9 @@ class Columns extends Tool {
      * @returns {Object} Tool instance
      */
     getToolInstance(block) {
-        console.log('=== GET TOOL INSTANCE DEBUG START ===');
-        console.log('1. getToolInstance called with block:', block);
-        console.log('2. block.class:', block.class);
-        console.log('3. block.constructor.name:', block.constructor?.name);
         
         // Return cached instance if available
         if (block._toolInstance) {
-            console.log('4. Returning cached tool instance');
             return block._toolInstance;
         }
 
@@ -256,17 +206,13 @@ class Columns extends Tool {
         // Get the tool class from the editor's tool registry
         const editorInstance = window.alpineEditors?.editorjs;
         const className = block.class;
-        console.log('5. className for tool lookup:', className);
 
         if (!editorInstance || !editorInstance.toolConfig[className]) {
-            console.log('6. Tool class not found. editorInstance:', !!editorInstance);
-            console.log('7. Available tool classes:', editorInstance ? Object.keys(editorInstance.toolConfig) : 'N/A');
             Debug.error(`Tool class ${block.class} not found in editor registry`);
             return null;
         }
 
         const ToolClass = editorInstance.toolConfig[className].class;
-        console.log('8. ToolClass found:', ToolClass);
         
         // Create a nested update function that routes to our column block
         const nestedUpdateFunction = (id, newConfig) => {
@@ -280,9 +226,6 @@ class Columns extends Tool {
             config: block.config
         });
 
-        console.log('9. Tool instance created:', toolInstance);
-        console.log('10. toolInstance.class:', toolInstance.class);
-        console.log('11. toolInstance.constructor.name:', toolInstance.constructor.name);
 
         // Initialize with editor context if available
         if (editorInstance) {
@@ -294,8 +237,6 @@ class Columns extends Tool {
 
         // Cache the instance
         block._toolInstance = toolInstance;
-        console.log('12. Tool instance cached');
-        console.log('=== GET TOOL INSTANCE DEBUG END ===');
 
         return toolInstance;
     }
@@ -327,9 +268,6 @@ class Columns extends Tool {
      * @param {Object} newConfig - The new configuration
      */
     updateNestedBlock(blockId, newConfig) {
-        console.log('=== UPDATE NESTED BLOCK DEBUG START ===');
-        console.log('1. updateNestedBlock called with blockId:', blockId);
-        console.log('2. newConfig:', newConfig);
         
         // Find the nested block across all columns
         for (let columnIndex = 0; columnIndex < this.config.columns.length; columnIndex++) {
@@ -339,35 +277,31 @@ class Columns extends Tool {
             if (blockIndex !== -1) {
                 // Update only the config properties, don't touch the block object itself
                 const currentBlock = column.blocks[blockIndex];
-                console.log('3. Found block to update:', currentBlock);
-                console.log('4. currentBlock.class before update:', currentBlock.class);
-                console.log('5. currentBlock.constructor.name before update:', currentBlock.constructor?.name);
                 
                 // Update config properties directly without recreating the block
                 Object.keys(newConfig).forEach(key => {
                     currentBlock.config[key] = newConfig[key];
                 });
                 
-                console.log('6. currentBlock.class after config update:', currentBlock.class);
-                console.log('7. currentBlock.constructor.name after config update:', currentBlock.constructor?.name);
                 
                 this.triggerRedraw();
                 
-                console.log('8. currentBlock.class after triggerRedraw:', currentBlock.class);
-                console.log('9. currentBlock.constructor.name after triggerRedraw:', currentBlock.constructor?.name);
+                
+                // Clear cached tool instance to force re-render with updated config
+                if (currentBlock._toolInstance) {
+                    delete currentBlock._toolInstance;
+                }
                 
                 // Trigger debounced state save for nested block updates
                 if (this.editor && this.editor.debouncedSaveState) {
                     this.editor.debouncedSaveState();
                 }
                 
-                console.log('=== UPDATE NESTED BLOCK DEBUG END ===');
                 return;
             }
         }
         
         Debug.error(`Nested block ${blockId} not found for update`);
-        console.log('=== UPDATE NESTED BLOCK DEBUG END (NOT FOUND) ===');
     }
 
     /**
@@ -376,25 +310,13 @@ class Columns extends Tool {
      * @returns {string} HTML string for nested blocks
      */
     renderNestedBlocks(columnIndex) {
-        console.log('=== RENDER NESTED BLOCKS DEBUG START ===');
-        console.log('1. renderNestedBlocks called for column:', columnIndex);
         
         const column = this.config.columns[columnIndex];
         if (!column || !column.blocks || column.blocks.length === 0) {
-            console.log('2. No blocks in column, returning placeholder');
             return '<div class="column-placeholder">Drop blocks here</div>';
         }
 
-        console.log('3. Column blocks count:', column.blocks.length);
-        column.blocks.forEach((block, index) => {
-            console.log(`4. Block ${index} - class:`, block.class);
-            console.log(`5. Block ${index} - constructor.name:`, block.constructor?.name);
-        });
-
         const renderedBlocks = column.blocks.map((block, blockIndex) => {
-            console.log(`6. Rendering block ${blockIndex}:`);
-            console.log(`7. block.class:`, block.class);
-            console.log(`8. block.constructor.name:`, block.constructor?.name);
             
             // Create proper Alpine.js context for each nested block
             const blockContent = this.renderNestedBlockWithContext(block);
@@ -415,8 +337,6 @@ class Columns extends Tool {
             </div>`;
         });
         
-        console.log('9. Finished rendering all blocks');
-        console.log('=== RENDER NESTED BLOCKS DEBUG END ===');
         return renderedBlocks.join('');
     }
 

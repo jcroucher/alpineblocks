@@ -27,13 +27,6 @@ function rawCodeEditor() {
             if (this.block) {
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
-                console.log('Raw tool initialized:', {
-                    blockId,
-                    content: this.block.config.content,
-                    preview: this.previewContent
-                });
-            } else {
-                console.log('Block not found for ID:', blockId, 'Available blocks:', window.blocksManager?.blocks || 'none');
             }
         },
         
@@ -64,7 +57,6 @@ function rawCodeEditor() {
                             
                             if (isClosing) {
                                 if (openTags.length === 0 || openTags.pop() !== tagName) {
-                                    console.log('Mismatched tag:', tagName, 'Expected:', openTags[openTags.length - 1]);
                                     return false; // Mismatched closing tag
                                 }
                             } else if (!isSelfClosing) {
@@ -74,13 +66,11 @@ function rawCodeEditor() {
                         
                         // Check if all tags are closed
                         if (openTags.length > 0) {
-                            console.log('Unclosed tags:', openTags);
                             return false;
                         }
                         
                         return true;
                     } catch (e) {
-                        console.log('Validation error:', e);
                         return false;
                     }
                 
@@ -121,11 +111,6 @@ function rawCodeEditor() {
                 
                 // Always update preview content
                 this.previewContent = content;
-                console.log('Preview updated:', {
-                    content: content,
-                    showPreview: this.showPreview,
-                    previewContent: this.previewContent
-                });
                 
                 // Update block config
                 if (this.block) {
@@ -134,7 +119,7 @@ function rawCodeEditor() {
                 
                 // Force Alpine reactivity update
                 this.$nextTick && this.$nextTick(() => {
-                    console.log('Alpine tick completed');
+                    // Force re-render
                 });
             }, 500); // 500ms debounce
         },
