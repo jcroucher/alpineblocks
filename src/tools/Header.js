@@ -15,27 +15,32 @@ class Header extends Tool {
             textColor: this.config.textColor || '#333333'
         };
 
-        this.settings = [
+        // Store the base ID for use in the getter
+        this._id = id;
+    }
+
+    get settings() {
+        return [
             {
                 name: 'level',
                 label: 'Heading Level',
-                html: `<select @change="trigger('${this.id}', 'level', $event.target.value)">
-                    <option value="h1">H1</option>
-                    <option value="h2">H2</option>
-                    <option value="h3">H3</option>
-                    <option value="h4">H4</option>
-                    <option value="h5">H5</option>
-                    <option value="h6">H6</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'level', $event.target.value)">
+                    <option value="h1" ${this.config.level === 'h1' ? 'selected' : ''}>H1</option>
+                    <option value="h2" ${this.config.level === 'h2' ? 'selected' : ''}>H2</option>
+                    <option value="h3" ${this.config.level === 'h3' ? 'selected' : ''}>H3</option>
+                    <option value="h4" ${this.config.level === 'h4' ? 'selected' : ''}>H4</option>
+                    <option value="h5" ${this.config.level === 'h5' ? 'selected' : ''}>H5</option>
+                    <option value="h6" ${this.config.level === 'h6' ? 'selected' : ''}>H6</option>
                 </select>`
             },
             {
                 name: 'alignment',
                 label: 'Text Alignment',
-                html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                    <option value="justify">Justify</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'alignment', $event.target.value)">
+                    <option value="left" ${this.config.alignment === 'left' ? 'selected' : ''}>Left</option>
+                    <option value="center" ${this.config.alignment === 'center' ? 'selected' : ''}>Center</option>
+                    <option value="right" ${this.config.alignment === 'right' ? 'selected' : ''}>Right</option>
+                    <option value="justify" ${this.config.alignment === 'justify' ? 'selected' : ''}>Justify</option>
                 </select>`
             },
             {
@@ -49,20 +54,20 @@ class Header extends Tool {
             {
                 name: 'fontSize',
                 label: 'Font Size',
-                html: `<select @change="trigger('${this.id}', 'fontSize', $event.target.value)">
-                    <option value="small">Small</option>
-                    <option value="default">Default</option>
-                    <option value="large">Large</option>
-                    <option value="xlarge">Extra Large</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'fontSize', $event.target.value)">
+                    <option value="small" ${this.config.fontSize === 'small' ? 'selected' : ''}>Small</option>
+                    <option value="default" ${this.config.fontSize === 'default' ? 'selected' : ''}>Default</option>
+                    <option value="large" ${this.config.fontSize === 'large' ? 'selected' : ''}>Large</option>
+                    <option value="xlarge" ${this.config.fontSize === 'xlarge' ? 'selected' : ''}>Extra Large</option>
                 </select>`
             },
             {
                 name: 'fontWeight',
                 label: 'Font Weight',
-                html: `<select @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
-                    <option value="normal">Normal</option>
-                    <option value="bold">Bold</option>
-                    <option value="lighter">Lighter</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
+                    <option value="normal" ${this.config.fontWeight === 'normal' ? 'selected' : ''}>Normal</option>
+                    <option value="bold" ${this.config.fontWeight === 'bold' ? 'selected' : ''}>Bold</option>
+                    <option value="lighter" ${this.config.fontWeight === 'lighter' ? 'selected' : ''}>Lighter</option>
                 </select>`
             },
             {

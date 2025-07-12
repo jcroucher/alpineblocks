@@ -131,6 +131,11 @@ class Columns extends Tool {
         const toolClass = blockData.class;
         const nestedBlock = this.editor.initBlock(toolClass, false);
         
+        if (!nestedBlock) {
+            Debug.error(`Failed to create nested block of type ${toolClass}`);
+            return;
+        }
+        
         if (position === 'end') {
             this.config.columns[columnIndex].blocks.push(nestedBlock);
         } else {
@@ -240,6 +245,12 @@ class Columns extends Tool {
                 });
                 
                 this.triggerRedraw();
+                
+                // Trigger debounced state save for nested block updates
+                if (this.editor && this.editor.debouncedSaveState) {
+                    this.editor.debouncedSaveState();
+                }
+                
                 return;
             }
         }

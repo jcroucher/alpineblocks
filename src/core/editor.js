@@ -1,6 +1,7 @@
 import { ToolManager } from "./editor_modules/ToolManager";
 import { BlockManager } from "./editor_modules/BlockManager";
 import { InlineToolbar } from "./editor_modules/InlineToolbar";
+import { HistoryManager } from "./HistoryManager";
 import { Debug } from "./utils/Debug";
 
 const { v4: uuidv4 } = require('uuid');
@@ -11,7 +12,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 
 export class Editor {
-    constructor(toolConfig, log_level = 2) {
+    constructor(toolConfig, log_level = 2, historySize = 30) {
         this.id = '';
         this.log_level = log_level;
 
@@ -29,6 +30,12 @@ export class Editor {
         this.toolManager = new ToolManager(toolConfig);
         this.blockManager = new BlockManager();
         this.inlineToolbar = new InlineToolbar();
+        this.historyManager = new HistoryManager(this, historySize);
+        
+        // Debounced state saving for property updates
+        this.debouncedSaveState = this.debounce(() => {
+            this.saveState('Updated block properties');
+        }, 1000); // Save after 1 second of inactivity
     }
 
     /**
@@ -43,7 +50,11 @@ export class Editor {
         window.alpineEditors[this.id] = this;
 
         this.toolManager.loadTools();
-        this.initBlock('Paragraph', true);
+        
+        // Only initialize a default block if toolConfig is available
+        if (this.toolConfig && this.toolConfig['Paragraph']) {
+            this.initBlock('Paragraph', true);
+        }
 
         this.inlineToolbar.init(this);
 
@@ -55,11 +66,82 @@ export class Editor {
             this.confirmDeleteBlock(e.detail.blockId);
         });
 
+        // Set up keyboard shortcuts
+        this.setupKeyboardShortcuts();
+
         this.$nextTick(() => {
             this.$dispatch('editor-ready', { id: this.id });
         });
     }
 
+    /**
+     * Set up keyboard shortcuts for undo/redo
+     */
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Only handle shortcuts when this editor is active
+            if (this.id && document.querySelector(`#${this.id}:focus-within`)) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.undo();
+                } else if (((e.ctrlKey || e.metaKey) && e.key === 'y') || 
+                          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+                    e.preventDefault();
+                    this.redo();
+                }
+            }
+        });
+    }
+
+    /**
+     * Undo the last action
+     * @returns {boolean} Whether undo was successful
+     */
+    undo() {
+        return this.historyManager.undo();
+    }
+
+    /**
+     * Redo the next action
+     * @returns {boolean} Whether redo was successful
+     */
+    redo() {
+        return this.historyManager.redo();
+    }
+
+    /**
+     * Save current state to history
+     * @param {string} action - Description of the action
+     */
+    saveState(action) {
+        this.historyManager.saveState(action);
+    }
+
+    /**
+     * Get history status for UI updates
+     * @returns {Object} History status
+     */
+    getHistoryStatus() {
+        return this.historyManager.getStatus();
+    }
+
+    /**
+     * Debounce utility function
+     * @param {Function} func - Function to debounce
+     * @param {number} wait - Wait time in milliseconds
+     * @returns {Function} Debounced function
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
 
     /**
      * Get available tools for the toolbar
@@ -84,9 +166,20 @@ export class Editor {
      */
     blocksJSON(pretty = false) {
         const blocksData = this.blocks.map(block => {
+            // Use the preserved class name if available, otherwise extract from constructor name
+            let className = block.class || block.constructor.name;
+            
+            // If we get a bundled class name, try to extract the real name
+            if (className.includes('$var$')) {
+                const match = className.match(/\$var\$(\w+)$/);
+                if (match) {
+                    className = match[1];
+                }
+            }
+            
             return {
                 id: block.id,
-                class: block.constructor.name,
+                class: className,
                 data: this.serializeBlockConfig(block.config)
             };
         });
@@ -260,17 +353,26 @@ export class Editor {
      * Create a new block instance
      * @param {string} blockName - Name of the block type
      * @param {boolean} push - Whether to add to blocks array
+     * @param {string} existingId - Optional existing ID to use instead of generating new one
      * @returns {Object} New block instance
      */
-    initBlock(blockName, push = false) {
+    initBlock(blockName, push = false, existingId = null) {
+        if (!this.toolConfig || !this.toolConfig[blockName]) {
+            Debug.error(`Tool configuration for ${blockName} not found`);
+            return null;
+        }
+
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
         const newBlock = new BlockClass({
-            id: uuidv4(),
+            id: existingId || uuidv4(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
 
+        // Preserve the clean class name
+        newBlock.class = blockName;
+        
         newBlock.init(this);
 
         if (push) {
@@ -294,6 +396,11 @@ export class Editor {
         const blockName = event.dataTransfer.getData('text/plain');
         const newBlock = this.initBlock(blockName);
 
+        if (!newBlock) {
+            Debug.error(`Failed to create block of type ${blockName}`);
+            return;
+        }
+
         if (blockId) {
             const index = this.blocks.findIndex(b => b.id === blockId);
             const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
@@ -310,6 +417,7 @@ export class Editor {
 
         this.$dispatch('editor-drop', { id: this.id });
         this.setActive(null, newBlock.id);
+        this.saveState(`Added ${blockName} block`);
     }
 
     /**
@@ -344,6 +452,9 @@ export class Editor {
         if (block) {
             block.config = config;
             this.$dispatch('editor-updated', { id: this.id });
+            
+            // Use debounced save for property updates
+            this.debouncedSaveState();
         }
     }
 
@@ -393,6 +504,7 @@ export class Editor {
             
             Debug.info(`Block deleted: ${blockId}`);
             this.$dispatch('editor-updated', { id: this.id });
+            this.saveState('Deleted block');
         }
 
         // Hide modal

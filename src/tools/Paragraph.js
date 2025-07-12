@@ -19,34 +19,43 @@ class Paragraph extends Tool {
             margin: this.config.margin || 'normal'
         };
 
-        this.settings = [
+    }
+
+    get settings() {
+        return [
             {
                 name: 'fontSize',
                 label: 'Font Size',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'fontSize', $event.target.value)">
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                    <option value="xlarge">Extra Large</option>
+                    ${this.generateSelectOptions([
+                        { value: 'small', label: 'Small' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'large', label: 'Large' },
+                        { value: 'xlarge', label: 'Extra Large' }
+                    ], this.config.fontSize)}
                 </select>`
             },
             {
                 name: 'fontWeight',
                 label: 'Font Weight',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
-                    <option value="normal">Normal</option>
-                    <option value="bold">Bold</option>
-                    <option value="light">Light</option>
+                    ${this.generateSelectOptions([
+                        { value: 'normal', label: 'Normal' },
+                        { value: 'bold', label: 'Bold' },
+                        { value: 'light', label: 'Light' }
+                    ], this.config.fontWeight)}
                 </select>`
             },
             {
                 name: 'alignment',
                 label: 'Text Alignment',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                    <option value="justify">Justify</option>
+                    ${this.generateSelectOptions([
+                        { value: 'left', label: 'Left' },
+                        { value: 'center', label: 'Center' },
+                        { value: 'right', label: 'Right' },
+                        { value: 'justify', label: 'Justify' }
+                    ], this.config.alignment)}
                 </select>`
             },
             {
@@ -70,7 +79,7 @@ class Paragraph extends Tool {
                 label: 'Background Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor}">`
+                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
             },
             {
                 name: 'padding',

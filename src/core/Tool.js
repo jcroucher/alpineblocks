@@ -100,6 +100,21 @@ export default class Tool {
     }
 
     /**
+     * Helper method to generate select options with current value selected
+     * @param {Array} options - Array of {value, label} objects
+     * @param {string} currentValue - Current selected value
+     * @returns {string} HTML options string
+     */
+    generateSelectOptions(options, currentValue) {
+        return options.map(option => {
+            const value = option.value || option;
+            const label = option.label || option;
+            const selected = currentValue === value ? 'selected' : '';
+            return `<option value="${value}" ${selected}>${label}</option>`;
+        }).join('');
+    }
+
+    /**
      * Static method to define tool metadata for the toolbox
      * @returns {Object} Tool configuration object
      */

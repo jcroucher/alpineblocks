@@ -194,7 +194,7 @@ body {
 
 /* Header Toolbar */
 .header-toolbar {
-    display: none; /* Hidden for now */
+    display: flex;
     gap: var(--space-2);
     margin-bottom: var(--space-4);
 }
@@ -234,6 +234,30 @@ body {
 .header-btn-icon {
     width: 18px;
     height: 18px;
+}
+
+.header-btn-disabled {
+    background: var(--gray-100) !important;
+    border-color: var(--gray-200) !important;
+    color: var(--gray-400) !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.header-btn-disabled:hover {
+    background: var(--gray-100) !important;
+    border-color: var(--gray-200) !important;
+    color: var(--gray-400) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.header-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--gray-200);
+    margin: auto var(--space-2);
 }
 
 /* Tool Menu */

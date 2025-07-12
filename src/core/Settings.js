@@ -80,6 +80,11 @@ export class Settings {
                 block.triggerRedraw();
             }
         }
+
+        // Trigger debounced state save for property changes
+        if (editorInstance.debouncedSaveState) {
+            editorInstance.debouncedSaveState();
+        }
     }
 
     /**

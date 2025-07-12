@@ -202,10 +202,163 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
 }
 
 
+/**
+ * History Manager for undo/redo functionality
+ * Tracks changes to the editor blocks and allows reverting to previous states
+ */ class $a168cf7d0e252c95$export$9572cf7a37405cc {
+    constructor(editor){
+        this.editor = editor;
+        this.history = [];
+        this.currentIndex = -1;
+        this.maxHistorySize = 50;
+        this.isApplyingState = false; // Prevent recursive history tracking
+        // Save initial state
+        this.saveState();
+    }
+    /**
+   * Save the current editor state to history
+   * @param {string} action - Description of the action that triggered this save
+   */ saveState(action = 'Initial state') {
+        // Don't save state if we're currently applying a previous state
+        if (this.isApplyingState) return;
+        const currentState = {
+            blocks: JSON.parse(this.editor.blocksJSON()),
+            timestamp: Date.now(),
+            action: action
+        };
+        // If we're not at the end of history, remove everything after current index
+        if (this.currentIndex < this.history.length - 1) this.history = this.history.slice(0, this.currentIndex + 1);
+        // Add new state
+        this.history.push(currentState);
+        // Keep history size manageable
+        if (this.history.length > this.maxHistorySize) this.history.shift();
+        else this.currentIndex++;
+        console.log(`History: Saved state "${action}" (${this.currentIndex + 1}/${this.history.length})`);
+        this.notifyHistoryChange();
+    }
+    /**
+   * Undo the last action
+   * @returns {boolean} Whether undo was successful
+   */ undo() {
+        if (!this.canUndo()) return false;
+        this.currentIndex--;
+        this.applyState(this.history[this.currentIndex]);
+        console.log(`History: Undo to "${this.history[this.currentIndex].action}" (${this.currentIndex + 1}/${this.history.length})`);
+        this.notifyHistoryChange();
+        return true;
+    }
+    /**
+   * Redo the next action
+   * @returns {boolean} Whether redo was successful
+   */ redo() {
+        if (!this.canRedo()) return false;
+        this.currentIndex++;
+        this.applyState(this.history[this.currentIndex]);
+        console.log(`History: Redo to "${this.history[this.currentIndex].action}" (${this.currentIndex + 1}/${this.history.length})`);
+        this.notifyHistoryChange();
+        return true;
+    }
+    /**
+   * Check if undo is possible
+   * @returns {boolean}
+   */ canUndo() {
+        return this.currentIndex > 0;
+    }
+    /**
+   * Check if redo is possible
+   * @returns {boolean}
+   */ canRedo() {
+        return this.currentIndex < this.history.length - 1;
+    }
+    /**
+   * Apply a previous state to the editor
+   * @param {Object} state - The state to apply
+   */ applyState(state) {
+        this.isApplyingState = true;
+        try {
+            // Clear current blocks
+            this.editor.blocks.splice(0, this.editor.blocks.length);
+            // Recreate blocks from state
+            state.blocks.forEach((blockData)=>{
+                // Clean the class name if it's corrupted
+                let className = blockData.class;
+                if (className && className.includes('$var$')) {
+                    const match = className.match(/\$var\$(\w+)$/);
+                    if (match) className = match[1];
+                }
+                const block = this.editor.initBlock(className, false, blockData.id);
+                if (block) {
+                    // Use the correct property name from the JSON structure
+                    block.config = {
+                        ...blockData.data
+                    };
+                    this.editor.blocks.push(block);
+                }
+            });
+            // Clear selection
+            this.editor.selectedBlock = null;
+            if (this.editor.$dispatch) {
+                this.editor.$dispatch('editor-block-changed', {
+                    block_id: null
+                });
+                // Force Alpine component to sync with new editor state
+                this.editor.$nextTick(()=>{
+                    // Update the Alpine component's blocks array
+                    const alpineComponent = this.editor.$el._x_dataStack?.[0];
+                    if (alpineComponent) // Create a new proxy for the blocks array to ensure reactivity
+                    alpineComponent.blocks = new Proxy(this.editor.blocks, {
+                        set (target, property, value) {
+                            target[property] = value;
+                            return true;
+                        }
+                    });
+                    // Force a complete editor update
+                    this.editor.$dispatch('editor-updated', {
+                        id: this.editor.id
+                    });
+                });
+            }
+        } finally{
+            this.isApplyingState = false;
+        }
+    }
+    /**
+   * Notify listeners that history state has changed
+   */ notifyHistoryChange() {
+        document.dispatchEvent(new CustomEvent('history-changed', {
+            detail: {
+                canUndo: this.canUndo(),
+                canRedo: this.canRedo(),
+                currentIndex: this.currentIndex,
+                totalStates: this.history.length
+            }
+        }));
+    }
+    /**
+   * Get current history status
+   * @returns {Object} History status
+   */ getStatus() {
+        return {
+            canUndo: this.canUndo(),
+            canRedo: this.canRedo(),
+            currentAction: this.history[this.currentIndex]?.action,
+            totalStates: this.history.length
+        };
+    }
+    /**
+   * Clear all history
+   */ clearHistory() {
+        this.history = [];
+        this.currentIndex = -1;
+        this.saveState('History cleared');
+    }
+}
 
 
-var $cda2b75602dff697$require$uuidv4 = $5OpyM$v4;
-class $cda2b75602dff697$export$7cda8d932e2f33c0 {
+
+
+var $63f87b841d9e6197$require$uuidv4 = $5OpyM$v4;
+class $63f87b841d9e6197$export$7cda8d932e2f33c0 {
     constructor(toolConfig, log_level = 2){
         this.id = '';
         this.log_level = log_level;
@@ -222,6 +375,11 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         this.toolManager = new (0, $237b2f748d7c9c7b$export$df4a79c26d3b48ff)(toolConfig);
         this.blockManager = new (0, $f34cd5c4865618d1$export$d3ae936b397926f7)();
         this.inlineToolbar = new (0, $fce9a75a0fedf01f$export$a268db361d674bec)();
+        this.historyManager = new (0, $a168cf7d0e252c95$export$9572cf7a37405cc)(this);
+        // Debounced state saving for property updates
+        this.debouncedSaveState = this.debounce(()=>{
+            this.saveState('Updated block properties');
+        }, 1000); // Save after 1 second of inactivity
     }
     /**
    * Initialize the editor with Alpine.js integration
@@ -231,7 +389,8 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         window.alpineEditors = window.alpineEditors || {};
         window.alpineEditors[this.id] = this;
         this.toolManager.loadTools();
-        this.initBlock('Paragraph', true);
+        // Only initialize a default block if toolConfig is available
+        if (this.toolConfig && this.toolConfig['Paragraph']) this.initBlock('Paragraph', true);
         this.inlineToolbar.init(this);
         // Generate the delete confirmation modal
         this.generateModal();
@@ -239,11 +398,69 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         window.addEventListener('confirm-delete-block', (e)=>{
             this.confirmDeleteBlock(e.detail.blockId);
         });
+        // Set up keyboard shortcuts
+        this.setupKeyboardShortcuts();
         this.$nextTick(()=>{
             this.$dispatch('editor-ready', {
                 id: this.id
             });
         });
+    }
+    /**
+   * Set up keyboard shortcuts for undo/redo
+   */ setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e)=>{
+            // Only handle shortcuts when this editor is active
+            if (this.id && document.querySelector(`#${this.id}:focus-within`)) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.undo();
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'y' || (e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+                    e.preventDefault();
+                    this.redo();
+                }
+            }
+        });
+    }
+    /**
+   * Undo the last action
+   * @returns {boolean} Whether undo was successful
+   */ undo() {
+        return this.historyManager.undo();
+    }
+    /**
+   * Redo the next action
+   * @returns {boolean} Whether redo was successful
+   */ redo() {
+        return this.historyManager.redo();
+    }
+    /**
+   * Save current state to history
+   * @param {string} action - Description of the action
+   */ saveState(action) {
+        this.historyManager.saveState(action);
+    }
+    /**
+   * Get history status for UI updates
+   * @returns {Object} History status
+   */ getHistoryStatus() {
+        return this.historyManager.getStatus();
+    }
+    /**
+   * Debounce utility function
+   * @param {Function} func - Function to debounce
+   * @param {number} wait - Wait time in milliseconds
+   * @returns {Function} Debounced function
+   */ debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = ()=>{
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
     /**
    * Get available tools for the toolbar
@@ -263,9 +480,16 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    * @returns {string} JSON string of blocks
    */ blocksJSON(pretty = false) {
         const blocksData = this.blocks.map((block)=>{
+            // Use the preserved class name if available, otherwise extract from constructor name
+            let className = block.class || block.constructor.name;
+            // If we get a bundled class name, try to extract the real name
+            if (className.includes('$var$')) {
+                const match = className.match(/\$var\$(\w+)$/);
+                if (match) className = match[1];
+            }
             return {
                 id: block.id,
-                class: block.constructor.name,
+                class: className,
                 data: this.serializeBlockConfig(block.config)
             };
         });
@@ -385,15 +609,22 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    * Create a new block instance
    * @param {string} blockName - Name of the block type
    * @param {boolean} push - Whether to add to blocks array
+   * @param {string} existingId - Optional existing ID to use instead of generating new one
    * @returns {Object} New block instance
-   */ initBlock(blockName, push = false) {
+   */ initBlock(blockName, push = false, existingId = null) {
+        if (!this.toolConfig || !this.toolConfig[blockName]) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Tool configuration for ${blockName} not found`);
+            return null;
+        }
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
         const newBlock = new BlockClass({
-            id: $cda2b75602dff697$require$uuidv4(),
+            id: existingId || $63f87b841d9e6197$require$uuidv4(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
+        // Preserve the clean class name
+        newBlock.class = blockName;
         newBlock.init(this);
         if (push) this.blocks.push(newBlock);
         return newBlock;
@@ -408,6 +639,10 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         this.clearDragTimeouts();
         const blockName = event.dataTransfer.getData('text/plain');
         const newBlock = this.initBlock(blockName);
+        if (!newBlock) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Failed to create block of type ${blockName}`);
+            return;
+        }
         if (blockId) {
             const index = this.blocks.findIndex((b)=>b.id === blockId);
             const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
@@ -419,6 +654,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             id: this.id
         });
         this.setActive(null, newBlock.id);
+        this.saveState(`Added ${blockName} block`);
     }
     /**
    * Clear all drag-related timeouts
@@ -449,6 +685,8 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             this.$dispatch('editor-updated', {
                 id: this.id
             });
+            // Use debounced save for property updates
+            this.debouncedSaveState();
         }
     }
     /**
@@ -492,6 +730,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             this.$dispatch('editor-updated', {
                 id: this.id
             });
+            this.saveState('Deleted block');
         }
         // Hide modal
         window.dispatchEvent(new CustomEvent('hide-delete-confirmation'));
@@ -702,6 +941,8 @@ class $299948f22c89836d$export$c72f6eaae7b9adff {
             block[property] = value;
             if (block.triggerRedraw) block.triggerRedraw();
         }
+        // Trigger debounced state save for property changes
+        if (editorInstance.debouncedSaveState) editorInstance.debouncedSaveState();
     }
     /**
    * Execute a callback function and trigger editor redraw
@@ -786,6 +1027,19 @@ class $299948f22c89836d$export$c72f6eaae7b9adff {
         });
     }
     /**
+   * Helper method to generate select options with current value selected
+   * @param {Array} options - Array of {value, label} objects
+   * @param {string} currentValue - Current selected value
+   * @returns {string} HTML options string
+   */ generateSelectOptions(options, currentValue) {
+        return options.map((option)=>{
+            const value = option.value || option;
+            const label = option.label || option;
+            const selected = currentValue === value ? 'selected' : '';
+            return `<option value="${value}" ${selected}>${label}</option>`;
+        }).join('');
+    }
+    /**
    * Static method to define tool metadata for the toolbox
    * @returns {Object} Tool configuration object
    */ static toolbox() {
@@ -813,34 +1067,75 @@ class $299948f22c89836d$export$c72f6eaae7b9adff {
             padding: this.config.padding || 'none',
             margin: this.config.margin || 'normal'
         };
-        this.settings = [
+    }
+    get settings() {
+        return [
             {
                 name: 'fontSize',
                 label: 'Font Size',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'fontSize', $event.target.value)">
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                    <option value="xlarge">Extra Large</option>
+                    ${this.generateSelectOptions([
+                    {
+                        value: 'small',
+                        label: 'Small'
+                    },
+                    {
+                        value: 'medium',
+                        label: 'Medium'
+                    },
+                    {
+                        value: 'large',
+                        label: 'Large'
+                    },
+                    {
+                        value: 'xlarge',
+                        label: 'Extra Large'
+                    }
+                ], this.config.fontSize)}
                 </select>`
             },
             {
                 name: 'fontWeight',
                 label: 'Font Weight',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
-                    <option value="normal">Normal</option>
-                    <option value="bold">Bold</option>
-                    <option value="light">Light</option>
+                    ${this.generateSelectOptions([
+                    {
+                        value: 'normal',
+                        label: 'Normal'
+                    },
+                    {
+                        value: 'bold',
+                        label: 'Bold'
+                    },
+                    {
+                        value: 'light',
+                        label: 'Light'
+                    }
+                ], this.config.fontWeight)}
                 </select>`
             },
             {
                 name: 'alignment',
                 label: 'Text Alignment',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                    <option value="justify">Justify</option>
+                    ${this.generateSelectOptions([
+                    {
+                        value: 'left',
+                        label: 'Left'
+                    },
+                    {
+                        value: 'center',
+                        label: 'Center'
+                    },
+                    {
+                        value: 'right',
+                        label: 'Right'
+                    },
+                    {
+                        value: 'justify',
+                        label: 'Justify'
+                    }
+                ], this.config.alignment)}
                 </select>`
             },
             {
@@ -864,7 +1159,7 @@ class $299948f22c89836d$export$c72f6eaae7b9adff {
                 label: 'Background Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor}">`
+                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
             },
             {
                 name: 'padding',
@@ -963,27 +1258,31 @@ class $33963d57131b26df$var$Header extends (0, $7a9b6788f4274d37$export$2e2bcd87
             fontWeight: this.config.fontWeight || 'normal',
             textColor: this.config.textColor || '#333333'
         };
-        this.settings = [
+        // Store the base ID for use in the getter
+        this._id = id;
+    }
+    get settings() {
+        return [
             {
                 name: 'level',
                 label: 'Heading Level',
-                html: `<select @change="trigger('${this.id}', 'level', $event.target.value)">
-                    <option value="h1">H1</option>
-                    <option value="h2">H2</option>
-                    <option value="h3">H3</option>
-                    <option value="h4">H4</option>
-                    <option value="h5">H5</option>
-                    <option value="h6">H6</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'level', $event.target.value)">
+                    <option value="h1" ${this.config.level === 'h1' ? 'selected' : ''}>H1</option>
+                    <option value="h2" ${this.config.level === 'h2' ? 'selected' : ''}>H2</option>
+                    <option value="h3" ${this.config.level === 'h3' ? 'selected' : ''}>H3</option>
+                    <option value="h4" ${this.config.level === 'h4' ? 'selected' : ''}>H4</option>
+                    <option value="h5" ${this.config.level === 'h5' ? 'selected' : ''}>H5</option>
+                    <option value="h6" ${this.config.level === 'h6' ? 'selected' : ''}>H6</option>
                 </select>`
             },
             {
                 name: 'alignment',
                 label: 'Text Alignment',
-                html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                    <option value="justify">Justify</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'alignment', $event.target.value)">
+                    <option value="left" ${this.config.alignment === 'left' ? 'selected' : ''}>Left</option>
+                    <option value="center" ${this.config.alignment === 'center' ? 'selected' : ''}>Center</option>
+                    <option value="right" ${this.config.alignment === 'right' ? 'selected' : ''}>Right</option>
+                    <option value="justify" ${this.config.alignment === 'justify' ? 'selected' : ''}>Justify</option>
                 </select>`
             },
             {
@@ -997,20 +1296,20 @@ class $33963d57131b26df$var$Header extends (0, $7a9b6788f4274d37$export$2e2bcd87
             {
                 name: 'fontSize',
                 label: 'Font Size',
-                html: `<select @change="trigger('${this.id}', 'fontSize', $event.target.value)">
-                    <option value="small">Small</option>
-                    <option value="default">Default</option>
-                    <option value="large">Large</option>
-                    <option value="xlarge">Extra Large</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'fontSize', $event.target.value)">
+                    <option value="small" ${this.config.fontSize === 'small' ? 'selected' : ''}>Small</option>
+                    <option value="default" ${this.config.fontSize === 'default' ? 'selected' : ''}>Default</option>
+                    <option value="large" ${this.config.fontSize === 'large' ? 'selected' : ''}>Large</option>
+                    <option value="xlarge" ${this.config.fontSize === 'xlarge' ? 'selected' : ''}>Extra Large</option>
                 </select>`
             },
             {
                 name: 'fontWeight',
                 label: 'Font Weight',
-                html: `<select @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
-                    <option value="normal">Normal</option>
-                    <option value="bold">Bold</option>
-                    <option value="lighter">Lighter</option>
+                html: `<select class="settings-select" @change="trigger('${this.id}', 'fontWeight', $event.target.value)">
+                    <option value="normal" ${this.config.fontWeight === 'normal' ? 'selected' : ''}>Normal</option>
+                    <option value="bold" ${this.config.fontWeight === 'bold' ? 'selected' : ''}>Bold</option>
+                    <option value="lighter" ${this.config.fontWeight === 'lighter' ? 'selected' : ''}>Lighter</option>
                 </select>`
             },
             {
@@ -2349,6 +2648,10 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
         if (!this.config.columns[columnIndex]) return;
         const toolClass = blockData.class;
         const nestedBlock = this.editor.initBlock(toolClass, false);
+        if (!nestedBlock) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Failed to create nested block of type ${toolClass}`);
+            return;
+        }
         if (position === 'end') this.config.columns[columnIndex].blocks.push(nestedBlock);
         else this.config.columns[columnIndex].blocks.unshift(nestedBlock);
         this.editor.setActive(null, nestedBlock.id);
@@ -2361,15 +2664,10 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
    */ getToolInstance(block) {
         // Return cached instance if available
         if (block._toolInstance) return block._toolInstance;
-        console.log("Looking for BLOCK", JSON.stringify(block, null, 2));
-        console.log("BLOCK CLASS", block.class);
-        console.log("BLOCK CONFIG", block.config);
         // Extract the class name from the block object eg $33963d57131b26df$var$Header should be Header, it may also be a string like "Paragraph"
         const classMatch = block.class.match(/\$([a-f0-9]+)\$var\$(\w+)/);
         const classId = classMatch ? classMatch[1] : null;
         const className = classMatch ? classMatch[2] : null;
-        console.log("CLASS ID", classId);
-        console.log("CLASS NAME", className);
         // Get the tool class from the editor's tool registry
         const editorInstance = window.alpineEditors?.editorjs;
         console.log("CONFIG", editorInstance.toolConfig);
@@ -2421,22 +2719,17 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
    * @param {string} blockId - The nested block ID
    * @param {Object} newConfig - The new configuration
    */ updateNestedBlock(blockId, newConfig) {
-        console.log('updateNestedBlock called:', blockId, newConfig);
         // Find the nested block across all columns
         for(let columnIndex = 0; columnIndex < this.config.columns.length; columnIndex++){
             const column = this.config.columns[columnIndex];
             const blockIndex = column.blocks.findIndex((block)=>block.id === blockId);
             if (blockIndex !== -1) {
-                console.log('Found nested block to update:', column.blocks[blockIndex]);
-                console.log('Current config:', column.blocks[blockIndex].config);
                 // Update only the config properties, don't touch the block object itself
                 const currentBlock = column.blocks[blockIndex];
                 // Update config properties directly without recreating the block
                 Object.keys(newConfig).forEach((key)=>{
-                    console.log(`Setting config.${key} = ${newConfig[key]}`);
                     currentBlock.config[key] = newConfig[key];
                 });
-                console.log('Updated config:', column.blocks[blockIndex].config);
                 this.triggerRedraw();
                 return;
             }
@@ -2451,7 +2744,6 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
         const column = this.config.columns[columnIndex];
         if (!column || !column.blocks || column.blocks.length === 0) return '<div class="column-placeholder">Drop blocks here</div>';
         return column.blocks.map((block)=>{
-            console.log('Re-rendering nested block:', block.id, 'class:', block, 'config:', block.config);
             // Create proper Alpine.js context for each nested block
             const blockContent = this.renderNestedBlockWithContext(block);
             const compositeId = `${this.id}::${block.id}`;
@@ -2597,18 +2889,14 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                          handleNestedBlockClick(blockId) {
                              // Set nested block as active using composite ID
                              const compositeId = '${this.id}::' + blockId;
-                             console.log('Nested block clicked:', blockId, 'Composite ID:', compositeId);
                              
                              const editorInstance = window.alpineEditors?.editorjs;
-                             console.log('Editor instance found:', !!editorInstance);
                              
                              if (editorInstance) {
-                                 console.log('Calling setActive with composite ID:', compositeId);
                                  editorInstance.setActive(null, compositeId);
                                  
                                  // Force settings update
                                  setTimeout(() => {
-                                     console.log('Dispatching editor-block-changed event');
                                      document.dispatchEvent(new CustomEvent('editor-block-changed', { 
                                          detail: { block_id: compositeId } 
                                      }));
@@ -3492,33 +3780,65 @@ const $cf838c15c8b009ba$var$toolModules = {
     Button: $ff02aedcfec75f6b$export$2e2bcd8739ae039
 };
 /**
- * Extract and parse tool configuration from DOM
+ * Get default tool configuration
+ * @returns {Object} Default tool configuration
+ */ function $cf838c15c8b009ba$var$getDefaultToolConfig() {
+    const config = {};
+    // Add all available tools with their default configurations
+    Object.entries($cf838c15c8b009ba$var$toolModules).forEach(([toolName, ToolClass])=>{
+        try {
+            // Get the default config from the tool's toolbox() method if it exists
+            const toolbox = ToolClass.toolbox ? ToolClass.toolbox() : {};
+            config[toolName] = {
+                class: ToolClass,
+                config: toolbox.config || {}
+            };
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug(`Loaded tool: ${toolName}`);
+        } catch (e) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Error loading tool ${toolName}:`, e);
+        }
+    });
+    return config;
+}
+/**
+ * Extract and parse tool configuration from DOM, with fallback to defaults
  * @returns {Object} Parsed tool configuration
  */ function $cf838c15c8b009ba$var$getToolConfigFromDOM() {
     const editorElement = document.querySelector('[x-data*="alpineEditor"]');
-    if (!editorElement) return {};
+    if (!editorElement) {
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No editor element found, using default tool config');
+        return $cf838c15c8b009ba$var$getDefaultToolConfig();
+    }
     const xDataAttr = editorElement.getAttribute('x-data');
     const match = xDataAttr.match(/alpineEditor\(\{[\s\n]*tools:\s*(\[[\s\S]*?\])\s*\}\)/);
-    if (!match) return {};
+    if (!match) {
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No tools config found in DOM, using default tool config');
+        return $cf838c15c8b009ba$var$getDefaultToolConfig();
+    }
     try {
         const toolsConfig = new Function(`return ${match[1]}`)();
         const config = {};
         (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('toolModules keys:', Object.keys($cf838c15c8b009ba$var$toolModules));
-        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('First tool module:', $cf838c15c8b009ba$var$toolModules.Paragraph);
         toolsConfig.forEach((tool)=>{
             (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Loading tool:', tool.class);
-            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Available in toolModules:', !!$cf838c15c8b009ba$var$toolModules[tool.class]);
-            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Tool class:', $cf838c15c8b009ba$var$toolModules[tool.class]);
-            if ($cf838c15c8b009ba$var$toolModules[tool.class]) config[tool.class] = {
-                class: $cf838c15c8b009ba$var$toolModules[tool.class],
-                config: tool.config || {}
-            };
-            else (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Tool ${tool.class} not found in available modules`);
+            if ($cf838c15c8b009ba$var$toolModules[tool.class]) {
+                config[tool.class] = {
+                    class: $cf838c15c8b009ba$var$toolModules[tool.class],
+                    config: tool.config || {}
+                };
+                (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug(`Successfully loaded tool: ${tool.class}`);
+            } else (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Tool ${tool.class} not found in available modules`);
         });
+        // If no tools were successfully parsed, fall back to defaults
+        if (Object.keys(config).length === 0) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No tools successfully parsed, using default tool config');
+            return $cf838c15c8b009ba$var$getDefaultToolConfig();
+        }
         return config;
     } catch (e) {
         (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error('Error parsing tool configuration:', e);
-        return {};
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Using default tool config as fallback');
+        return $cf838c15c8b009ba$var$getDefaultToolConfig();
     }
 }
 // Initialize Alpine with tool loading
@@ -3559,7 +3879,8 @@ document.addEventListener('alpine:init', ()=>{
                 const $nextTick = this.$nextTick;
                 const $watch = this.$watch;
                 this.toolConfig = $cf838c15c8b009ba$var$getToolConfigFromDOM();
-                this.editor = new (0, $cda2b75602dff697$export$7cda8d932e2f33c0)(this.toolConfig);
+                (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Tool config loaded:', Object.keys(this.toolConfig));
+                this.editor = new (0, $63f87b841d9e6197$export$7cda8d932e2f33c0)(this.toolConfig);
                 // Add Alpine utilities to editor
                 this.editor.$el = $el;
                 this.editor.$dispatch = $dispatch;

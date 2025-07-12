@@ -2,7 +2,7 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
-import { Editor } from './core/editor';
+import { Editor } from './core/Editor';
 import { Toolbar } from './core/Toolbar';
 import { Settings } from './core/Settings';
 import { Debug } from './core/utils/Debug';
@@ -51,44 +51,80 @@ const toolModules = {
 };
 
 /**
- * Extract and parse tool configuration from DOM
+ * Get default tool configuration
+ * @returns {Object} Default tool configuration
+ */
+function getDefaultToolConfig() {
+    const config = {};
+    
+    // Add all available tools with their default configurations
+    Object.entries(toolModules).forEach(([toolName, ToolClass]) => {
+        try {
+            // Get the default config from the tool's toolbox() method if it exists
+            const toolbox = ToolClass.toolbox ? ToolClass.toolbox() : {};
+            config[toolName] = {
+                class: ToolClass,
+                config: toolbox.config || {}
+            };
+            Debug.debug(`Loaded tool: ${toolName}`);
+        } catch (e) {
+            Debug.error(`Error loading tool ${toolName}:`, e);
+        }
+    });
+    
+    return config;
+}
+
+/**
+ * Extract and parse tool configuration from DOM, with fallback to defaults
  * @returns {Object} Parsed tool configuration
  */
 function getToolConfigFromDOM() {
     const editorElement = document.querySelector('[x-data*="alpineEditor"]');
-    if (!editorElement) return {};
+    if (!editorElement) {
+        Debug.info('No editor element found, using default tool config');
+        return getDefaultToolConfig();
+    }
 
     const xDataAttr = editorElement.getAttribute('x-data');
     
     const match = xDataAttr.match(/alpineEditor\(\{[\s\n]*tools:\s*(\[[\s\S]*?\])\s*\}\)/);
-    if (!match) return {};
+    if (!match) {
+        Debug.info('No tools config found in DOM, using default tool config');
+        return getDefaultToolConfig();
+    }
 
     try {
         const toolsConfig = new Function(`return ${match[1]}`)();
         const config = {};
 
         Debug.debug('toolModules keys:', Object.keys(toolModules));
-        Debug.debug('First tool module:', toolModules.Paragraph);
 
         toolsConfig.forEach((tool) => {
             Debug.debug('Loading tool:', tool.class);
-            Debug.debug('Available in toolModules:', !!toolModules[tool.class]);
-            Debug.debug('Tool class:', toolModules[tool.class]);
             
             if (toolModules[tool.class]) {
                 config[tool.class] = {
                     class: toolModules[tool.class],
                     config: tool.config || {}
                 };
+                Debug.debug(`Successfully loaded tool: ${tool.class}`);
             } else {
                 Debug.error(`Tool ${tool.class} not found in available modules`);
             }
         });
 
+        // If no tools were successfully parsed, fall back to defaults
+        if (Object.keys(config).length === 0) {
+            Debug.info('No tools successfully parsed, using default tool config');
+            return getDefaultToolConfig();
+        }
+
         return config;
     } catch (e) {
         Debug.error('Error parsing tool configuration:', e);
-        return {};
+        Debug.info('Using default tool config as fallback');
+        return getDefaultToolConfig();
     }
 }
 
@@ -137,6 +173,7 @@ document.addEventListener('alpine:init', () => {
             const $watch = this.$watch;
             
             this.toolConfig = getToolConfigFromDOM();
+            Debug.info('Tool config loaded:', Object.keys(this.toolConfig));
             this.editor = new Editor(this.toolConfig);
             
             // Add Alpine utilities to editor
@@ -168,6 +205,13 @@ document.addEventListener('alpine:init', () => {
                     this.editor.selectedBlock = newValue;
                 }
             });
+            
+            // Watch for block config changes to trigger debounced state saves
+            $watch('blocks', (newBlocks) => {
+                if (this.editor && this.editor.debouncedSaveState) {
+                    this.editor.debouncedSaveState();
+                }
+            }, { deep: true });
         },
 
         // Expose required methods
