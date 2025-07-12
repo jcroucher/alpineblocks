@@ -2,7 +2,7 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
-import { Editor } from './core/Editor';
+import { Editor } from './core/editor';
 import { Toolbar } from './core/Toolbar';
 import { Settings } from './core/Settings';
 import { HeaderToolbar } from './core/HeaderToolbar';

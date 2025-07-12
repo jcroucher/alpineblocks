@@ -464,8 +464,8 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
 
 
 
-var $63f87b841d9e6197$require$uuidv4 = $5OpyM$v4;
-class $63f87b841d9e6197$export$7cda8d932e2f33c0 {
+var $cda2b75602dff697$require$uuidv4 = $5OpyM$v4;
+class $cda2b75602dff697$export$7cda8d932e2f33c0 {
     constructor(toolConfig, log_level = 2, historySize = 30){
         this.id = '';
         this.log_level = log_level;
@@ -740,7 +740,7 @@ class $63f87b841d9e6197$export$7cda8d932e2f33c0 {
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
         const newBlock = new BlockClass({
-            id: existingId || $63f87b841d9e6197$require$uuidv4(),
+            id: existingId || $cda2b75602dff697$require$uuidv4(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
@@ -4080,7 +4080,7 @@ document.addEventListener('alpine:init', ()=>{
                 try {
                     this.toolConfig = $cf838c15c8b009ba$var$getToolConfigFromDOM();
                     (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Tool config loaded:', Object.keys(this.toolConfig));
-                    this.editor = new (0, $63f87b841d9e6197$export$7cda8d932e2f33c0)(this.toolConfig);
+                    this.editor = new (0, $cda2b75602dff697$export$7cda8d932e2f33c0)(this.toolConfig);
                     // Add Alpine utilities to editor (not reactive references)
                     this.editor.$el = $el;
                     this.editor.$dispatch = $dispatch;
