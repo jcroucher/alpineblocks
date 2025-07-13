@@ -7,6 +7,8 @@ import { Toolbar } from './core/Toolbar';
 import { Settings } from './core/Settings';
 import { HeaderToolbar } from './core/HeaderToolbar';
 import { Debug } from './core/utils/Debug';
+import Layout from './core/Layout.js';
+import LayoutManager from './core/LayoutManager.js';
 
 /**
  * AlpineBlocks - A lightweight block-based content editor built with Alpine.js
@@ -255,6 +257,35 @@ document.addEventListener('alpine:init', () => {
                     if (event.detail.id === this.editor.id) {
                         this.syncBlocksFromEditor();
                     }
+                });
+                
+                // Listen for clear selection events
+                document.addEventListener('editor-clear-selection', () => {
+                    console.log('Clearing selection - before:', this.selectedBlock);
+                    this.selectedBlock = null;
+                    if (this.editor) {
+                        this.editor.selectedBlock = null;
+                    }
+                    console.log('Clearing selection - after:', this.selectedBlock);
+                    
+                    // Force Alpine to completely re-evaluate by triggering multiple reactive updates
+                    this.$nextTick(() => {
+                        this.selectedBlock = null;
+                        if (this.editor) {
+                            this.editor.selectedBlock = null;
+                        }
+                        
+                        // Force a complete re-render by updating a dummy reactive property
+                        this.blocks = [...this.blocks];
+                        
+                        // Trigger another tick to ensure everything updates
+                        this.$nextTick(() => {
+                            this.selectedBlock = null;
+                            if (this.editor) {
+                                this.editor.selectedBlock = null;
+                            }
+                        });
+                    });
                 });
                 
                 document.addEventListener('editor-drop', (event) => {
@@ -509,6 +540,580 @@ document.addEventListener('alpine:init', () => {
             return this.editor.blocks;
         },
 
+    }));
+    
+    // Page Management Component
+    window.Alpine.data('editorPages', () => ({
+        pages: [
+            { id: 'page-1', title: 'Home', blocks: [] }
+        ],
+        currentPageId: 'page-1',
+        switchingPages: false,
+        
+        init() {
+            // Load pages from localStorage if available
+            const savedPages = localStorage.getItem('alpineblocks-pages');
+            if (savedPages) {
+                try {
+                    this.pages = JSON.parse(savedPages);
+                    this.currentPageId = this.pages[0]?.id || 'page-1';
+                } catch (e) {
+                    console.warn('Failed to load saved pages:', e);
+                }
+            }
+            
+            // Listen for editor changes to update current page blocks
+            document.addEventListener('editor-changed', () => {
+                this.updateCurrentPageBlocks();
+            });
+            
+            // Listen for page changes
+            document.addEventListener('editor-page-changed', (event) => {
+                this.$nextTick(() => {
+                    this.refreshCurrentPageBlocks();
+                });
+            });
+            
+            // Listen for editor ready event to load initial page
+            document.addEventListener('editor-ready', () => {
+                // Load the current page content when editor is ready
+                setTimeout(() => {
+                    this.loadPageContent(this.currentPageId);
+                }, 200);
+            });
+            
+            // Listen for deletion confirmations (pages and blocks)
+            window.addEventListener('confirm-delete-block', (event) => {
+                const { blockId } = event.detail;
+                
+                // Check if this is a page deletion
+                const isPageDeletion = this.pages.some(p => p.id === blockId);
+                if (isPageDeletion) {
+                    this.confirmDeletePage(blockId);
+                    return;
+                }
+                
+                // Check if this is a block deletion from page manager
+                if (blockId.startsWith('block-')) {
+                    const blockIndex = parseInt(blockId.replace('block-', ''));
+                    this.confirmDeleteBlockFromPage(blockIndex);
+                    return;
+                }
+            });
+            
+            // Listen for add page confirmation
+            window.addEventListener('confirm-add-page', (event) => {
+                const { inputValue } = event.detail;
+                this.confirmAddPage(inputValue);
+            });
+            
+            // Listen for rename page confirmation
+            window.addEventListener('confirm-rename-page', (event) => {
+                const { inputValue, pageId } = event.detail;
+                this.confirmRenamePage(pageId, inputValue);
+            });
+        },
+        
+        addPage() {
+            // Use the modal system for adding pages
+            window.dispatchEvent(new CustomEvent('show-input-modal', {
+                detail: {
+                    title: 'Add New Page',
+                    placeholder: 'Enter page name',
+                    confirmText: 'Add Page',
+                    cancelText: 'Cancel',
+                    eventType: 'confirm-add-page',
+                    eventData: {},
+                    iconType: 'add'
+                }
+            }));
+        },
+        
+        confirmAddPage(pageName) {
+            if (pageName && pageName.trim()) {
+                const newPage = {
+                    id: `page-${Date.now()}`,
+                    title: pageName.trim(),
+                    blocks: []
+                };
+                this.pages.push(newPage);
+                this.savePagesToStorage();
+            }
+        },
+        
+        deletePage(pageId) {
+            if (this.pages.length <= 1) {
+                alert('Cannot delete the last page');
+                return;
+            }
+            
+            // Use the modal system for page deletion
+            window.dispatchEvent(new CustomEvent('show-delete-confirmation', { 
+                detail: { 
+                    blockId: pageId, 
+                    type: 'page',
+                    title: 'Remove Page',
+                    description: 'Are you sure you want to remove this page? All content will be lost and this action cannot be undone.'
+                } 
+            }));
+        },
+        
+        confirmDeletePage(pageId) {
+            this.pages = this.pages.filter(p => p.id !== pageId);
+            if (this.currentPageId === pageId) {
+                this.currentPageId = this.pages[0].id;
+                this.switchToPage(this.currentPageId);
+            }
+            this.savePagesToStorage();
+        },
+        
+        renamePage(pageId) {
+            const page = this.pages.find(p => p.id === pageId);
+            if (page) {
+                // Use the modal system for renaming pages
+                window.dispatchEvent(new CustomEvent('show-input-modal', {
+                    detail: {
+                        title: 'Rename Page',
+                        placeholder: 'Enter new page name',
+                        defaultValue: page.title,
+                        confirmText: 'Rename',
+                        cancelText: 'Cancel',
+                        eventType: 'confirm-rename-page',
+                        eventData: { pageId: pageId },
+                        iconType: 'edit'
+                    }
+                }));
+            }
+        },
+        
+        confirmRenamePage(pageId, newName) {
+            const page = this.pages.find(p => p.id === pageId);
+            if (page && newName && newName.trim()) {
+                page.title = newName.trim();
+                this.savePagesToStorage();
+            }
+        },
+        
+        switchToPage(pageId) {
+            if (pageId === this.currentPageId) return;
+            
+            // Set flag to prevent re-selection during switch
+            this.switchingPages = true;
+            
+            // Clear selection immediately when starting page switch
+            document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+            
+            // Save current page content first
+            this.saveCurrentPageContent().then(() => {
+                // Switch to new page
+                this.currentPageId = pageId;
+                
+                // Clear selection again before loading
+                document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+                
+                // Load new page content
+                this.loadPageContent(pageId);
+                
+                // Force Alpine to update the reactive data
+                this.$nextTick(() => {
+                    // Trigger a reactive update for the current page blocks
+                    this.refreshCurrentPageBlocks();
+                    
+                    // Final clear to make sure selection is gone
+                    document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+                    
+                    // Clear the switching flag after a delay
+                    setTimeout(() => {
+                        this.switchingPages = false;
+                    }, 200);
+                });
+            });
+        },
+        
+        saveCurrentPageContent() {
+            return new Promise((resolve) => {
+                const currentPage = this.pages.find(p => p.id === this.currentPageId);
+                if (currentPage && window.alpineEditors?.editorjs) {
+                    const editor = window.alpineEditors.editorjs;
+                    try {
+                        // Use the blocksJSON method to get current blocks
+                        const blocksData = JSON.parse(editor.blocksJSON());
+                        currentPage.blocks = blocksData || [];
+                        this.savePagesToStorage();
+                        resolve();
+                    } catch (error) {
+                        console.warn('Error saving page content:', error);
+                        resolve();
+                    }
+                } else {
+                    resolve();
+                }
+            });
+        },
+        
+        loadPageContent(pageId) {
+            const page = this.pages.find(p => p.id === pageId);
+            if (page && window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    // Clear existing blocks
+                    editor.blockManager.blocks = [];
+                    
+                    // Load new blocks if any exist
+                    if (page.blocks && page.blocks.length > 0) {
+                        page.blocks.forEach(blockData => {
+                            if (blockData.class && editor.toolConfig[blockData.class]) {
+                                // Use initBlock to create the block properly
+                                const block = editor.initBlock(blockData.class, true, blockData.id);
+                                if (block && blockData.data) {
+                                    // Merge the saved data into the block config
+                                    Object.assign(block.config, blockData.data);
+                                }
+                            }
+                        });
+                    }
+                    
+                    // If no blocks, add a default paragraph
+                    if (editor.blockManager.blocks.length === 0 && editor.toolConfig['Paragraph']) {
+                        editor.initBlock('Paragraph', true);
+                    }
+                    
+                    // Clear the selected block when switching pages
+                    document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+                    
+                    // Immediately clear block selection for properties panel
+                    document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                        detail: { block_id: null }
+                    }));
+                    
+                    // Trigger a re-render
+                    setTimeout(() => {
+                        // Dispatch events to update UI
+                        document.dispatchEvent(new CustomEvent('editor-page-changed', {
+                            detail: { pageId, blocks: page.blocks || [] }
+                        }));
+                        
+                        // Clear block selection again to update properties panel
+                        document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                            detail: { block_id: null }
+                        }));
+                        
+                        // Force settings panel to clear directly
+                        document.dispatchEvent(new CustomEvent('settings-updated', {
+                            detail: { 
+                                editorId: 'editorjs',
+                                settings: [],
+                                blockId: null
+                            }
+                        }));
+                        
+                        // Force Alpine to update
+                        document.dispatchEvent(new CustomEvent('editor-changed'));
+                    }, 100);
+                } catch (error) {
+                    console.warn('Error loading page content:', error);
+                }
+            }
+        },
+        
+        savePagesToStorage() {
+            localStorage.setItem('alpineblocks-pages', JSON.stringify(this.pages));
+        },
+        
+        updateCurrentPageBlocks() {
+            // Update the current page's blocks with the latest from the editor
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    const currentPage = this.pages.find(p => p.id === this.currentPageId);
+                    if (currentPage) {
+                        // Use the blocksJSON method to get current blocks
+                        const blocksData = JSON.parse(editor.blocksJSON());
+                        currentPage.blocks = blocksData || [];
+                        this.savePagesToStorage();
+                        // Force Alpine to update
+                        this.$nextTick(() => {
+                            this.refreshCurrentPageBlocks();
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error updating page blocks:', error);
+                }
+            }
+        },
+        
+        refreshCurrentPageBlocks() {
+            // Force Alpine to re-evaluate the current page blocks
+            // This is a workaround to ensure reactive updates
+            const currentPage = this.pages.find(p => p.id === this.currentPageId);
+            if (currentPage) {
+                // Trigger reactivity by modifying a property
+                currentPage._updateTimestamp = Date.now();
+            }
+        },
+        
+        getCurrentPageTitle() {
+            const currentPage = this.pages.find(p => p.id === this.currentPageId);
+            return currentPage ? currentPage.title : '';
+        },
+        
+        getCurrentPageBlocks() {
+            const currentPage = this.pages.find(p => p.id === this.currentPageId);
+            const blocks = currentPage ? (currentPage.blocks || []) : [];
+            
+            // Convert the block data format to include type property
+            return blocks.map(block => ({
+                ...block,
+                type: block.class ? block.class.toLowerCase() : 'unknown'
+            }));
+        },
+        
+        getBlockIcon(type) {
+            const icons = {
+                'paragraph': '¶',
+                'header': 'H',
+                'list': '•',
+                'image': '🖼',
+                'quote': '"',
+                'code': '</>',
+                'wysiwyg': '📝',
+                'alert': '⚠',
+                'video': '▶',
+                'audio': '🔊',
+                'carousel': '🎠',
+                'columns': '⫼',
+                'raw': '{}',
+                'delimiter': '---',
+                'button': '🔘'
+            };
+            return icons[type] || '📄';
+        },
+        
+        getBlockDisplayName(type) {
+            if (!type || typeof type !== 'string') {
+                return 'Unknown Block';
+            }
+            
+            const names = {
+                'paragraph': 'Paragraph',
+                'header': 'Header',
+                'list': 'List',
+                'image': 'Image',
+                'quote': 'Quote',
+                'code': 'Code',
+                'wysiwyg': 'Rich Text',
+                'alert': 'Alert',
+                'video': 'Video',
+                'audio': 'Audio',
+                'carousel': 'Carousel',
+                'columns': 'Columns',
+                'raw': 'Raw HTML',
+                'delimiter': 'Delimiter',
+                'button': 'Button'
+            };
+            return names[type] || type.charAt(0).toUpperCase() + type.slice(1);
+        },
+        
+        getBlockPreview(block) {
+            const data = block.data || {};
+            switch (block.type) {
+                case 'paragraph':
+                    return this.stripHtml(data.content || '').substring(0, 50) + '...';
+                case 'header':
+                    return this.stripHtml(data.content || '').substring(0, 30) + '...';
+                case 'list':
+                    return data.items?.length ? `${data.items.length} items` : 'Empty list';
+                case 'image':
+                    return data.caption || data.alt || 'Image';
+                case 'quote':
+                    return this.stripHtml(data.content || '').substring(0, 40) + '...';
+                case 'code':
+                    return data.language || 'Code block';
+                case 'wysiwyg':
+                    return this.stripHtml(data.content || '').substring(0, 50) + '...';
+                case 'alert':
+                    return data.message || 'Alert message';
+                case 'video':
+                    return data.caption || 'Video player';
+                case 'audio':
+                    return data.caption || 'Audio player';
+                case 'carousel':
+                    return `${data.slides?.length || 0} slides`;
+                case 'columns':
+                    return `${data.columns?.length || 0} columns`;
+                case 'raw':
+                    return 'HTML content';
+                case 'delimiter':
+                    return 'Section break';
+                case 'button':
+                    return data.text || 'Button';
+                default:
+                    return 'Block content';
+            }
+        },
+        
+        stripHtml(html) {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            return doc.body.textContent || '';
+        },
+        
+        selectBlock(blockIndex) {
+            // Don't select blocks during page switching
+            if (this.switchingPages) return;
+            
+            // Focus on the block in the editor
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    const block = editor.blockManager.blocks[blockIndex];
+                    if (block) {
+                        editor.selectedBlock = block.id;
+                        // Trigger editor change to update UI
+                        document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                            detail: { block_id: block.id }
+                        }));
+                    }
+                } catch (e) {
+                    console.warn('Could not select block:', e);
+                }
+            }
+        },
+        
+        moveBlockUp(blockIndex) {
+            if (blockIndex <= 0) return;
+            
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    const blocks = editor.blockManager.blocks;
+                    if (blocks[blockIndex] && blocks[blockIndex - 1]) {
+                        // Swap the blocks
+                        [blocks[blockIndex], blocks[blockIndex - 1]] = [blocks[blockIndex - 1], blocks[blockIndex]];
+                        
+                        // Update immediately and refresh UI
+                        setTimeout(() => {
+                            this.updateCurrentPageBlocks();
+                            document.dispatchEvent(new CustomEvent('editor-changed'));
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.warn('Could not move block up:', e);
+                }
+            }
+        },
+        
+        moveBlockDown(blockIndex) {
+            const blocks = this.getCurrentPageBlocks();
+            if (blockIndex >= blocks.length - 1) return;
+            
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    const editorBlocks = editor.blockManager.blocks;
+                    if (editorBlocks[blockIndex] && editorBlocks[blockIndex + 1]) {
+                        // Swap the blocks
+                        [editorBlocks[blockIndex], editorBlocks[blockIndex + 1]] = [editorBlocks[blockIndex + 1], editorBlocks[blockIndex]];
+                        
+                        // Update immediately and refresh UI
+                        setTimeout(() => {
+                            this.updateCurrentPageBlocks();
+                            document.dispatchEvent(new CustomEvent('editor-changed'));
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.warn('Could not move block down:', e);
+                }
+            }
+        },
+        
+        deleteBlock(blockIndex) {
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                const blocks = editor.blockManager.blocks;
+                if (blocks[blockIndex]) {
+                    // Use the modal system for block deletion from page manager
+                    window.dispatchEvent(new CustomEvent('show-delete-confirmation', { 
+                        detail: { 
+                            blockId: `block-${blockIndex}`,
+                            type: 'block-from-page',
+                            title: 'Remove Block',
+                            description: 'Are you sure you want to remove this block? This action cannot be undone.'
+                        } 
+                    }));
+                }
+            }
+        },
+        
+        confirmDeleteBlockFromPage(blockIndex) {
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                try {
+                    const blocks = editor.blockManager.blocks;
+                    if (blocks[blockIndex]) {
+                        // Remove the block
+                        blocks.splice(blockIndex, 1);
+                        
+                        // If no blocks left, add a default paragraph
+                        if (blocks.length === 0 && editor.toolConfig['Paragraph']) {
+                            editor.initBlock('Paragraph', true);
+                        }
+                        
+                        // Update immediately and refresh UI
+                        setTimeout(() => {
+                            this.updateCurrentPageBlocks();
+                            document.dispatchEvent(new CustomEvent('editor-changed'));
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.warn('Could not delete block:', e);
+                }
+            }
+        }
+    }));
+    
+    // Templates Component
+    window.Alpine.data('editorTemplates', () => ({
+        templates: [],
+        
+        init() {
+            // Get templates from Layout class
+            this.templates = Layout.getAll();
+        },
+        
+        handleTemplateClick(event, template) {
+            event.preventDefault();
+            this.addTemplate(template);
+        },
+        
+        handleTemplateDragStart(event, template) {
+            // Extract blocks before serialization to preserve functionality
+            const extractedBlocks = template.extractBlocks();
+            event.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'template',
+                data: {
+                    id: template.id,
+                    name: template.name,
+                    description: template.description,
+                    blocks: extractedBlocks
+                }
+            }));
+            event.dataTransfer.effectAllowed = 'copy';
+        },
+        
+        handleTemplateDragEnd(event) {
+            // Clean up drag state if needed
+        },
+        
+        addTemplate(template) {
+            if (window.alpineEditors?.editorjs) {
+                const editor = window.alpineEditors.editorjs;
+                if (editor.editor) {
+                    // Create LayoutManager and add the template
+                    const layoutManager = new LayoutManager(editor.editor);
+                    layoutManager.addLayout(template.id);
+                }
+            }
+        }
     }));
 });
 

@@ -166,30 +166,71 @@
                     <div class="container text-center" id="demo">
                         <div class="editor-layout">
                             <!-- Tools Panel -->
-                            <div class="panel">
+                            <div class="panel" x-data="{ activeTab: 'tools' }">
                                 <div class="panel-header">
                                     <svg class="panel-header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                     </svg>
-                                    Tools
+                                    Content
+                                </div>
+                                <div class="panel-tabs">
+                                    <button class="panel-tab" 
+                                            :class="{ 'active': activeTab === 'tools' }"
+                                            @click="activeTab = 'tools'">
+                                        Tools
+                                    </button>
+                                    <button class="panel-tab" 
+                                            :class="{ 'active': activeTab === 'templates' }"
+                                            @click="activeTab = 'templates'">
+                                        Templates
+                                    </button>
                                 </div>
                                 <div class="panel-content">
-                                    <div class="tool-category">
-                                        <div class="tool-category-header">Basic</div>
-                                        <div id="toolbar" x-data="editorToolbar()">
-                                            <template x-for="tool in tools" :key="tool.name">
-                                                <div class="tool-item" draggable="true"
-                                                     @dragstart="handleDragStart($event, tool)" 
-                                                     @dragend="handleDragEnd($event)"
-                                                     @click="handleClick($event, tool)"
-                                                     @dragover.prevent=""
-                                                     @dragenter.prevent="" 
-                                                     @drop="handleDrop($event, tool)"
-                                                     title="Click to append to bottom, or drag to position anywhere">
-                                                    <div class="tool-icon" x-html="tool.icon"></div>
-                                                    <div class="tool-name" x-text="tool.name"></div>
-                                                </div>
-                                            </template>
+                                    <!-- Tools Tab -->
+                                    <div x-show="activeTab === 'tools'">
+                                        <div class="tool-category">
+                                            <div class="tool-category-header">Basic</div>
+                                            <div id="toolbar" x-data="editorToolbar()">
+                                                <template x-for="tool in tools" :key="tool.name">
+                                                    <div class="tool-item" draggable="true"
+                                                         @dragstart="handleDragStart($event, tool)" 
+                                                         @dragend="handleDragEnd($event)"
+                                                         @click="handleClick($event, tool)"
+                                                         @dragover.prevent=""
+                                                         @dragenter.prevent="" 
+                                                         @drop="handleDrop($event, tool)"
+                                                         title="Click to append to bottom, or drag to position anywhere">
+                                                        <div class="tool-icon" x-html="tool.icon"></div>
+                                                        <div class="tool-name" x-text="tool.name"></div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Templates Tab -->
+                                    <div x-show="activeTab === 'templates'" x-data="editorTemplates()">
+                                        <div class="templates-section">
+                                            <div class="templates-header">
+                                            </div>
+                                            <div class="templates-grid">
+                                                <template x-for="template in templates" :key="template.id">
+                                                    <div class="template-item" 
+                                                         draggable="true"
+                                                         @dragstart="handleTemplateDragStart($event, template)"
+                                                         @dragend="handleTemplateDragEnd($event)"
+                                                         @click="handleTemplateClick($event, template)"
+                                                         :title="template.description">
+                                                        <div class="template-preview">
+                                                            <div class="template-icon" x-html="template.icon"></div>
+                                                            <div class="template-info">
+                                                                <div class="template-name" x-text="template.name"></div>
+                                                                <div class="template-description" x-text="template.description"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -364,32 +405,131 @@
                                 </div>
 
                                 <!-- Settings Panel -->
-                                <div class="panel">
+                                <div class="panel" x-data="{ activeTab: 'properties' }">
                                     <div class="panel-header">
                                         <svg class="panel-header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="3"/>
                                             <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
                                         </svg>
-                                        Properties
+                                        Settings
                                     </div>
-                                    <div class="panel-content" id="settings" x-data="editorSettings('editorjs', {})">
-                                        <template x-for="setting in settings" :key="setting.name">
-                                            <div class="settings-group">
-                                                <template x-if="typeof setting.callback !== 'undefined'">
-                                                    <div class="settings-field">
-                                                        <button class="settings-label" x-text="setting.name"
-                                                                @click="doCallback(setting.callback)"></button>
-                                                    </div>
-                                                </template>
+                                    <div class="panel-tabs">
+                                        <button class="panel-tab" 
+                                                :class="{ 'active': activeTab === 'properties' }"
+                                                @click="activeTab = 'properties'">
+                                            Properties
+                                        </button>
+                                        <button class="panel-tab" 
+                                                :class="{ 'active': activeTab === 'pages' }"
+                                                @click="activeTab = 'pages'">
+                                            Pages
+                                        </button>
+                                    </div>
+                                    <div class="panel-content">
+                                        <!-- Properties Tab -->
+                                        <div x-show="activeTab === 'properties'" 
+                                             id="settings" 
+                                             x-data="editorSettings('editorjs', {})">
+                                            <template x-for="setting in settings" :key="setting.name">
+                                                <div class="settings-group">
+                                                    <template x-if="typeof setting.callback !== 'undefined'">
+                                                        <div class="settings-field">
+                                                            <button class="settings-label" x-text="setting.name"
+                                                                    @click="doCallback(setting.callback)"></button>
+                                                        </div>
+                                                    </template>
 
-                                                <template x-if="typeof setting.html !== 'undefined'">
-                                                    <div class="settings-field">
-                                                        <label class="settings-label" x-text="setting.label || setting.name"></label>
-                                                        <div x-html="setting.html"></div>
+                                                    <template x-if="typeof setting.html !== 'undefined'">
+                                                        <div class="settings-field">
+                                                            <label class="settings-label" x-text="setting.label || setting.name"></label>
+                                                            <div x-html="setting.html"></div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        
+                                        <!-- Pages Tab -->
+                                        <div x-show="activeTab === 'pages'" x-data="editorPages()">
+                                            <div class="pages-section">
+                                                <div class="pages-header">
+                                                    <button class="btn-add-page" @click="addPage()">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <line x1="12" y1="5" x2="12" y2="19"/>
+                                                            <line x1="5" y1="12" x2="19" y2="12"/>
+                                                        </svg>
+                                                        Add Page
+                                                    </button>
+                                                </div>
+                                                <div class="pages-list">
+                                                    <template x-for="(page, index) in pages" :key="page.id">
+                                                        <div class="page-item" :class="{ 'active': page.id === currentPageId }">
+                                                            <div class="page-info" @click="switchToPage(page.id)">
+                                                                <div class="page-title" x-text="page.title"></div>
+                                                                <div class="page-meta" x-text="`${page.blocks?.length || 0} blocks`"></div>
+                                                            </div>
+                                                            <div class="page-actions">
+                                                                <button class="btn-icon" @click="renamePage(page.id)" title="Rename">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button class="btn-icon" @click="deletePage(page.id)" title="Delete" x-show="pages.length > 1">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                        <polyline points="3,6 5,6 21,6"/>
+                                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                
+                                                <!-- Current Page Blocks -->
+                                                <div class="page-blocks-section" x-show="currentPageId">
+                                                    <div class="page-blocks-header">
+                                                        <h4>Current Page Blocks</h4>
+                                                        <span class="current-page-name" x-text="getCurrentPageTitle()"></span>
                                                     </div>
-                                                </template>
+                                                    <div class="page-blocks-list">
+                                                        <template x-for="(block, index) in getCurrentPageBlocks()" :key="block.id || index">
+                                                            <div class="page-block-item" @click="selectBlock(block.id || index)">
+                                                                <div class="page-block-icon">
+                                                                    <span x-text="getBlockIcon(block.type)"></span>
+                                                                </div>
+                                                                <div class="page-block-info">
+                                                                    <div class="page-block-type" x-text="getBlockDisplayName(block.type)"></div>
+                                                                    <div class="page-block-content" x-text="getBlockPreview(block)"></div>
+                                                                </div>
+                                                                <div class="page-block-actions">
+                                                                    <button class="btn-icon btn-icon-small" @click.stop="moveBlockUp(index)" x-show="index > 0" title="Move up">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                            <polyline points="18,15 12,9 6,15"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-icon-small" @click.stop="moveBlockDown(index)" x-show="index < getCurrentPageBlocks().length - 1" title="Move down">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                            <polyline points="6,9 12,15 18,9"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-icon-small" @click.stop="deleteBlock(index)" title="Delete block">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                            <polyline points="3,6 5,6 21,6"/>
+                                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                        <div x-show="getCurrentPageBlocks().length === 0" class="page-blocks-empty">
+                                                            <p>No blocks in this page yet.</p>
+                                                            <p class="text-small">Add blocks from the Tools or Templates tabs.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </template>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

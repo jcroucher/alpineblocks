@@ -444,31 +444,149 @@ export class Editor {
         
         this.clearDragTimeouts();
         
-        const blockName = event.dataTransfer.getData('text/plain');
-        const newBlock = this.initBlock(blockName);
-
-        if (!newBlock) {
-            Debug.error(`Failed to create block of type ${blockName}`);
-            return;
-        }
-
-        if (blockId) {
-            const index = this.blocks.findIndex(b => b.id === blockId);
-            const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
-            delete this.hoveredTarget[blockId];
-            
-            if (insertPosition === 'before') {
-                this.blocks.splice(index, 0, newBlock);
-            } else {
-                this.blocks.splice(index + 1, 0, newBlock);
+        const dragData = event.dataTransfer.getData('text/plain');
+        
+        // Check if this is a template drop
+        let isTemplate = false;
+        let templateData = null;
+        try {
+            const parsed = JSON.parse(dragData);
+            if (parsed.type === 'template' && parsed.data) {
+                isTemplate = true;
+                templateData = parsed.data;
             }
-        } else {
-            this.blocks.push(newBlock);
+        } catch (e) {
+            // Not JSON, treat as regular block name
         }
+        
+        if (isTemplate && templateData) {
+            // Handle template drop
+            this.handleTemplateDrop(templateData, blockId);
+        } else {
+            // Handle regular block drop
+            const blockName = dragData;
+            const newBlock = this.initBlock(blockName);
 
-        this.$dispatch('editor-drop', { id: this.id });
-        this.setActive(null, newBlock.id);
-        this.saveState(`Added ${blockName} block`);
+            if (!newBlock) {
+                Debug.error(`Failed to create block of type ${blockName}`);
+                return;
+            }
+
+            if (blockId) {
+                const index = this.blocks.findIndex(b => b.id === blockId);
+                const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
+                delete this.hoveredTarget[blockId];
+                
+                if (insertPosition === 'before') {
+                    this.blocks.splice(index, 0, newBlock);
+                } else {
+                    this.blocks.splice(index + 1, 0, newBlock);
+                }
+            } else {
+                this.blocks.push(newBlock);
+            }
+
+            this.$dispatch('editor-drop', { id: this.id });
+            this.setActive(null, newBlock.id);
+            this.saveState(`Added ${blockName} block`);
+        }
+    }
+
+    /**
+     * Handle template drop specifically
+     * @param {Object} template - Template object from Layout
+     * @param {string|null} blockId - ID of target block
+     */
+    handleTemplateDrop(template, blockId = null) {
+        try {
+            // Use pre-extracted blocks from the drag data
+            const blocks = template.blocks;
+            
+            if (!blocks || blocks.length === 0) {
+                Debug.warn(`Template ${template.name} has no blocks to add`);
+                return;
+            }
+
+            const newBlocks = [];
+            
+            // Create blocks for each template block
+            for (const blockData of blocks) {
+                // Map template block types to AlpineBlocks tool names
+                const toolName = this.mapTemplateBlockToTool(blockData.type);
+                
+                if (!toolName || !this.toolConfig[toolName]) {
+                    Debug.warn(`Tool ${toolName} not found for template block type ${blockData.type}`);
+                    continue;
+                }
+                
+                const newBlock = this.initBlock(toolName);
+                if (newBlock && blockData.data) {
+                    // Apply template configuration to the block
+                    Object.assign(newBlock.config, blockData.data);
+                }
+                
+                if (newBlock) {
+                    newBlocks.push(newBlock);
+                }
+            }
+            
+            if (newBlocks.length === 0) {
+                Debug.warn(`No valid blocks created from template ${template.name}`);
+                return;
+            }
+
+            // Add blocks to editor
+            if (blockId) {
+                const index = this.blocks.findIndex(b => b.id === blockId);
+                const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
+                delete this.hoveredTarget[blockId];
+                
+                const insertIndex = insertPosition === 'before' ? index : index + 1;
+                
+                // Insert all template blocks at the target position
+                this.blocks.splice(insertIndex, 0, ...newBlocks);
+            } else {
+                this.blocks.push(...newBlocks);
+            }
+
+            this.$dispatch('editor-drop', { id: this.id });
+            
+            // Select the first block of the template
+            if (newBlocks.length > 0) {
+                this.setActive(null, newBlocks[0].id);
+            }
+            
+            this.saveState(`Added template: ${template.name}`);
+            
+        } catch (error) {
+            Debug.error(`Error handling template drop for ${template.name}:`, error);
+        }
+    }
+
+    /**
+     * Map template block types to AlpineBlocks tool names
+     * @param {string} blockType - Template block type
+     * @returns {string|null} Tool name
+     */
+    mapTemplateBlockToTool(blockType) {
+        const mapping = {
+            'paragraph': 'Paragraph',
+            'header': 'Header',
+            'image': 'Image',
+            'quote': 'Quote',
+            'list': 'List',
+            'button': 'Button',
+            'code': 'Code',
+            'alert': 'Alert',
+            'video': 'VideoPlayer',
+            'audio': 'AudioPlayer',
+            'carousel': 'Carousel',
+            'columns': 'Columns',
+            'raw': 'Raw',
+            'wysiwyg': 'WYSIWYG'
+        };
+        
+        return mapping[blockType.toLowerCase()] || null;
     }
 
     /**
@@ -629,14 +747,20 @@ export class Editor {
             x-data="{ 
                 show: false, 
                 blockId: null,
+                title: 'Remove Block',
+                description: 'Are you sure you want to remove this block? This action cannot be undone.',
                 init() {
                     window.addEventListener('show-delete-confirmation', (e) => {
                         this.blockId = e.detail.blockId;
+                        this.title = e.detail.title || 'Remove Block';
+                        this.description = e.detail.description || 'Are you sure you want to remove this block? This action cannot be undone.';
                         this.show = true;
                     });
                     window.addEventListener('hide-delete-confirmation', () => {
                         this.show = false;
                         this.blockId = null;
+                        this.title = 'Remove Block';
+                        this.description = 'Are you sure you want to remove this block? This action cannot be undone.';
                     });
                 },
             }" 
@@ -645,14 +769,12 @@ export class Editor {
             style="display: none;">
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
-                    <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                        <path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/>
                     </svg>
-                    <h3 class="modal-title">Remove Block</h3>
+                    <h3 class="modal-title" x-text="title"></h3>
                 </div>
-                <p class="modal-description">
-                    Are you sure you want to remove this block? This action cannot be undone.
-                </p>
+                <p class="modal-description" x-text="description"></p>
                 <div class="modal-actions">
                     <button class="modal-btn modal-btn-cancel" @click="show = false">
                         Cancel
@@ -674,6 +796,121 @@ export class Editor {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         Debug.info('Delete confirmation modal generated and injected');
+        
+        // Generate input modal as well
+        this.generateInputModal();
+    }
+
+    /**
+     * Generate and inject the input modal for page operations
+     */
+    generateInputModal() {
+        // Only generate modal if it doesn't exist
+        if (document.querySelector('.input-modal-overlay')) {
+            return;
+        }
+
+        // Create input modal HTML
+        const inputModalHTML = `
+        <div class="input-modal-overlay" 
+            x-data="{ 
+                show: false, 
+                title: 'Input Required',
+                placeholder: 'Enter value',
+                inputValue: '',
+                confirmText: 'Confirm',
+                cancelText: 'Cancel',
+                eventType: '',
+                eventData: {},
+                iconType: 'edit',
+                init() {
+                    window.addEventListener('show-input-modal', (e) => {
+                        this.title = e.detail.title || 'Input Required';
+                        this.placeholder = e.detail.placeholder || 'Enter value';
+                        this.inputValue = e.detail.defaultValue || '';
+                        this.confirmText = e.detail.confirmText || 'Confirm';
+                        this.cancelText = e.detail.cancelText || 'Cancel';
+                        this.eventType = e.detail.eventType || '';
+                        this.eventData = e.detail.eventData || {};
+                        this.iconType = e.detail.iconType || 'edit';
+                        this.show = true;
+                        // Focus input after modal shows
+                        this.$nextTick(() => {
+                            this.$refs.modalInput?.focus();
+                        });
+                    });
+                    window.addEventListener('hide-input-modal', () => {
+                        this.show = false;
+                        this.inputValue = '';
+                        this.eventType = '';
+                        this.eventData = {};
+                    });
+                },
+                handleConfirm() {
+                    if (this.inputValue.trim()) {
+                        window.dispatchEvent(new CustomEvent(this.eventType, { 
+                            detail: { 
+                                ...this.eventData,
+                                inputValue: this.inputValue.trim()
+                            } 
+                        }));
+                        this.show = false;
+                        this.inputValue = '';
+                    }
+                },
+                handleKeydown(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        this.handleConfirm();
+                    } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        this.show = false;
+                        this.inputValue = '';
+                    }
+                }
+            }" 
+            x-show="show" 
+            @click="show = false"
+            style="display: none;">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <!-- Edit Icon -->
+                    <svg x-show="iconType === 'edit'" class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path fill="currentColor" d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160V416c0 53 43 96 96 96H352c53 0 96-43 96-96V320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H96z"/>
+                    </svg>
+                    <!-- Plus Icon -->
+                    <svg x-show="iconType === 'add'" class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                        <path fill="currentColor" d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/>
+                    </svg>
+                    <h3 class="modal-title" x-text="title"></h3>
+                </div>
+                <div class="modal-input-section">
+                    <input 
+                        type="text" 
+                        class="modal-input" 
+                        x-model="inputValue"
+                        :placeholder="placeholder"
+                        @keydown="handleKeydown($event)"
+                        x-ref="modalInput"
+                    />
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-cancel" @click="show = false" x-text="cancelText">
+                    </button>
+                    <button class="modal-btn modal-btn-confirm" 
+                            @click="handleConfirm()"
+                            :disabled="!inputValue.trim()"
+                            x-text="confirmText">
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Inject modal into body
+        document.body.insertAdjacentHTML('beforeend', inputModalHTML);
+        
+        Debug.info('Input modal generated and injected');
     }
 
     /**
