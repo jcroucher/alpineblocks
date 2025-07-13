@@ -1,5 +1,131 @@
 import Tool from '../core/Tool';
 
+// Define global Alpine.js functions for carousel functionality
+if (typeof window !== 'undefined') {
+    window.carouselEditor = function() {
+        return {
+            currentSlide: 0,
+            slides: [],
+            autoplayInterval: null,
+            
+            init(slidesData, autoplay, interval) {
+                this.slides = slidesData || [];
+                if (autoplay && this.slides.length > 1) {
+                    this.startAutoplay(interval);
+                }
+            },
+            
+            initFromData() {
+                const slidesData = JSON.parse(this.$el.getAttribute('data-slides') || '[]');
+                const autoplay = this.$el.getAttribute('data-autoplay') === 'true';
+                const interval = parseInt(this.$el.getAttribute('data-interval') || '5000');
+                this.init(slidesData, autoplay, interval);
+            },
+            
+            startAutoplay(interval = 5000) {
+                if (this.autoplayInterval) clearInterval(this.autoplayInterval);
+                this.autoplayInterval = setInterval(() => {
+                    this.nextSlide();
+                }, interval);
+            },
+            
+            stopAutoplay() {
+                if (this.autoplayInterval) {
+                    clearInterval(this.autoplayInterval);
+                    this.autoplayInterval = null;
+                }
+            },
+            
+            nextSlide() {
+                this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+            },
+            
+            prevSlide() {
+                this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+            },
+            
+            goToSlide(index) {
+                this.currentSlide = index;
+            },
+            
+            updateSlideImage(index, value) {
+                if (this.slides[index]) {
+                    this.slides[index] = { ...this.slides[index], image: value };
+                    this.$dispatch('slide-updated', { slides: this.slides });
+                }
+            },
+            
+            updateSlideCaption(index, value) {
+                if (this.slides[index]) {
+                    this.slides[index] = { ...this.slides[index], caption: value };
+                    this.$dispatch('slide-updated', { slides: this.slides });
+                }
+            },
+            
+            addSlide() {
+                this.slides.push({ image: '', caption: '' });
+                this.$dispatch('slide-updated', { slides: this.slides });
+            },
+            
+            removeSlide() {
+                if (this.slides.length > 1) {
+                    this.slides.splice(this.currentSlide, 1);
+                    this.currentSlide = Math.min(this.currentSlide, this.slides.length - 1);
+                    this.$dispatch('slide-updated', { slides: this.slides });
+                }
+            }
+        };
+    };
+    
+    window.carouselViewer = function() {
+        return {
+            currentSlide: 0,
+            slidesCount: 0,
+            autoplayInterval: null,
+            
+            init(count, autoplay, interval) {
+                this.slidesCount = count;
+                if (autoplay && count > 1) {
+                    this.startAutoplay(interval);
+                }
+            },
+            
+            initFromData() {
+                const count = parseInt(this.$el.getAttribute('data-slides-count') || '0');
+                const autoplay = this.$el.getAttribute('data-autoplay') === 'true';
+                const interval = parseInt(this.$el.getAttribute('data-interval') || '5000');
+                this.init(count, autoplay, interval);
+            },
+            
+            startAutoplay(interval = 5000) {
+                if (this.autoplayInterval) clearInterval(this.autoplayInterval);
+                this.autoplayInterval = setInterval(() => {
+                    this.nextSlide();
+                }, interval);
+            },
+            
+            stopAutoplay() {
+                if (this.autoplayInterval) {
+                    clearInterval(this.autoplayInterval);
+                    this.autoplayInterval = null;
+                }
+            },
+            
+            nextSlide() {
+                this.currentSlide = (this.currentSlide + 1) % this.slidesCount;
+            },
+            
+            prevSlide() {
+                this.currentSlide = (this.currentSlide - 1 + this.slidesCount) % this.slidesCount;
+            },
+            
+            goToSlide(index) {
+                this.currentSlide = index;
+            }
+        };
+    };
+}
+
 class Carousel extends Tool {
     constructor({id, updateFunction, config}) {
         super(id, updateFunction, config);
@@ -22,7 +148,7 @@ class Carousel extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'autoplay', $event.target.checked)"
-                        :checked="block.config.autoplay">
+                        ${this.config.autoplay ? 'checked' : ''}>
                     Autoplay
                 </label>`
             },
@@ -31,7 +157,7 @@ class Carousel extends Tool {
                 label: 'Interval (ms)',
                 html: `<input type="number" 
                     @change="trigger('${this.id}', 'interval', $event.target.value)"
-                    :value="block.config.interval"
+                    value="${this.config.interval}"
                     min="1000"
                     step="500">`
             },
@@ -41,7 +167,7 @@ class Carousel extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showArrows', $event.target.checked)"
-                        :checked="block.config.showArrows">
+                        ${this.config.showArrows ? 'checked' : ''}>
                     Show Arrows
                 </label>`
             },
@@ -51,7 +177,7 @@ class Carousel extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showDots', $event.target.checked)"
-                        :checked="block.config.showDots">
+                        ${this.config.showDots ? 'checked' : ''}>
                     Show Dots
                 </label>`
             },
@@ -61,7 +187,7 @@ class Carousel extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showCaptions', $event.target.checked)"
-                        :checked="block.config.showCaptions">
+                        ${this.config.showCaptions ? 'checked' : ''}>
                     Show Captions
                 </label>`
             }
@@ -79,22 +205,22 @@ class Carousel extends Tool {
     editorRender() {
         const slides = this.config.slides.map((slide, index) => {
             const imageInput = `
-                <div class="image-input" x-show="!block.config.slides[${index}].image">
+                <div class="image-input" ${!slide.image ? '' : 'style="display: none;"'}>
                     <input type="text" 
                         placeholder="Enter image URL"
-                        @change="block.config.slides[${index}].image = $event.target.value">
+                        value="${slide.image || ''}"
+                        @change="updateSlideImage(${index}, $event.target.value)">
                 </div>`;
             
-            const image = `
-                <img x-show="block.config.slides[${index}].image"
-                    :src="block.config.slides[${index}].image"
-                    alt="Slide ${index + 1}">`;
+            const image = slide.image ? `
+                <img src="${slide.image}" alt="Slide ${index + 1}">
+            ` : '';
             
             const caption = this.config.showCaptions ? `
                 <div class="carousel-caption"
                     contenteditable="true"
-                    x-html="block.config.slides[${index}].caption"
-                    @blur="block.config.slides[${index}].caption = $event.target.innerHTML">${slide.caption || ''}</div>` : '';
+                    @blur="updateSlideCaption(${index}, $event.target.innerHTML)">${slide.caption || ''}</div>
+            ` : '';
 
             return `
                 <div class="carousel-slide" x-show="currentSlide === ${index}">
@@ -105,35 +231,50 @@ class Carousel extends Tool {
         }).join('');
 
         const arrows = this.config.showArrows ? `
-            <button class="carousel-prev" 
-                @click="currentSlide = (currentSlide - 1 + block.config.slides.length) % block.config.slides.length">
+            <button class="carousel-prev" @click="prevSlide()">
                 ←
             </button>
-            <button class="carousel-next" 
-                @click="currentSlide = (currentSlide + 1) % block.config.slides.length">
+            <button class="carousel-next" @click="nextSlide()">
                 →
-            </button>` : '';
+            </button>
+        ` : '';
 
         const dots = this.config.showDots ? `
             <div class="carousel-dots">
                 ${this.config.slides.map((_, index) => `
                     <button class="carousel-dot"
                         :class="{ active: currentSlide === ${index} }"
-                        @click="currentSlide = ${index}"></button>
+                        @click="goToSlide(${index})"></button>
                 `).join('')}
-            </div>` : '';
+            </div>
+        ` : '';
 
+        // Store slides data in a data attribute instead of passing as parameter
+        const slideDataAttr = JSON.stringify(this.config.slides).replace(/"/g, '&quot;');
+        
         return `
-            <div class="carousel-block" x-data="{ currentSlide: 0 }">
+            <div class="carousel-block" 
+                 x-data="carouselEditor()" 
+                 data-slides='${slideDataAttr}'
+                 data-autoplay="${this.config.autoplay}"
+                 data-interval="${this.config.interval}"
+                 x-init="initFromData()"
+                 ${this.config.autoplay ? '@mouseenter="stopAutoplay()" @mouseleave="startAutoplay(' + this.config.interval + ')"' : ''}>
+                
                 <div class="carousel-container">
                     ${slides}
                     ${arrows}
                 </div>
+                
                 ${dots}
+                
                 <div class="carousel-controls">
-                    <button @click="block.config.slides.push({ image: '', caption: '' })">Add Slide</button>
-                    <button x-show="block.config.slides.length > 1"
-                        @click="block.config.slides.splice(currentSlide, 1); currentSlide = Math.min(currentSlide, block.config.slides.length - 1)">
+                    <button @click="addSlide()" class="btn btn-primary">
+                        Add Slide
+                    </button>
+                    <button x-show="slides.length > 1" 
+                            @click="removeSlide()" 
+                            class="btn btn-secondary">
                         Remove Current Slide
                     </button>
                 </div>
@@ -141,34 +282,65 @@ class Carousel extends Tool {
     }
 
     render() {
-        const slides = this.config.slides.map((slide, index) => `
-            <div class="carousel-slide">
-                <img src="${slide.image}" alt="Slide ${index + 1}">
-                ${this.config.showCaptions && slide.caption ? `
-                    <div class="carousel-caption">${slide.caption}</div>
-                ` : ''}
-            </div>
-        `).join('');
+        const slides = this.config.slides
+            .filter(slide => slide.image) // Only show slides with images
+            .map((slide, index) => `
+                <div class="carousel-slide">
+                    <img src="${slide.image}" alt="Slide ${index + 1}" loading="lazy">
+                    ${this.config.showCaptions && slide.caption ? `
+                        <div class="carousel-caption">${slide.caption}</div>
+                    ` : ''}
+                </div>
+            `).join('');
 
         const arrows = this.config.showArrows ? `
-            <button class="carousel-prev">←</button>
-            <button class="carousel-next">→</button>
+            <button class="carousel-prev" 
+                    @click="prevSlide()" 
+                    aria-label="Previous slide">←</button>
+            <button class="carousel-next" 
+                    @click="nextSlide()" 
+                    aria-label="Next slide">→</button>
         ` : '';
 
         const dots = this.config.showDots ? `
-            <div class="carousel-dots">
-                ${this.config.slides.map((_, index) => `
-                    <button class="carousel-dot"></button>
-                `).join('')}
+            <div class="carousel-dots" role="tablist">
+                ${this.config.slides
+                    .filter(slide => slide.image)
+                    .map((_, index) => `
+                        <button class="carousel-dot" 
+                                :class="{ active: currentSlide === ${index} }"
+                                @click="goToSlide(${index})"
+                                role="tab" 
+                                aria-label="Go to slide ${index + 1}"></button>
+                    `).join('')}
             </div>
         ` : '';
 
+        const validSlides = this.config.slides.filter(slide => slide.image);
+        const slidesCount = validSlides.length;
+
+        if (slidesCount === 0) {
+            return `<div class="carousel-block carousel-empty">
+                <p>No images added to carousel</p>
+            </div>`;
+        }
+
         return `
-            <div class="carousel-block">
+            <div class="carousel-block" 
+                 x-data="carouselViewer()" 
+                 data-slides-count="${slidesCount}"
+                 data-autoplay="${this.config.autoplay}"
+                 data-interval="${this.config.interval}"
+                 x-init="initFromData()"
+                 ${this.config.autoplay ? '@mouseenter="stopAutoplay()" @mouseleave="startAutoplay(' + this.config.interval + ')"' : ''}
+                 role="region" 
+                 aria-label="Image carousel">
+                
                 <div class="carousel-container">
                     ${slides}
                     ${arrows}
                 </div>
+                
                 ${dots}
             </div>`;
     }
