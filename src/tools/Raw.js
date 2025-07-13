@@ -36,7 +36,6 @@ function rawCodeEditor() {
             
             switch (this.block.config.mode) {
                 case 'html':
-                    if (!this.block.config.validateHtml) return true;
                     try {
                         // Simple tag matching validation
                         const openTags = [];
@@ -142,51 +141,18 @@ class Raw extends Tool {
 
         this.config = {
             content: this.config.content || '',
-            mode: this.config.mode || 'html', // html, css, javascript
-            executeScript: this.config.executeScript || false,
-            validateHtml: this.config.validateHtml || true,
-            wrapCss: this.config.wrapCss || true
+            mode: this.config.mode || 'html' // html, css, javascript
         };
 
         this.settings = [
             {
                 name: 'mode',
                 label: 'Code Type',
-                html: `<select @change="trigger('${this.id}', 'mode', $event.target.value)">
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="javascript">JavaScript</option>
+                html: `<select @change="trigger('${this.id}', 'mode', $event.target.value)" value="${this.config.mode}">
+                    <option value="html" ${this.config.mode === 'html' ? 'selected' : ''}>HTML</option>
+                    <option value="css" ${this.config.mode === 'css' ? 'selected' : ''}>CSS</option>
+                    <option value="javascript" ${this.config.mode === 'javascript' ? 'selected' : ''}>JavaScript</option>
                 </select>`
-            },
-            {
-                name: 'executeScript',
-                label: 'Execute JavaScript',
-                html: `<label x-show="block.config.mode === 'javascript'">
-                    <input type="checkbox" 
-                        @change="trigger('${this.id}', 'executeScript', $event.target.checked)"
-                        :checked="block.config.executeScript">
-                    Execute JavaScript
-                </label>`
-            },
-            {
-                name: 'validateHtml',
-                label: 'Validate HTML',
-                html: `<label x-show="block.config.mode === 'html'">
-                    <input type="checkbox" 
-                        @change="trigger('${this.id}', 'validateHtml', $event.target.checked)"
-                        :checked="block.config.validateHtml">
-                    Validate HTML
-                </label>`
-            },
-            {
-                name: 'wrapCss',
-                label: 'Scope CSS',
-                html: `<label x-show="block.config.mode === 'css'">
-                    <input type="checkbox" 
-                        @change="trigger('${this.id}', 'wrapCss', $event.target.checked)"
-                        :checked="block.config.wrapCss">
-                    Scope CSS
-                </label>`
             }
         ];
     }
@@ -204,7 +170,6 @@ class Raw extends Tool {
 
         switch (this.config.mode) {
             case 'html':
-                if (!this.config.validateHtml) return true;
                 try {
                     // Check for basic HTML structure issues
                     const parser = new DOMParser();
@@ -273,24 +238,16 @@ class Raw extends Tool {
                 return this.config.content;
 
             case 'css':
-                if (this.config.wrapCss) {
-                    return `<style data-block-id="${this.id}">
-                        .raw-block[data-block-id="${this.id}"] {
-                            ${this.config.content}
-                        }
-                    </style>`;
-                }
-                return `<style>${this.config.content}</style>`;
+                // Always scope CSS to prevent conflicts
+                return `<style data-block-id="${this.id}">
+                    .raw-block[data-block-id="${this.id}"] {
+                        ${this.config.content}
+                    }
+                </style>`;
 
             case 'javascript':
-                if (this.config.executeScript) {
-                    return `<script>
-                        (function() {
-                            ${this.config.content}
-                        })();
-                    </script>`;
-                }
-                return `<pre><code>${this.config.content}</code></pre>`;
+                // Never execute JavaScript in render mode for security
+                return `<pre><code>${this.escapeHtml(this.config.content)}</code></pre>`;
 
             default:
                 return this.config.content;
@@ -354,6 +311,17 @@ class Raw extends Tool {
         return `<div class="raw-block" data-block-id="${this.id}">
             ${this.processContent()}
         </div>`;
+    }
+
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
     }
 }
 
