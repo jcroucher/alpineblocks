@@ -550,6 +550,18 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         return this.historyManager.redo();
     }
     /**
+   * Check if undo is available
+   * @returns {boolean} Whether undo is possible
+   */ canUndo() {
+        return this.historyManager.canUndo();
+    }
+    /**
+   * Check if redo is available
+   * @returns {boolean} Whether redo is possible
+   */ canRedo() {
+        return this.historyManager.canRedo();
+    }
+    /**
    * Save current state to history
    * @param {string} action - Description of the action
    */ saveState(action) {
@@ -1134,9 +1146,13 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
     /**
    * Serialize config safely without circular references
    * @param {Object} config - Configuration to serialize
+   * @param {Set} [seen] - Set of already seen objects to prevent circular references
    * @returns {Object} Clean configuration
-   */ serializeConfig(config) {
+   */ serializeConfig(config, seen = new Set()) {
         if (!config || typeof config !== 'object') return config;
+        // Check for circular reference
+        if (seen.has(config)) return '[Circular Reference]';
+        seen.add(config);
         const serialized = {};
         for (const [key, value] of Object.entries(config)){
             if (key === 'editor' || key === 'updateFunction' || typeof value === 'function') continue;
@@ -1175,14 +1191,14 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
                         return {
                             id: item.id,
                             class: className,
-                            config: this.serializeConfig(item.config)
+                            config: this.serializeConfig(item.config, seen)
                         };
                     }
-                    return this.serializeConfig(item);
+                    return this.serializeConfig(item, seen);
                 }
                 return item;
             });
-            else if (value && typeof value === 'object') serialized[key] = this.serializeConfig(value);
+            else if (value && typeof value === 'object') serialized[key] = this.serializeConfig(value, seen);
             else serialized[key] = value;
         }
         return serialized;
@@ -1218,6 +1234,21 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
             const selected = currentValue === value ? 'selected' : '';
             return `<option value="${value}" ${selected}>${label}</option>`;
         }).join('');
+    }
+    /**
+   * Render method for displaying the tool output
+   * Override in subclasses to provide specific rendering
+   * @returns {string} HTML string for output rendering
+   */ render() {
+        return '';
+    }
+    /**
+   * Editor render method for displaying the tool in edit mode
+   * By default, calls render() method
+   * Override in subclasses if different rendering is needed for editor
+   * @returns {string} HTML string for editor rendering
+   */ editorRender() {
+        return this.render();
     }
     /**
    * Static method to define tool metadata for the toolbox

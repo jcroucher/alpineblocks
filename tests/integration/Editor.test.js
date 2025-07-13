@@ -2,11 +2,15 @@ import { Editor } from '../../src/core/editor';
 import { ToolManager } from '../../src/core/editor_modules/ToolManager';
 import { BlockManager } from '../../src/core/editor_modules/BlockManager';
 import { InlineToolbar } from '../../src/core/editor_modules/InlineToolbar';
+import { HistoryManager } from '../../src/core/HistoryManager';
+import { HeaderToolbar } from '../../src/core/HeaderToolbar';
 
 // Mock the editor modules
 jest.mock('../../src/core/editor_modules/ToolManager');
 jest.mock('../../src/core/editor_modules/BlockManager');
 jest.mock('../../src/core/editor_modules/InlineToolbar');
+jest.mock('../../src/core/HistoryManager');
+jest.mock('../../src/core/HeaderToolbar');
 
 describe('Editor Integration', () => {
   let editor;
@@ -14,6 +18,8 @@ describe('Editor Integration', () => {
   let mockToolManager;
   let mockBlockManager;
   let mockInlineToolbar;
+  let mockHistoryManager;
+  let mockHeaderToolbar;
   let mockElement;
 
   beforeEach(() => {
@@ -67,11 +73,24 @@ describe('Editor Integration', () => {
     mockInlineToolbar = {
       init: jest.fn()
     };
+    mockHistoryManager = {
+      saveState: jest.fn(),
+      undo: jest.fn(),
+      redo: jest.fn(),
+      canUndo: jest.fn(() => false),
+      canRedo: jest.fn(() => false)
+    };
+    mockHeaderToolbar = {
+      init: jest.fn(),
+      render: jest.fn(() => '<div>Header Toolbar</div>')
+    };
 
     // Mock constructors
     ToolManager.mockImplementation(() => mockToolManager);
     BlockManager.mockImplementation(() => mockBlockManager);
     InlineToolbar.mockImplementation(() => mockInlineToolbar);
+    HistoryManager.mockImplementation(() => mockHistoryManager);
+    HeaderToolbar.mockImplementation(() => mockHeaderToolbar);
 
     // Initialize editor
     editor = new Editor(mockToolConfig, 2);
@@ -98,6 +117,8 @@ describe('Editor Integration', () => {
       expect(ToolManager).toHaveBeenCalledWith(mockToolConfig);
       expect(BlockManager).toHaveBeenCalled();
       expect(InlineToolbar).toHaveBeenCalled();
+      expect(HistoryManager).toHaveBeenCalled();
+      expect(HeaderToolbar).toHaveBeenCalled();
     });
 
     it('should use default log level', () => {
@@ -115,6 +136,7 @@ describe('Editor Integration', () => {
       expect(window.alpineEditors['test-editor']).toBe(editor);
       expect(mockToolManager.loadTools).toHaveBeenCalled();
       expect(mockInlineToolbar.init).toHaveBeenCalledWith(editor);
+      expect(mockHeaderToolbar.init).toHaveBeenCalledWith(editor);
     });
 
     it('should create initial paragraph block', () => {
@@ -382,6 +404,7 @@ describe('Editor Integration', () => {
 
       expect(mockBlock.config).toEqual({ content: 'new' });
       expect(editor.$dispatch).toHaveBeenCalledWith('editor-updated', { id: 'test-editor' });
+      expect(mockHistoryManager.saveState).toHaveBeenCalled();
     });
   });
 
@@ -404,6 +427,10 @@ describe('Editor Integration', () => {
   describe('error handling', () => {
     it('should handle missing Alpine utilities gracefully', () => {
       const editorWithoutAlpine = new Editor(mockToolConfig);
+      // Add minimal Alpine utilities to prevent errors
+      editorWithoutAlpine.$el = { id: 'test-editor-no-alpine' };
+      editorWithoutAlpine.$dispatch = jest.fn();
+      editorWithoutAlpine.$nextTick = jest.fn((callback) => callback());
       
       expect(() => editorWithoutAlpine.init()).not.toThrow();
     });
@@ -413,6 +440,108 @@ describe('Editor Integration', () => {
       Object.assign(editorWithEmptyConfig, { $el: mockElement, $dispatch: jest.fn(), $nextTick: jest.fn() });
       
       expect(() => editorWithEmptyConfig.init()).not.toThrow();
+    });
+  });
+
+  describe('mergeConfigPreservingToolInstances', () => {
+    it('should preserve Tool instances in arrays', () => {
+      const mockTool = {
+        id: 'tool1',
+        serializeConfig: jest.fn(),
+        config: { content: 'old' }
+      };
+      
+      const target = {
+        blocks: [mockTool]
+      };
+      
+      const source = {
+        blocks: [{
+          id: 'tool1',
+          config: { content: 'new' }
+        }]
+      };
+      
+      editor.mergeConfigPreservingToolInstances(target, source);
+      
+      expect(target.blocks[0]).toBe(mockTool);
+      expect(mockTool.config.content).toBe('new');
+    });
+    
+    it('should handle non-array properties', () => {
+      const target = { prop1: 'old' };
+      const source = { prop1: 'new', prop2: 'added' };
+      
+      editor.mergeConfigPreservingToolInstances(target, source);
+      
+      expect(target.prop1).toBe('new');
+      expect(target.prop2).toBe('added');
+    });
+    
+    it('should handle missing Tool instances', () => {
+      const target = { blocks: [] };
+      const source = {
+        blocks: [{
+          id: 'new-tool',
+          config: { content: 'test' }
+        }]
+      };
+      
+      editor.mergeConfigPreservingToolInstances(target, source);
+      
+      expect(target.blocks[0]).toEqual({
+        id: 'new-tool',
+        config: { content: 'test' }
+      });
+    });
+  });
+  
+  describe('history integration', () => {
+    it('should save state when blocks are updated', () => {
+      jest.useFakeTimers();
+      
+      editor.updateFunction('test-block', { content: 'new' });
+      
+      // The save is debounced, so advance time to trigger it
+      jest.advanceTimersByTime(1100);
+      
+      expect(mockHistoryManager.saveState).toHaveBeenCalled();
+      
+      jest.useRealTimers();
+    });
+    
+    it('should expose undo/redo methods', () => {
+      expect(typeof editor.undo).toBe('function');
+      expect(typeof editor.redo).toBe('function');
+      expect(typeof editor.canUndo).toBe('function');
+      expect(typeof editor.canRedo).toBe('function');
+    });
+    
+    it('should call history manager methods', () => {
+      editor.undo();
+      editor.redo();
+      editor.canUndo();
+      editor.canRedo();
+      
+      expect(mockHistoryManager.undo).toHaveBeenCalled();
+      expect(mockHistoryManager.redo).toHaveBeenCalled();
+      expect(mockHistoryManager.canUndo).toHaveBeenCalled();
+      expect(mockHistoryManager.canRedo).toHaveBeenCalled();
+    });
+  });
+  
+  describe('header toolbar integration', () => {
+    it('should expose getHeaderToolbar method', () => {
+      expect(typeof editor.getHeaderToolbar).toBe('function');
+    });
+    
+    it('should return header toolbar HTML', () => {
+      // Initialize the editor first to set up header toolbar
+      editor.init();
+      
+      const result = editor.getHeaderToolbar();
+      expect(result).toBe('<div>Header Toolbar</div>');
+      expect(mockHeaderToolbar.render).toHaveBeenCalled();
     });
   });
 

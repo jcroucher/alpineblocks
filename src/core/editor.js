@@ -116,6 +116,22 @@ export class Editor {
     }
 
     /**
+     * Check if undo is available
+     * @returns {boolean} Whether undo is possible
+     */
+    canUndo() {
+        return this.historyManager.canUndo();
+    }
+
+    /**
+     * Check if redo is available
+     * @returns {boolean} Whether redo is possible
+     */
+    canRedo() {
+        return this.historyManager.canRedo();
+    }
+
+    /**
      * Save current state to history
      * @param {string} action - Description of the action
      */
