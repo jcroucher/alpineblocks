@@ -21,16 +21,16 @@ class VideoPlayer extends Tool {
                 label: 'Video URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    :value="block.config.url"
+                    value="${this.config.url}"
                     placeholder="Enter video URL">`
             },
             {
                 name: 'type',
                 label: 'Video Type',
-                html: `<select @change="trigger('${this.id}', 'type', $event.target.value)">
-                    <option value="youtube">YouTube</option>
-                    <option value="vimeo">Vimeo</option>
-                    <option value="direct">Direct URL</option>
+                html: `<select @change="trigger('${this.id}', 'type', $event.target.value)" value="${this.config.type}">
+                    <option value="youtube" ${this.config.type === 'youtube' ? 'selected' : ''}>YouTube</option>
+                    <option value="vimeo" ${this.config.type === 'vimeo' ? 'selected' : ''}>Vimeo</option>
+                    <option value="direct" ${this.config.type === 'direct' ? 'selected' : ''}>Direct URL</option>
                 </select>`
             },
             {
@@ -39,7 +39,7 @@ class VideoPlayer extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'autoplay', $event.target.checked)"
-                        :checked="block.config.autoplay">
+                        ${this.config.autoplay ? 'checked' : ''}>
                     Autoplay
                 </label>`
             },
@@ -49,7 +49,7 @@ class VideoPlayer extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'controls', $event.target.checked)"
-                        :checked="block.config.controls">
+                        ${this.config.controls ? 'checked' : ''}>
                     Show Controls
                 </label>`
             },
@@ -59,7 +59,7 @@ class VideoPlayer extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'muted', $event.target.checked)"
-                        :checked="block.config.muted">
+                        ${this.config.muted ? 'checked' : ''}>
                     Muted
                 </label>`
             },
@@ -69,17 +69,17 @@ class VideoPlayer extends Tool {
                 html: `<label>
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'loop', $event.target.checked)"
-                        :checked="block.config.loop">
+                        ${this.config.loop ? 'checked' : ''}>
                     Loop
                 </label>`
             },
             {
                 name: 'aspectRatio',
                 label: 'Aspect Ratio',
-                html: `<select @change="trigger('${this.id}', 'aspectRatio', $event.target.value)">
-                    <option value="16:9">16:9 (Widescreen)</option>
-                    <option value="4:3">4:3 (Standard)</option>
-                    <option value="1:1">1:1 (Square)</option>
+                html: `<select @change="trigger('${this.id}', 'aspectRatio', $event.target.value)" value="${this.config.aspectRatio}">
+                    <option value="16:9" ${this.config.aspectRatio === '16:9' ? 'selected' : ''}>16:9 (Widescreen)</option>
+                    <option value="4:3" ${this.config.aspectRatio === '4:3' ? 'selected' : ''}>4:3 (Standard)</option>
+                    <option value="1:1" ${this.config.aspectRatio === '1:1' ? 'selected' : ''}>1:1 (Square)</option>
                 </select>`
             },
             {
@@ -87,7 +87,7 @@ class VideoPlayer extends Tool {
                 label: 'Caption',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'caption', $event.target.value)"
-                    :value="block.config.caption"
+                    value="${this.config.caption}"
                     placeholder="Enter video caption">`
             }
         ];
@@ -161,12 +161,38 @@ class VideoPlayer extends Tool {
     editorRender() {
         return `<figure class="video-block">
             ${this.getVideoEmbed()}
-            <figcaption 
-                contenteditable="true"
-                x-html="block.config.caption"
-                @blur="block.config.caption = $event.target.innerHTML"
-                x-show="block.config.caption.length > 0">${this.config.caption}</figcaption>
-        </figure>`;
+            ${this.config.caption || this.config.caption === '' ? `
+                <figcaption 
+                    contenteditable="true"
+                    @blur="updateCaption($event.target.innerHTML)"
+                    placeholder="Enter video caption..."
+                    style="${this.config.caption ? '' : 'color: #999; font-style: italic;'}">${this.config.caption || 'Enter video caption...'}</figcaption>
+            ` : ''}
+        </figure>
+        
+        <script>
+            if (typeof window.updateVideoCaption === 'undefined') {
+                window.updateVideoCaption = function(blockId, caption) {
+                    // Find the editor instance and update the block
+                    for (const editorId in window.alpineEditors) {
+                        const editor = window.alpineEditors[editorId];
+                        if (editor && editor.blocks) {
+                            const block = editor.blocks.find(b => b.id === blockId);
+                            if (block) {
+                                block.config.caption = caption;
+                                block.triggerRedraw();
+                                break;
+                            }
+                        }
+                    }
+                };
+                
+                window.updateCaption = function(caption) {
+                    // This will be bound to the specific block context
+                    window.updateVideoCaption('${this.id}', caption);
+                };
+            }
+        </script>`;
     }
 
     render() {
