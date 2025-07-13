@@ -3612,33 +3612,22 @@ class $fd39480e8716551f$var$Delimiter extends (0, $7a9b6788f4274d37$export$2e2bc
         super(id, updateFunction, config);
         this.config = {
             style: this.config.style || 'line',
-            // line, dots, asterisks, custom
+            // line, dots, asterisks
             color: this.config.color || '#E8E8E8',
             width: this.config.width || '100%',
             thickness: this.config.thickness || '1px',
             spacing: this.config.spacing || '20px',
-            alignment: this.config.alignment || 'center',
-            customText: this.config.customText || '***'
+            alignment: this.config.alignment || 'center'
         };
         this.settings = [
             {
                 name: 'style',
                 label: 'Delimiter Style',
-                html: `<select @change="trigger('${this.id}', 'style', $event.target.value)">
-                    <option value="line">Line</option>
-                    <option value="dots">Dots</option>
-                    <option value="asterisks">Asterisks</option>
-                    <option value="custom">Custom Text</option>
+                html: `<select @change="trigger('${this.id}', 'style', $event.target.value)" value="${this.config.style}">
+                    <option value="line" ${this.config.style === 'line' ? 'selected' : ''}>Line</option>
+                    <option value="dots" ${this.config.style === 'dots' ? 'selected' : ''}>Dots</option>
+                    <option value="asterisks" ${this.config.style === 'asterisks' ? 'selected' : ''}>Asterisks</option>
                 </select>`
-            },
-            {
-                name: 'customText',
-                label: 'Custom Text',
-                html: `<input type="text" 
-                    @change="trigger('${this.id}', 'customText', $event.target.value)"
-                    :value="block.config.customText"
-                    x-show="block.config.style === 'custom'"
-                    placeholder="Enter custom delimiter text">`
             },
             {
                 name: 'appearance',
@@ -3646,21 +3635,21 @@ class $fd39480e8716551f$var$Delimiter extends (0, $7a9b6788f4274d37$export$2e2bc
                 html: `<div class="delimiter-appearance">
                     <input type="color" 
                         @change="trigger('${this.id}', 'color', $event.target.value)"
-                        :value="block.config.color"
+                        value="${this.config.color}"
                         title="Color">
                     <input type="text" 
                         @change="trigger('${this.id}', 'width', $event.target.value)"
-                        :value="block.config.width"
+                        value="${this.config.width}"
                         placeholder="Width (%, px)"
                         title="Width">
                     <input type="text" 
                         @change="trigger('${this.id}', 'thickness', $event.target.value)"
-                        :value="block.config.thickness"
+                        value="${this.config.thickness}"
                         placeholder="Thickness (px)"
                         title="Thickness">
                     <input type="text" 
                         @change="trigger('${this.id}', 'spacing', $event.target.value)"
-                        :value="block.config.spacing"
+                        value="${this.config.spacing}"
                         placeholder="Spacing (px)"
                         title="Spacing">
                 </div>`
@@ -3668,10 +3657,10 @@ class $fd39480e8716551f$var$Delimiter extends (0, $7a9b6788f4274d37$export$2e2bc
             {
                 name: 'alignment',
                 label: 'Alignment',
-                html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
+                html: `<select @change="trigger('${this.id}', 'alignment', $event.target.value)" value="${this.config.alignment}">
+                    <option value="left" ${this.config.alignment === 'left' ? 'selected' : ''}>Left</option>
+                    <option value="center" ${this.config.alignment === 'center' ? 'selected' : ''}>Center</option>
+                    <option value="right" ${this.config.alignment === 'right' ? 'selected' : ''}>Right</option>
                 </select>`
             }
         ];
@@ -3709,14 +3698,13 @@ class $fd39480e8716551f$var$Delimiter extends (0, $7a9b6788f4274d37$export$2e2bc
                     font-size: ${parseInt(this.config.thickness) * 2}px;">
                     * * *
                 </div>`;
-            case 'custom':
-                return `<div style="
-                    text-align: ${this.config.alignment};
-                    color: ${this.config.color};
-                    margin: ${this.config.spacing} auto;
-                    font-size: ${parseInt(this.config.thickness) * 2}px;">
-                    ${this.config.customText}
-                </div>`;
+            default:
+                // Default to line style
+                return `<hr style="
+                    border: none;
+                    height: ${this.config.thickness};
+                    background-color: ${this.config.color};
+                    margin: ${this.config.spacing} auto;">`;
         }
     }
     editorRender() {
