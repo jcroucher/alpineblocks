@@ -80,22 +80,22 @@ class Quote extends Tool {
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    :value="${this.config.textColor}">`
+                    value="${this.config.textColor}">`
             },
             {
                 name: 'backgroundColor',
                 label: 'Background Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    :value="${this.config.backgroundColor}">`
+                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
             },
             {
                 name: 'borderColor',
                 label: 'Border Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'borderColor', $event.target.value)"
-                    :value="${this.config.borderColor}"
-                    x-show="${this.config.borderStyle !== 'none'}">`
+                    value="${this.config.borderColor}"
+                    ${this.config.borderStyle === 'none' ? 'style="display:none"' : ''}>`
             }
         ];
     }
