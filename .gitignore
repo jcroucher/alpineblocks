@@ -8,10 +8,13 @@ yarn-error.log*
 dist-dev/
 build/
 .parcel-cache/
-# Keep dist/ for GitHub Pages but ignore hashed build artifacts
+# Keep dist/ for GitHub Pages but ignore build artifacts
 !dist/
 dist/examples.*.css
 dist/examples.*.js
+dist/index.js
+dist/index.esm.js
+dist/index.css
 
 # Environment files
 .env
