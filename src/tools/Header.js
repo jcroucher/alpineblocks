@@ -48,7 +48,7 @@ class Header extends Tool {
                 label: 'Anchor ID',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'anchor', $event.target.value)"
-                    :value="block.config.anchor"
+                    value="${this.config.anchor}"
                     placeholder="Optional anchor ID">`
             },
             {
@@ -75,7 +75,7 @@ class Header extends Tool {
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    :value="block.config.textColor">`
+                    value="${this.config.textColor}">`
             }
         ];
     }
