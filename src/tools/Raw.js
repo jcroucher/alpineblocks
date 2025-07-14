@@ -5,6 +5,7 @@ function rawCodeEditor() {
     return {
         isValid: true,
         debounceTimer: null,
+        updateTimer: null,
         previewContent: '',
         block: null,
         showPreview: false,
@@ -27,6 +28,18 @@ function rawCodeEditor() {
             if (this.block) {
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
+                // Set initial preview mode based on block config
+                this.showPreview = this.block.config.showPreview === true;
+                
+                
+                // Use nextTick to ensure Alpine has fully initialized
+                this.$nextTick(() => {
+                    this.showPreview = this.block.config.showPreview === true;
+                    // Force update preview content
+                    if (this.showPreview && this.block.config.content) {
+                        this.previewContent = this.block.config.content;
+                    }
+                });
             }
         },
         
@@ -139,10 +152,13 @@ class Raw extends Tool {
     constructor({id, updateFunction, config}) {
         super(id, updateFunction, config);
 
+
         this.config = {
-            content: this.config.content || '',
-            mode: this.config.mode || 'html' // html, css, javascript
+            content: config.content || '',
+            mode: config.mode || 'html', // html, css, javascript
+            showPreview: config.showPreview || false
         };
+
 
         this.settings = [
             {
@@ -301,7 +317,21 @@ class Raw extends Tool {
                     <div x-show="!previewContent || previewContent.trim() === ''" class="preview-placeholder">
                         Enter some HTML code and it will appear here...
                     </div>
-                    <div x-show="previewContent && previewContent.trim() !== ''" x-html="previewContent"></div>
+                    <div x-show="previewContent && previewContent.trim() !== ''" 
+                         x-html="previewContent"
+                         x-ref="previewContainer"
+                         @input="
+                            if ($event.target.hasAttribute('contenteditable')) {
+                                clearTimeout(updateTimer);
+                                updateTimer = setTimeout(() => {
+                                    if (block) {
+                                        const newContent = $refs.previewContainer.innerHTML;
+                                        block.config.content = newContent;
+                                        previewContent = newContent;
+                                    }
+                                }, 300);
+                            }
+                         "></div>
                 </div>
             </div>
         </div>`;

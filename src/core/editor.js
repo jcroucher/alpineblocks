@@ -210,7 +210,26 @@ export class Editor {
                 }
             }
             
+            // Debug: check block content before serialization
+            if (className === 'Raw') {
+                console.log('Serializing Raw block:', {
+                    blockId: block.id,
+                    hasContent: !!block.config.content,
+                    contentStart: block.config.content?.substring(0, 50),
+                    hasHTML: block.config.content?.includes('<')
+                });
+            }
+            
             const serializedConfig = this.serializeBlockConfig(block.config);
+            
+            // Debug: check serialized content
+            if (className === 'Raw') {
+                console.log('Serialized Raw config:', {
+                    original: block.config.content?.substring(0, 50),
+                    serialized: serializedConfig.content?.substring(0, 50),
+                    hasHTML: serializedConfig.content?.includes('<')
+                });
+            }
             
             return {
                 id: block.id,
@@ -519,10 +538,72 @@ export class Editor {
                     continue;
                 }
                 
-                const newBlock = this.initBlock(toolName);
+                // For template blocks, we need to merge config before initialization
+                // So we'll create the block without initializing it first
+                const BlockClass = this.toolConfig[toolName].class;
+                const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
+                const mergedConfig = Object.assign(baseConfig, blockData.data || {});
+                
+                
+                const newBlock = new BlockClass({
+                    id: uuidv4(),
+                    updateFunction: this.updateFunction.bind(this),
+                    config: mergedConfig
+                });
+                
+                // Preserve the clean class name
+                newBlock.class = toolName;
+                
+                // Now initialize with the merged config
+                newBlock.init(this);
+                
+                
                 if (newBlock && blockData.data) {
-                    // Apply template configuration to the block
-                    Object.assign(newBlock.config, blockData.data);
+                    // Handle Columns blocks specially - they need nested blocks
+                    if (blockData.type === 'columns' && blockData.data.columns) {
+                        const columns = blockData.data.columns;
+                        
+                        // Process nested blocks for each column
+                        for (let i = 0; i < columns.length; i++) {
+                            const column = columns[i];
+                            if (column.blocks && Array.isArray(column.blocks)) {
+                                const processedNestedBlocks = [];
+                                
+                                for (const nestedBlockData of column.blocks) {
+                                    const nestedToolName = this.mapTemplateBlockToTool(nestedBlockData.type);
+                                    if (nestedToolName && this.toolConfig[nestedToolName]) {
+                                        // Create nested block with merged config
+                                        const NestedBlockClass = this.toolConfig[nestedToolName].class;
+                                        const nestedBaseConfig = JSON.parse(JSON.stringify(this.toolConfig[nestedToolName].config));
+                                        const nestedMergedConfig = Object.assign(nestedBaseConfig, nestedBlockData.data || {});
+                                        
+                                        const nestedBlock = new NestedBlockClass({
+                                            id: uuidv4(),
+                                            updateFunction: this.updateFunction.bind(this),
+                                            config: nestedMergedConfig
+                                        });
+                                        
+                                        nestedBlock.class = nestedToolName;
+                                        nestedBlock.init(this);
+                                        
+                                        if (nestedBlock) {
+                                            processedNestedBlocks.push(nestedBlock);
+                                        }
+                                    }
+                                }
+                                
+                                // Update the column with processed nested blocks
+                                columns[i] = {
+                                    ...column,
+                                    blocks: processedNestedBlocks
+                                };
+                            }
+                        }
+                        
+                        // Apply the processed columns configuration
+                        newBlock.config.columns = columns;
+                    }
+                    // Note: regular block config is already applied before initialization
                 }
                 
                 if (newBlock) {

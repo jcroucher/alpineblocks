@@ -800,6 +800,7 @@ body {
 /* Templates Section */
 .templates-section {
     padding: 0;
+    text-align: left;
 }
 
 .templates-header {
@@ -843,7 +844,13 @@ body {
 .template-preview {
     padding: var(--space-3);
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.template-header {
+    display: flex;
+    align-items: center;
     gap: var(--space-3);
 }
 
@@ -864,16 +871,11 @@ body {
     height: 16px;
 }
 
-.template-info {
-    min-width: 0;
-    flex: 1;
-}
-
 .template-name {
     font-weight: 500;
     color: var(--gray-900);
     font-size: var(--text-sm);
-    margin-bottom: 2px;
+    flex: 1;
 }
 
 .template-description {
@@ -2868,4 +2870,34 @@ body {
     background: var(--gray-100);
     color: var(--gray-500);
     font-style: italic;
+}
+
+/* Contenteditable Styles for Templates */
+.raw-block [contenteditable="true"] {
+    transition: background-color var(--transition-fast);
+    position: relative;
+}
+
+.raw-block [contenteditable="true"]:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+.raw-block [contenteditable="true"]:focus {
+    outline: none;
+    background-color: rgba(59, 130, 246, 0.1);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Show placeholder text */
+.raw-block [contenteditable="true"][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: var(--gray-400);
+    pointer-events: none;
+}
+
+/* Prevent outline on editable elements that have inline styles */
+.raw-block [contenteditable="true"][style*="outline: none"] {
+    outline: none !important;
 }

@@ -222,11 +222,11 @@
                                                          @click="handleTemplateClick($event, template)"
                                                          :title="template.description">
                                                         <div class="template-preview">
-                                                            <div class="template-icon" x-html="template.icon"></div>
-                                                            <div class="template-info">
+                                                            <div class="template-header">
+                                                                <div class="template-icon" x-html="template.icon"></div>
                                                                 <div class="template-name" x-text="template.name"></div>
-                                                                <div class="template-description" x-text="template.description"></div>
                                                             </div>
+                                                            <div class="template-description" x-text="template.description"></div>
                                                         </div>
                                                     </div>
                                                 </template>
@@ -542,14 +542,14 @@
                                 setInterval(() => {
                                     const editorEl = document.getElementById('editorjs');
                                     if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
-                                        jsonOutput = editorEl._x_dataStack[0].blocksJSON(true);
+                                        jsonOutput = editorEl._x_dataStack[0].blocksJSON(false);
                                     }
                                 }, 1000)
                              ">
                             <h2 class="text-center text-2xl font-bold text-white mb-6">Live JSON Output</h2>
                             <p class="text-center text-gray-300 mb-8">This updates automatically as you edit blocks in the demo above</p>
                             <div class="bg-gray-900 rounded-lg p-6 max-w-4xl mx-auto max-h-96 overflow-y-auto">
-                                <pre class="text-green-400 font-mono text-sm"><code class="json hljs" x-html="jsonOutput"></code></pre>
+                                <pre class="text-green-400 font-mono text-sm"><code class="json hljs" x-text="jsonOutput"></code></pre>
                             </div>
                         </div>
                     </div>
