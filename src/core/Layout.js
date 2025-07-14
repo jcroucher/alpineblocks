@@ -417,37 +417,37 @@ class Layout {
             (() => {
                 const pricingContent = `<div style='padding: 4rem 2rem; background: linear-gradient(to bottom, #f8fafc, #ffffff);'>
                     <div style='text-align: center; margin-bottom: 3rem;'>
-                        <h2 contenteditable='true' style='font-size: 36px; font-weight: bold; color: #111827; margin-bottom: 1rem; outline: none;' data-placeholder='Enter main heading'>Choose the right plan for you</h2>
-                        <p contenteditable='true' style='font-size: 20px; color: #6b7280; outline: none;' data-placeholder='Enter description'>Start building for free, then add a site plan to go live. Account plans unlock additional features.</p>
+                        <h2 style='font-size: 36px; font-weight: bold; color: #111827; margin-bottom: 1rem;'>Choose the right plan for you</h2>
+                        <p style='font-size: 20px; color: #6b7280;'>Start building for free, then add a site plan to go live. Account plans unlock additional features.</p>
                     </div>
                     <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; align-items: stretch;'>
                         <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e5e7eb; height: 100%; display: flex; flex-direction: column;'>
-                            <h3 contenteditable='true' style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem; outline: none;' data-placeholder='Plan name'>Starter</h3>
-                            <p contenteditable='true' style='font-size: 16px; color: #6b7280; margin-bottom: 2rem; outline: none;' data-placeholder='Plan description'>Perfect for side projects and experimentation.</p>
+                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem;'>Starter</h3>
+                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>Perfect for side projects and experimentation.</p>
                             <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span contenteditable='true' style='font-size: 48px; font-weight: 800; color: #111827; outline: none;' data-placeholder='Price'>$9</span>
+                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$9</span>
                                 <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
                             </div>
-                            <a href='#' contenteditable='true' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s; outline: none;' data-placeholder='Button text'>Get started</a>
+                            <a href='#' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Get started</a>
                         </div>
                         <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 2px solid #3b82f6; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); height: 100%; display: flex; flex-direction: column; transform: scale(1.05);'>
-                            <div contenteditable='true' style='position: absolute; top: -1rem; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 0.5rem 1.5rem; border-radius: 9999px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); outline: none;' data-placeholder='Badge'>Most popular</div>
-                            <h3 contenteditable='true' style='font-size: 20px; font-weight: 600; color: #111827; margin: 1rem 0 0.5rem 0; outline: none;' data-placeholder='Plan name'>Pro</h3>
-                            <p contenteditable='true' style='font-size: 16px; color: #6b7280; margin-bottom: 2rem; outline: none;' data-placeholder='Plan description'>A plan that scales with your rapidly growing business.</p>
+                            <div style='position: absolute; top: -1rem; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 0.5rem 1.5rem; border-radius: 9999px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>Most popular</div>
+                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin: 1rem 0 0.5rem 0;'>Pro</h3>
+                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>A plan that scales with your rapidly growing business.</p>
                             <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span contenteditable='true' style='font-size: 48px; font-weight: 800; color: #111827; outline: none;' data-placeholder='Price'>$29</span>
+                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$29</span>
                                 <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
                             </div>
-                            <a href='#' contenteditable='true' style='display: inline-block; background: #3b82f6; color: white; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s; outline: none;' data-placeholder='Button text'>Get started</a>
+                            <a href='#' style='display: inline-block; background: #3b82f6; color: white; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Get started</a>
                         </div>
                         <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e5e7eb; height: 100%; display: flex; flex-direction: column;'>
-                            <h3 contenteditable='true' style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem; outline: none;' data-placeholder='Plan name'>Enterprise</h3>
-                            <p contenteditable='true' style='font-size: 16px; color: #6b7280; margin-bottom: 2rem; outline: none;' data-placeholder='Plan description'>Dedicated support and infrastructure for your company.</p>
+                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem;'>Enterprise</h3>
+                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>Dedicated support and infrastructure for your company.</p>
                             <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span contenteditable='true' style='font-size: 48px; font-weight: 800; color: #111827; outline: none;' data-placeholder='Price'>$99</span>
+                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$99</span>
                                 <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
                             </div>
-                            <a href='#' contenteditable='true' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s; outline: none;' data-placeholder='Button text'>Contact sales</a>
+                            <a href='#' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Contact sales</a>
                         </div>
                     </div>
                 </div>`;

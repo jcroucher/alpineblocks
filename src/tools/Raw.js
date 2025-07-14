@@ -3,12 +3,10 @@ import Tool from '../core/Tool';
 // Alpine.js component for Raw code editor
 function rawCodeEditor() {
     return {
-        isValid: true,
-        debounceTimer: null,
-        updateTimer: null,
-        previewContent: '',
+        showPreview: true,
         block: null,
-        showPreview: false,
+        isValid: true,
+        previewContent: '',
         
         init(blockId) {
             // Find the block instance - try multiple approaches
@@ -26,21 +24,15 @@ function rawCodeEditor() {
             }
             
             if (this.block) {
+                // Set initial preview mode based on block config, defaulting to true
+                this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
-                // Set initial preview mode based on block config
-                this.showPreview = this.block.config.showPreview === true;
-                
-                
-                // Use nextTick to ensure Alpine has fully initialized
-                this.$nextTick(() => {
-                    this.showPreview = this.block.config.showPreview === true;
-                    // Force update preview content
-                    if (this.showPreview && this.block.config.content) {
-                        this.previewContent = this.block.config.content;
-                    }
-                });
             }
+        },
+        
+        handleInput(event) {
+            // Do nothing - just let the input happen
         },
         
         validateCode(content) {
@@ -108,37 +100,6 @@ function rawCodeEditor() {
                 default:
                     return true;
             }
-        },
-        
-        handleInput(event) {
-            const content = event.target.value;
-            
-            // Clear existing timer
-            clearTimeout(this.debounceTimer);
-            
-            // Set new timer for debounced update
-            this.debounceTimer = setTimeout(() => {
-                // Update validation
-                this.isValid = this.validateCode(content);
-                
-                // Always update preview content
-                this.previewContent = content;
-                
-                // Update block config
-                if (this.block) {
-                    this.block.config.content = content;
-                }
-                
-                // Force Alpine reactivity update
-                this.$nextTick && this.$nextTick(() => {
-                    // Force re-render
-                });
-            }, 500); // 500ms debounce
-        },
-        
-        // Add a method to get current preview content for debugging
-        getCurrentPreview() {
-            return this.previewContent;
         }
     };
 }
@@ -156,7 +117,7 @@ class Raw extends Tool {
         this.config = {
             content: config.content || '',
             mode: config.mode || 'html', // html, css, javascript
-            showPreview: config.showPreview || false
+            showPreview: config.showPreview !== undefined ? config.showPreview : true
         };
 
 
@@ -302,9 +263,9 @@ class Raw extends Tool {
                     x-show="!showPreview"
                     class="code-input"
                     :class="{ 'invalid': !isValid }"
-                    x-init="$el.value = block ? block.config.content : ''; previewContent = $el.value;"
+                    x-init="$el.value = block ? block.config.content : '';"
                     @input="handleInput($event)"
-                    @blur="if(block) { block.config.content = $event.target.value; previewContent = $event.target.value; }"
+                    @blur="if(block) { block.config.content = $event.target.value; }"
                     placeholder="Enter your code here..."
                     :placeholder="block ? 'Enter your ' + block.config.mode + ' code here...' : 'Enter your code here...'"
                     spellcheck="false"
@@ -314,24 +275,42 @@ class Raw extends Tool {
                     x-show="showPreview" 
                     class="preview-content" 
                     style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); padding: var(--space-4); background: white;">
-                    <div x-show="!previewContent || previewContent.trim() === ''" class="preview-placeholder">
-                        Enter some HTML code and it will appear here...
-                    </div>
-                    <div x-show="previewContent && previewContent.trim() !== ''" 
-                         x-html="previewContent"
-                         x-ref="previewContainer"
-                         @input="
-                            if ($event.target.hasAttribute('contenteditable')) {
-                                clearTimeout(updateTimer);
-                                updateTimer = setTimeout(() => {
-                                    if (block) {
-                                        const newContent = $refs.previewContainer.innerHTML;
-                                        block.config.content = newContent;
-                                        previewContent = newContent;
+                    
+                    <div x-ref="previewContainer"
+                         contenteditable="true"
+                         x-init="
+                            // Initialize with current content
+                            $el.innerHTML = block ? (block.config.content || '') : '';
+                            
+                            // Track editing state to prevent updates during typing
+                            let isEditing = false;
+                            
+                            // Store update function for external calls
+                            $el._updateFromCode = (newContent) => {
+                                if (!isEditing) {
+                                    $el.innerHTML = newContent || '';
+                                }
+                            };
+                            
+                            // Track editing state
+                            $el.addEventListener('focus', () => { isEditing = true; });
+                            $el.addEventListener('blur', () => { 
+                                // Sync changes back to code when user finishes editing
+                                if (block) {
+                                    const newContent = $el.innerHTML;
+                                    block.config.content = newContent;
+                                    // Update the textarea value
+                                    const textarea = $el.closest('.raw-block').querySelector('.code-input');
+                                    if (textarea) {
+                                        textarea.value = newContent;
                                     }
-                                }, 300);
-                            }
-                         "></div>
+                                }
+                                
+                                setTimeout(() => { isEditing = false; }, 100);
+                            });
+                         "
+                         style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px;">
+                    </div>
                 </div>
             </div>
         </div>`;
