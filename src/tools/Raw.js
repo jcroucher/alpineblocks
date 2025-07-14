@@ -103,16 +103,13 @@ function rawCodeEditor() {
         },
 
         initializePreviewContainer(element, block) {
-            console.log('🔍 initializePreviewContainer called', { element, block });
             if (!element || !block) return;
             
             // Set the HTML content
             element.innerHTML = block.config.content || '';
-            console.log('📝 Set preview content:', block.config.content);
             
             // Set up template element click handlers
             const templateElements = element.querySelectorAll('[data-tool]');
-            console.log(`🎯 Found ${templateElements.length} template elements with data-tool`);
             
             // Find the editor instance
             let editor = null;
@@ -123,17 +120,192 @@ function rawCodeEditor() {
                 }
             }
             
+            // Set up drag and drop functionality
+            this.setupDragAndDrop(element, block, editor);
+            
             templateElements.forEach(el => {
                 const toolType = el.getAttribute('data-tool');
                 const toolId = el.getAttribute('data-tool-id');
-                console.log('🔧 Setting up click handler for:', { toolType, toolId, element: el });
                 
                 if (toolType && toolId) {
                     if (editor && typeof editor.attachTemplateClickHandler === 'function') {
                         // Use the editor's method to attach the handler
                         editor.attachTemplateClickHandler(el, toolType, toolId);
-                    } else {
-                        console.log('❌ Editor not found or missing attachTemplateClickHandler method');
+                    }
+                }
+            });
+        },
+
+        setupDragAndDrop(element, block, editor) {
+            if (!editor) return;
+            
+            // Make the preview container a drop target
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show drop cursor
+                this.showDropCursor(element, e);
+            });
+            
+            element.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Only hide cursor if we're leaving the container entirely
+                if (!element.contains(e.relatedTarget)) {
+                    this.hideDropCursor(element);
+                }
+            });
+            
+            element.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Hide drop cursor
+                this.hideDropCursor(element);
+                
+                // Get the dropped tool data
+                const toolName = e.dataTransfer.getData('text/plain');
+                
+                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
+                    this.insertToolAtCursor(element, block, toolName, e, editor);
+                }
+            });
+        },
+
+        showDropCursor(element, e) {
+            // Remove existing cursor
+            this.hideDropCursor(element);
+            
+            // Find the insertion point
+            const insertionPoint = this.getInsertionPoint(element, e);
+            
+            // Create cursor element
+            const cursor = document.createElement('div');
+            cursor.id = 'raw-drop-cursor';
+            cursor.style.cssText = `
+                position: absolute;
+                height: 2px;
+                background: #3b82f6;
+                border-radius: 1px;
+                z-index: 1000;
+                pointer-events: none;
+                box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+                transition: all 0.1s ease;
+            `;
+            
+            // Position the cursor
+            if (insertionPoint.type === 'between') {
+                // Position between elements
+                const rect = insertionPoint.element.getBoundingClientRect();
+                const containerRect = element.getBoundingClientRect();
+                
+                cursor.style.left = '10px';
+                cursor.style.right = '10px';
+                cursor.style.top = `${rect.top - containerRect.top + (insertionPoint.position === 'before' ? -2 : rect.height)}px`;
+            } else {
+                // Position at the end
+                cursor.style.left = '10px';
+                cursor.style.right = '10px';
+                cursor.style.bottom = '10px';
+            }
+            
+            element.appendChild(cursor);
+        },
+
+        hideDropCursor(element) {
+            const cursor = element.querySelector('#raw-drop-cursor');
+            if (cursor) {
+                cursor.remove();
+            }
+        },
+
+        getInsertionPoint(element, e) {
+            const children = Array.from(element.children).filter(child => child.id !== 'raw-drop-cursor');
+            
+            if (children.length === 0) {
+                return { type: 'end' };
+            }
+            
+            const mouseY = e.clientY;
+            
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const rect = child.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                
+                if (mouseY < midY) {
+                    return {
+                        type: 'between',
+                        element: child,
+                        position: 'before',
+                        index: i
+                    };
+                }
+            }
+            
+            return {
+                type: 'between',
+                element: children[children.length - 1],
+                position: 'after',
+                index: children.length
+            };
+        },
+
+        insertToolAtCursor(element, block, toolName, e, editor) {
+            // Get the tool configuration
+            const toolConfig = editor.toolConfig[toolName];
+            if (!toolConfig || !toolConfig.class) {
+                return;
+            }
+            
+            // Create a new tool instance
+            const ToolClass = toolConfig.class;
+            const toolId = `${toolName.toLowerCase()}-${Date.now()}`;
+            const tool = new ToolClass({
+                id: toolId,
+                updateFunction: (property, value) => {
+                    // Tool update callback
+                },
+                config: { ...toolConfig.config }
+            });
+            
+            // Generate the HTML for the tool
+            let toolHtml = '';
+            if (typeof tool.renderTemplateElement === 'function') {
+                toolHtml = tool.renderTemplateElement(toolId);
+            } else {
+                // Fallback to regular render method
+                toolHtml = tool.render();
+                // Add data attributes manually
+                toolHtml = toolHtml.replace(/^<(\w+)/, `<$1 data-tool="${toolName}" data-tool-id="${toolId}"`);
+            }
+            
+            // Find insertion point
+            const insertionPoint = this.getInsertionPoint(element, e);
+            
+            // Insert the HTML
+            if (insertionPoint.type === 'end') {
+                element.insertAdjacentHTML('beforeend', toolHtml);
+            } else {
+                const position = insertionPoint.position === 'before' ? 'beforebegin' : 'afterend';
+                insertionPoint.element.insertAdjacentHTML(position, toolHtml);
+            }
+            
+            // Update the Raw block content
+            block.config.content = element.innerHTML;
+            
+            // Re-initialize template elements
+            const newTemplateElements = element.querySelectorAll('[data-tool]');
+            newTemplateElements.forEach(el => {
+                const elToolType = el.getAttribute('data-tool');
+                const elToolId = el.getAttribute('data-tool-id');
+                
+                if (elToolType && elToolId && !el.hasAttribute('data-click-handler')) {
+                    el.setAttribute('data-click-handler', 'true');
+                    if (editor && typeof editor.attachTemplateClickHandler === 'function') {
+                        editor.attachTemplateClickHandler(el, elToolType, elToolId);
                     }
                 }
             });

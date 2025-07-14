@@ -337,14 +337,12 @@ export class Editor {
      * @returns {Array|null} Array of settings or null if not found
      */
     getSettings(blockId) {
-        console.log('🎯 getSettings called with blockId:', blockId);
         if (!blockId) {
             return null;
         }
         
         // Check if this is a template element (format: template-toolId)
         if (blockId.startsWith('template-')) {
-            console.log('📌 Detected template element, calling getTemplateElementSettings');
             return this.getTemplateElementSettings(blockId);
         }
         
@@ -372,55 +370,43 @@ export class Editor {
      * @returns {Array|null} Array of settings or null if not found
      */
     getTemplateElementSettings(virtualBlockId) {
-        console.log('🔍 getTemplateElementSettings called for:', virtualBlockId);
         const templateMap = window.templateElementMap;
         
         if (!templateMap) {
-            console.log('❌ No templateElementMap found');
             return null;
         }
         
         if (!templateMap[virtualBlockId]) {
-            console.log('❌ No mapping found for virtualBlockId:', virtualBlockId);
             return null;
         }
         
         const { element, toolType, toolInstance } = templateMap[virtualBlockId];
-        console.log('📋 Template mapping found:', { element, toolType, toolInstance });
         
         // If we already have a tool instance, return its settings
         if (toolInstance && toolInstance.settings) {
-            console.log('✅ Returning cached tool instance settings');
             return toolInstance.settings;
         }
         
         // Create a tool instance for this template element
         const toolConfig = this.toolConfig[toolType];
-        console.log('🔧 Tool config for type:', toolType, toolConfig);
         
         if (!toolConfig || !toolConfig.class) {
-            console.log('❌ No tool config or class found for:', toolType);
             return null;
         }
         
         // Extract current values from the element
         const config = this.extractElementConfig(toolType, element);
-        console.log('📝 Extracted element config:', config);
         
         // Create tool instance
         const ToolClass = toolConfig.class;
         const tool = new ToolClass({
             id: virtualBlockId,
             updateFunction: (property, value) => {
-                console.log('🔄 Update function called:', { property, value });
                 // Update the actual element when properties change
                 this.updateTemplateElement(element, toolType, property, value);
             },
             config: config
         });
-        
-        console.log('🏗️ Created tool instance:', tool);
-        console.log('⚙️ Tool settings:', tool.settings);
         
         // Store the tool instance for future use
         templateMap[virtualBlockId].toolInstance = tool;
@@ -478,15 +464,12 @@ export class Editor {
      * @param {any} value - New value
      */
     updateTemplateElement(element, toolType, property, value) {
-        console.log('🔄 updateTemplateElement called:', { element, toolType, property, value });
-        
         // Get the tool instance from the template map
         const toolId = element.getAttribute('data-tool-id');
         const virtualBlockId = `template-${toolId}`;
         const templateMap = window.templateElementMap;
         
         if (!templateMap || !templateMap[virtualBlockId] || !templateMap[virtualBlockId].toolInstance) {
-            console.log('❌ No tool instance found for update');
             return;
         }
         
@@ -494,13 +477,11 @@ export class Editor {
         
         // Update the tool's config
         tool.config[property] = value;
-        console.log('📝 Updated tool config:', tool.config);
         
         // Check if the tool has a renderTemplateElement method
         if (typeof tool.renderTemplateElement === 'function') {
             // Get fresh HTML from the tool
             const newHtml = tool.renderTemplateElement(toolId);
-            console.log('🎨 Generated new HTML:', newHtml);
             
             // Create a temporary container to parse the HTML
             const temp = document.createElement('div');
@@ -522,8 +503,6 @@ export class Editor {
             }
         } else {
             // Fallback to manual property updates for tools without renderTemplateElement
-            console.log('⚠️ Tool does not have renderTemplateElement method, using fallback');
-            
             switch(toolType) {
                 case 'Header':
                     if (property === 'content') {
@@ -575,8 +554,6 @@ export class Editor {
         element.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            
-            console.log('🖱️ Template element clicked!', { toolType, toolId });
             
             const virtualBlockId = `template-${toolId}`;
             

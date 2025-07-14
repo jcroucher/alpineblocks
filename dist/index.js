@@ -697,13 +697,9 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
    * @param {string} blockId - ID of the block (may be composite for nested blocks)
    * @returns {Array|null} Array of settings or null if not found
    */ getSettings(blockId) {
-        console.log("\uD83C\uDFAF getSettings called with blockId:", blockId);
         if (!blockId) return null;
         // Check if this is a template element (format: template-toolId)
-        if (blockId.startsWith('template-')) {
-            console.log("\uD83D\uDCCC Detected template element, calling getTemplateElementSettings");
-            return this.getTemplateElementSettings(blockId);
-        }
+        if (blockId.startsWith('template-')) return this.getTemplateElementSettings(blockId);
         // Check if this is a nested block (format: parentId::nestedId)
         if (blockId.includes('::')) {
             const [parentId, nestedId] = blockId.split('::');
@@ -723,53 +719,27 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
    * @param {string} virtualBlockId - Virtual block ID for template element
    * @returns {Array|null} Array of settings or null if not found
    */ getTemplateElementSettings(virtualBlockId) {
-        console.log("\uD83D\uDD0D getTemplateElementSettings called for:", virtualBlockId);
         const templateMap = window.templateElementMap;
-        if (!templateMap) {
-            console.log("\u274C No templateElementMap found");
-            return null;
-        }
-        if (!templateMap[virtualBlockId]) {
-            console.log("\u274C No mapping found for virtualBlockId:", virtualBlockId);
-            return null;
-        }
+        if (!templateMap) return null;
+        if (!templateMap[virtualBlockId]) return null;
         const { element: element, toolType: toolType, toolInstance: toolInstance } = templateMap[virtualBlockId];
-        console.log("\uD83D\uDCCB Template mapping found:", {
-            element: element,
-            toolType: toolType,
-            toolInstance: toolInstance
-        });
         // If we already have a tool instance, return its settings
-        if (toolInstance && toolInstance.settings) {
-            console.log("\u2705 Returning cached tool instance settings");
-            return toolInstance.settings;
-        }
+        if (toolInstance && toolInstance.settings) return toolInstance.settings;
         // Create a tool instance for this template element
         const toolConfig = this.toolConfig[toolType];
-        console.log("\uD83D\uDD27 Tool config for type:", toolType, toolConfig);
-        if (!toolConfig || !toolConfig.class) {
-            console.log("\u274C No tool config or class found for:", toolType);
-            return null;
-        }
+        if (!toolConfig || !toolConfig.class) return null;
         // Extract current values from the element
         const config = this.extractElementConfig(toolType, element);
-        console.log("\uD83D\uDCDD Extracted element config:", config);
         // Create tool instance
         const ToolClass = toolConfig.class;
         const tool = new ToolClass({
             id: virtualBlockId,
             updateFunction: (property, value)=>{
-                console.log("\uD83D\uDD04 Update function called:", {
-                    property: property,
-                    value: value
-                });
                 // Update the actual element when properties change
                 this.updateTemplateElement(element, toolType, property, value);
             },
             config: config
         });
-        console.log("\uD83C\uDFD7\uFE0F Created tool instance:", tool);
-        console.log("\u2699\uFE0F Tool settings:", tool.settings);
         // Store the tool instance for future use
         templateMap[virtualBlockId].toolInstance = tool;
         return tool.settings || null;
@@ -813,29 +783,18 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
    * @param {string} property - Property name
    * @param {any} value - New value
    */ updateTemplateElement(element, toolType, property, value) {
-        console.log("\uD83D\uDD04 updateTemplateElement called:", {
-            element: element,
-            toolType: toolType,
-            property: property,
-            value: value
-        });
         // Get the tool instance from the template map
         const toolId = element.getAttribute('data-tool-id');
         const virtualBlockId = `template-${toolId}`;
         const templateMap = window.templateElementMap;
-        if (!templateMap || !templateMap[virtualBlockId] || !templateMap[virtualBlockId].toolInstance) {
-            console.log("\u274C No tool instance found for update");
-            return;
-        }
+        if (!templateMap || !templateMap[virtualBlockId] || !templateMap[virtualBlockId].toolInstance) return;
         const tool = templateMap[virtualBlockId].toolInstance;
         // Update the tool's config
         tool.config[property] = value;
-        console.log("\uD83D\uDCDD Updated tool config:", tool.config);
         // Check if the tool has a renderTemplateElement method
         if (typeof tool.renderTemplateElement === 'function') {
             // Get fresh HTML from the tool
             const newHtml = tool.renderTemplateElement(toolId);
-            console.log("\uD83C\uDFA8 Generated new HTML:", newHtml);
             // Create a temporary container to parse the HTML
             const temp = document.createElement('div');
             temp.innerHTML = newHtml;
@@ -850,34 +809,31 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                 // Use the new element for syncing
                 element = newElement;
             }
-        } else {
-            // Fallback to manual property updates for tools without renderTemplateElement
-            console.log("\u26A0\uFE0F Tool does not have renderTemplateElement method, using fallback");
-            switch(toolType){
-                case 'Header':
-                    if (property === 'content') element.textContent = value;
-                    else if (property === 'level') {
-                        // Create new header element with correct level
-                        const newTag = `h${value}`;
-                        const newElement = document.createElement(newTag);
-                        newElement.textContent = element.textContent;
-                        // Copy attributes
-                        Array.from(element.attributes).forEach((attr)=>{
-                            newElement.setAttribute(attr.name, attr.value);
-                        });
-                        element.replaceWith(newElement);
-                        element = newElement;
-                    }
-                    break;
-                case 'Paragraph':
-                    if (property === 'content') element.innerHTML = value;
-                    break;
-                case 'Button':
-                    if (property === 'text') element.textContent = value;
-                    else if (property === 'url') element.href = value;
-                    else if (property === 'style') element.className = value;
-                    break;
-            }
+        } else // Fallback to manual property updates for tools without renderTemplateElement
+        switch(toolType){
+            case 'Header':
+                if (property === 'content') element.textContent = value;
+                else if (property === 'level') {
+                    // Create new header element with correct level
+                    const newTag = `h${value}`;
+                    const newElement = document.createElement(newTag);
+                    newElement.textContent = element.textContent;
+                    // Copy attributes
+                    Array.from(element.attributes).forEach((attr)=>{
+                        newElement.setAttribute(attr.name, attr.value);
+                    });
+                    element.replaceWith(newElement);
+                    element = newElement;
+                }
+                break;
+            case 'Paragraph':
+                if (property === 'content') element.innerHTML = value;
+                break;
+            case 'Button':
+                if (property === 'text') element.textContent = value;
+                else if (property === 'url') element.href = value;
+                else if (property === 'style') element.className = value;
+                break;
         }
         // Sync changes back to the Raw block
         this.syncTemplateToRawBlock(element);
@@ -892,10 +848,6 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         element.addEventListener('click', (e)=>{
             e.stopPropagation();
             e.preventDefault();
-            console.log("\uD83D\uDDB1\uFE0F Template element clicked!", {
-                toolType: toolType,
-                toolId: toolId
-            });
             const virtualBlockId = `template-${toolId}`;
             // Update element mapping
             window.templateElementMap = window.templateElementMap || {};
@@ -4558,35 +4510,158 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
             }
         },
         initializePreviewContainer (element, block) {
-            console.log("\uD83D\uDD0D initializePreviewContainer called", {
-                element: element,
-                block: block
-            });
             if (!element || !block) return;
             // Set the HTML content
             element.innerHTML = block.config.content || '';
-            console.log("\uD83D\uDCDD Set preview content:", block.config.content);
             // Set up template element click handlers
             const templateElements = element.querySelectorAll('[data-tool]');
-            console.log(`\u{1F3AF} Found ${templateElements.length} template elements with data-tool`);
             // Find the editor instance
             let editor = null;
             if (window.alpineEditors) for(const editorId in window.alpineEditors){
                 editor = window.alpineEditors[editorId];
                 if (editor) break;
             }
+            // Set up drag and drop functionality
+            this.setupDragAndDrop(element, block, editor);
             templateElements.forEach((el)=>{
                 const toolType = el.getAttribute('data-tool');
                 const toolId = el.getAttribute('data-tool-id');
-                console.log("\uD83D\uDD27 Setting up click handler for:", {
-                    toolType: toolType,
-                    toolId: toolId,
-                    element: el
-                });
                 if (toolType && toolId) {
                     if (editor && typeof editor.attachTemplateClickHandler === 'function') // Use the editor's method to attach the handler
                     editor.attachTemplateClickHandler(el, toolType, toolId);
-                    else console.log("\u274C Editor not found or missing attachTemplateClickHandler method");
+                }
+            });
+        },
+        setupDragAndDrop (element, block, editor) {
+            if (!editor) return;
+            // Make the preview container a drop target
+            element.addEventListener('dragover', (e)=>{
+                e.preventDefault();
+                e.stopPropagation();
+                // Show drop cursor
+                this.showDropCursor(element, e);
+            });
+            element.addEventListener('dragleave', (e)=>{
+                e.preventDefault();
+                e.stopPropagation();
+                // Only hide cursor if we're leaving the container entirely
+                if (!element.contains(e.relatedTarget)) this.hideDropCursor(element);
+            });
+            element.addEventListener('drop', (e)=>{
+                e.preventDefault();
+                e.stopPropagation();
+                // Hide drop cursor
+                this.hideDropCursor(element);
+                // Get the dropped tool data
+                const toolName = e.dataTransfer.getData('text/plain');
+                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) this.insertToolAtCursor(element, block, toolName, e, editor);
+            });
+        },
+        showDropCursor (element, e) {
+            // Remove existing cursor
+            this.hideDropCursor(element);
+            // Find the insertion point
+            const insertionPoint = this.getInsertionPoint(element, e);
+            // Create cursor element
+            const cursor = document.createElement('div');
+            cursor.id = 'raw-drop-cursor';
+            cursor.style.cssText = `
+                position: absolute;
+                height: 2px;
+                background: #3b82f6;
+                border-radius: 1px;
+                z-index: 1000;
+                pointer-events: none;
+                box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+                transition: all 0.1s ease;
+            `;
+            // Position the cursor
+            if (insertionPoint.type === 'between') {
+                // Position between elements
+                const rect = insertionPoint.element.getBoundingClientRect();
+                const containerRect = element.getBoundingClientRect();
+                cursor.style.left = '10px';
+                cursor.style.right = '10px';
+                cursor.style.top = `${rect.top - containerRect.top + (insertionPoint.position === 'before' ? -2 : rect.height)}px`;
+            } else {
+                // Position at the end
+                cursor.style.left = '10px';
+                cursor.style.right = '10px';
+                cursor.style.bottom = '10px';
+            }
+            element.appendChild(cursor);
+        },
+        hideDropCursor (element) {
+            const cursor = element.querySelector('#raw-drop-cursor');
+            if (cursor) cursor.remove();
+        },
+        getInsertionPoint (element, e) {
+            const children = Array.from(element.children).filter((child)=>child.id !== 'raw-drop-cursor');
+            if (children.length === 0) return {
+                type: 'end'
+            };
+            const mouseY = e.clientY;
+            for(let i = 0; i < children.length; i++){
+                const child = children[i];
+                const rect = child.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (mouseY < midY) return {
+                    type: 'between',
+                    element: child,
+                    position: 'before',
+                    index: i
+                };
+            }
+            return {
+                type: 'between',
+                element: children[children.length - 1],
+                position: 'after',
+                index: children.length
+            };
+        },
+        insertToolAtCursor (element, block, toolName, e, editor) {
+            // Get the tool configuration
+            const toolConfig = editor.toolConfig[toolName];
+            if (!toolConfig || !toolConfig.class) return;
+            // Create a new tool instance
+            const ToolClass = toolConfig.class;
+            const toolId = `${toolName.toLowerCase()}-${Date.now()}`;
+            const tool = new ToolClass({
+                id: toolId,
+                updateFunction: (property, value)=>{
+                // Tool update callback
+                },
+                config: {
+                    ...toolConfig.config
+                }
+            });
+            // Generate the HTML for the tool
+            let toolHtml = '';
+            if (typeof tool.renderTemplateElement === 'function') toolHtml = tool.renderTemplateElement(toolId);
+            else {
+                // Fallback to regular render method
+                toolHtml = tool.render();
+                // Add data attributes manually
+                toolHtml = toolHtml.replace(/^<(\w+)/, `<$1 data-tool="${toolName}" data-tool-id="${toolId}"`);
+            }
+            // Find insertion point
+            const insertionPoint = this.getInsertionPoint(element, e);
+            // Insert the HTML
+            if (insertionPoint.type === 'end') element.insertAdjacentHTML('beforeend', toolHtml);
+            else {
+                const position = insertionPoint.position === 'before' ? 'beforebegin' : 'afterend';
+                insertionPoint.element.insertAdjacentHTML(position, toolHtml);
+            }
+            // Update the Raw block content
+            block.config.content = element.innerHTML;
+            // Re-initialize template elements
+            const newTemplateElements = element.querySelectorAll('[data-tool]');
+            newTemplateElements.forEach((el)=>{
+                const elToolType = el.getAttribute('data-tool');
+                const elToolId = el.getAttribute('data-tool-id');
+                if (elToolType && elToolId && !el.hasAttribute('data-click-handler')) {
+                    el.setAttribute('data-click-handler', 'true');
+                    if (editor && typeof editor.attachTemplateClickHandler === 'function') editor.attachTemplateClickHandler(el, elToolType, elToolId);
                 }
             });
         }
