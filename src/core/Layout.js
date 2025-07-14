@@ -129,12 +129,7 @@ class Layout {
                 'modern-hero',
                 'Modern Hero',
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
-                `<div data-block="raw" data-config-content="<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'>">
-                </div>
-                <h1 data-block="header" data-config-level="h1" data-config-textColor="#ffffff" data-config-fontSize="48px" data-config-alignment="center" data-config-fontWeight="bold">Transform Your Business Today</h1>
-                <p data-block="paragraph" data-config-fontSize="20px" data-config-textColor="rgba(255,255,255,0.9)" data-config-alignment="center">Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.</p>
-                <div data-block="button" data-config-text="Get Started Free" data-config-style="primary" data-config-size="large" data-config-alignment="center"></div>
-                <div data-block="raw" data-config-content="</div>">
+                `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;">
                 </div>`,
                 'Professional hero section with gradient background, compelling copy, and CTA'
             ),
@@ -316,102 +311,38 @@ class Layout {
             ),
 
             // 4. Article with Sidebar
-            new Layout(
-                'article-sidebar',
-                'Article + Sidebar',
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h6"/></svg>',
-                `<div data-block="columns" data-config-columns='[
-                    {
-                        "blocks": [
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h1",
-                                    "content": "Understanding Modern Web Development",
-                                    "fontSize": "36px",
-                                    "fontWeight": "bold",
-                                    "textColor": "#111827"
-                                }
-                            },
-                            {
-                                "type": "paragraph",
-                                "data": {
-                                    "content": "The landscape of web development has evolved dramatically over the past decade. Modern frameworks and tools have made it possible to create sophisticated applications with improved performance and user experience.",
-                                    "fontSize": "18px",
-                                    "textColor": "#374151",
-                                    "lineHeight": "1.7"
-                                }
-                            },
-                            {
-                                "type": "image",
-                                "data": {
-                                    "src": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=400&fit=crop",
-                                    "alt": "Modern web development",
-                                    "width": "100%",
-                                    "caption": "Modern development tools and practices"
-                                }
-                            },
-                            {
-                                "type": "paragraph",
-                                "data": {
-                                    "content": "Today's developers have access to an unprecedented array of tools and frameworks that streamline the development process and enable rapid prototyping and deployment.",
-                                    "fontSize": "18px",
-                                    "textColor": "#374151",
-                                    "lineHeight": "1.7"
-                                }
-                            }
-                        ],
-                        "width": "2fr"
-                    },
-                    {
-                        "blocks": [
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h3",
-                                    "content": "Related Topics",
-                                    "fontSize": "20px",
-                                    "fontWeight": "semibold",
-                                    "textColor": "#111827"
-                                }
-                            },
-                            {
-                                "type": "list",
-                                "data": {
-                                    "style": "unordered",
-                                    "items": ["JavaScript Frameworks", "CSS Preprocessors", "Build Tools", "Testing Strategies", "Deployment Automation"]
-                                }
-                            },
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h3",
-                                    "content": "Quick Links",
-                                    "fontSize": "20px",
-                                    "fontWeight": "semibold",
-                                    "textColor": "#111827"
-                                }
-                            },
-                            {
-                                "type": "button",
-                                "data": {
-                                    "text": "Learn More",
-                                    "style": "primary",
-                                    "size": "medium",
-                                    "url": "#"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2rem",
-                        "background": "#f9fafb",
-                        "borderRadius": "1rem",
-                        "border": "1px solid #e5e7eb"
-                    }
-                ]' data-config-gap="3rem" data-config-responsive="true">
-                </div>`,
-                'Article layout with main content area and styled sidebar with links'
-            ),
+            (() => {
+                const articleContent = `<div style='display: grid; grid-template-columns: 2fr 1fr; gap: 3rem; padding: 2rem;'>
+                    <div style='padding-right: 2rem;'>
+                        <h1 style='font-size: 36px; font-weight: bold; color: #111827; margin-bottom: 1rem;'>Understanding Modern Web Development</h1>
+                        <p style='font-size: 18px; color: #374151; line-height: 1.7; margin-bottom: 2rem;'>The landscape of web development has evolved dramatically over the past decade. Modern frameworks and tools have made it possible to create sophisticated applications with improved performance and user experience.</p>
+                        <img src='https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=400&fit=crop' alt='Modern web development' style='width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;' />
+                        <p style='font-size: 14px; color: #6b7280; text-align: center; margin-bottom: 2rem;'>Modern development tools and practices</p>
+                        <p style='font-size: 18px; color: #374151; line-height: 1.7;'>Today's developers have access to an unprecedented array of tools and frameworks that streamline the development process and enable rapid prototyping and deployment.</p>
+                    </div>
+                    <div style='padding: 2rem; background: #f9fafb; border-radius: 1rem; border: 1px solid #e5e7eb; height: fit-content;'>
+                        <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 1rem;'>Related Topics</h3>
+                        <ul style='list-style-type: disc; padding-left: 1.5rem; margin-bottom: 2rem;'>
+                            <li style='margin-bottom: 0.5rem;'>JavaScript Frameworks</li>
+                            <li style='margin-bottom: 0.5rem;'>CSS Preprocessors</li>
+                            <li style='margin-bottom: 0.5rem;'>Build Tools</li>
+                            <li style='margin-bottom: 0.5rem;'>Testing Strategies</li>
+                            <li style='margin-bottom: 0.5rem;'>Deployment Automation</li>
+                        </ul>
+                        <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 1rem;'>Quick Links</h3>
+                        <button style='background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600;'>Learn More</button>
+                    </div>
+                </div>`;
+                
+                return new Layout(
+                    'article-sidebar',
+                    'Article + Sidebar',
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h6"/></svg>',
+                    `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="${Layout.htmlEncode(articleContent)}">
+                    </div>`,
+                    'Article layout with main content area and styled sidebar with links'
+                );
+            })(),
 
             // 5. Premium Pricing Table
             (() => {
@@ -467,12 +398,7 @@ class Layout {
                 'cta-section',
                 'Call to Action',
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>',
-                `<div data-block="raw" data-config-content="<div style='background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 4rem 2rem; border-radius: 2rem; text-align: center; color: white;'>">
-                </div>
-                <h2 data-block="header" data-config-level="h2" data-config-fontSize="42px" data-config-textColor="#ffffff" data-config-alignment="center" data-config-fontWeight="bold">Ready to Get Started?</h2>
-                <p data-block="paragraph" data-config-fontSize="20px" data-config-textColor="rgba(255,255,255,0.8)" data-config-alignment="center">Join over 10,000 companies that have accelerated their growth with our platform. Start your free trial today.</p>
-                <div data-block="button" data-config-text="Start Free Trial" data-config-style="primary" data-config-size="large" data-config-alignment="center"></div>
-                <div data-block="raw" data-config-content="<p style='margin-top: 2rem; font-size: 14px; color: rgba(255,255,255,0.6);'>No credit card required • 14-day free trial • Cancel anytime</p></div>">
+                `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 4rem 2rem; border-radius: 2rem; text-align: center; color: white;'&gt;&lt;h2 style='font-size: 42px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Ready to Get Started?&lt;/h2&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.8); text-align: center; margin-bottom: 2rem;'&gt;Join over 10,000 companies that have accelerated their growth with our platform. Start your free trial today.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer; margin-bottom: 2rem;'&gt;Start Free Trial&lt;/button&gt;&lt;p style='margin-top: 2rem; font-size: 14px; color: rgba(255,255,255,0.6);'&gt;No credit card required • 14-day free trial • Cancel anytime&lt;/p&gt;&lt;/div&gt;">
                 </div>`,
                 'High-converting call-to-action section with trust indicators'
             )
