@@ -212,23 +212,23 @@ export class Editor {
             
             // Debug: check block content before serialization
             if (className === 'Raw') {
-                console.log('Serializing Raw block:', {
-                    blockId: block.id,
-                    hasContent: !!block.config.content,
-                    contentStart: block.config.content?.substring(0, 50),
-                    hasHTML: block.config.content?.includes('<')
-                });
+                // console.log('Serializing Raw block:', {
+                //     blockId: block.id,
+                //     hasContent: !!block.config.content,
+                //     contentStart: block.config.content?.substring(0, 50),
+                //     hasHTML: block.config.content?.includes('<')
+                // });
             }
             
             const serializedConfig = this.serializeBlockConfig(block.config);
             
             // Debug: check serialized content
             if (className === 'Raw') {
-                console.log('Serialized Raw config:', {
-                    original: block.config.content?.substring(0, 50),
-                    serialized: serializedConfig.content?.substring(0, 50),
-                    hasHTML: serializedConfig.content?.includes('<')
-                });
+                // console.log('Serialized Raw config:', {
+                //     original: block.config.content?.substring(0, 50),
+                //     serialized: serializedConfig.content?.substring(0, 50),
+                //     hasHTML: serializedConfig.content?.includes('<')
+                // });
             }
             
             return {
@@ -337,8 +337,15 @@ export class Editor {
      * @returns {Array|null} Array of settings or null if not found
      */
     getSettings(blockId) {
+        console.log('🎯 getSettings called with blockId:', blockId);
         if (!blockId) {
             return null;
+        }
+        
+        // Check if this is a template element (format: template-toolId)
+        if (blockId.startsWith('template-')) {
+            console.log('📌 Detected template element, calling getTemplateElementSettings');
+            return this.getTemplateElementSettings(blockId);
         }
         
         // Check if this is a nested block (format: parentId::nestedId)
@@ -358,6 +365,257 @@ export class Editor {
         const settings = block ? block.settings : null;
         return settings;
     }
+
+    /**
+     * Get settings for template elements
+     * @param {string} virtualBlockId - Virtual block ID for template element
+     * @returns {Array|null} Array of settings or null if not found
+     */
+    getTemplateElementSettings(virtualBlockId) {
+        console.log('🔍 getTemplateElementSettings called for:', virtualBlockId);
+        const templateMap = window.templateElementMap;
+        
+        if (!templateMap) {
+            console.log('❌ No templateElementMap found');
+            return null;
+        }
+        
+        if (!templateMap[virtualBlockId]) {
+            console.log('❌ No mapping found for virtualBlockId:', virtualBlockId);
+            return null;
+        }
+        
+        const { element, toolType, toolInstance } = templateMap[virtualBlockId];
+        console.log('📋 Template mapping found:', { element, toolType, toolInstance });
+        
+        // If we already have a tool instance, return its settings
+        if (toolInstance && toolInstance.settings) {
+            console.log('✅ Returning cached tool instance settings');
+            return toolInstance.settings;
+        }
+        
+        // Create a tool instance for this template element
+        const toolConfig = this.toolConfig[toolType];
+        console.log('🔧 Tool config for type:', toolType, toolConfig);
+        
+        if (!toolConfig || !toolConfig.class) {
+            console.log('❌ No tool config or class found for:', toolType);
+            return null;
+        }
+        
+        // Extract current values from the element
+        const config = this.extractElementConfig(toolType, element);
+        console.log('📝 Extracted element config:', config);
+        
+        // Create tool instance
+        const ToolClass = toolConfig.class;
+        const tool = new ToolClass({
+            id: virtualBlockId,
+            updateFunction: (property, value) => {
+                console.log('🔄 Update function called:', { property, value });
+                // Update the actual element when properties change
+                this.updateTemplateElement(element, toolType, property, value);
+            },
+            config: config
+        });
+        
+        console.log('🏗️ Created tool instance:', tool);
+        console.log('⚙️ Tool settings:', tool.settings);
+        
+        // Store the tool instance for future use
+        templateMap[virtualBlockId].toolInstance = tool;
+        
+        return tool.settings || null;
+    }
+
+    /**
+     * Extract configuration from a DOM element based on tool type
+     * @param {string} toolType - Type of tool
+     * @param {Element} element - DOM element
+     * @returns {Object} Configuration object
+     */
+    extractElementConfig(toolType, element) {
+        const config = {};
+        
+        switch(toolType) {
+            case 'Header':
+                config.content = element.textContent || '';
+                config.level = element.tagName.toLowerCase().replace('h', '') || '1';
+                break;
+                
+            case 'Paragraph':
+                config.content = element.innerHTML || '';
+                break;
+                
+            case 'Image':
+                config.src = element.src || '';
+                config.alt = element.alt || '';
+                config.caption = element.getAttribute('data-caption') || '';
+                break;
+                
+            case 'Button':
+                config.text = element.textContent || '';
+                config.url = element.href || '#';
+                config.style = element.className || 'primary';
+                break;
+                
+            default:
+                // For other tools, try to extract common properties
+                if (element.textContent) {
+                    config.content = element.textContent;
+                }
+                break;
+        }
+        
+        return config;
+    }
+    
+    /**
+     * Update a template element when properties change
+     * @param {Element} element - DOM element to update
+     * @param {string} toolType - Type of tool
+     * @param {string} property - Property name
+     * @param {any} value - New value
+     */
+    updateTemplateElement(element, toolType, property, value) {
+        console.log('🔄 updateTemplateElement called:', { element, toolType, property, value });
+        
+        // Get the tool instance from the template map
+        const toolId = element.getAttribute('data-tool-id');
+        const virtualBlockId = `template-${toolId}`;
+        const templateMap = window.templateElementMap;
+        
+        if (!templateMap || !templateMap[virtualBlockId] || !templateMap[virtualBlockId].toolInstance) {
+            console.log('❌ No tool instance found for update');
+            return;
+        }
+        
+        const tool = templateMap[virtualBlockId].toolInstance;
+        
+        // Update the tool's config
+        tool.config[property] = value;
+        console.log('📝 Updated tool config:', tool.config);
+        
+        // Check if the tool has a renderTemplateElement method
+        if (typeof tool.renderTemplateElement === 'function') {
+            // Get fresh HTML from the tool
+            const newHtml = tool.renderTemplateElement(toolId);
+            console.log('🎨 Generated new HTML:', newHtml);
+            
+            // Create a temporary container to parse the HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = newHtml;
+            const newElement = temp.firstElementChild;
+            
+            if (newElement) {
+                // Replace the old element with the new one
+                element.replaceWith(newElement);
+                
+                // Update the element reference in the template map
+                templateMap[virtualBlockId].element = newElement;
+                
+                // Re-attach click handler
+                this.attachTemplateClickHandler(newElement, toolType, toolId);
+                
+                // Use the new element for syncing
+                element = newElement;
+            }
+        } else {
+            // Fallback to manual property updates for tools without renderTemplateElement
+            console.log('⚠️ Tool does not have renderTemplateElement method, using fallback');
+            
+            switch(toolType) {
+                case 'Header':
+                    if (property === 'content') {
+                        element.textContent = value;
+                    } else if (property === 'level') {
+                        // Create new header element with correct level
+                        const newTag = `h${value}`;
+                        const newElement = document.createElement(newTag);
+                        newElement.textContent = element.textContent;
+                        // Copy attributes
+                        Array.from(element.attributes).forEach(attr => {
+                            newElement.setAttribute(attr.name, attr.value);
+                        });
+                        element.replaceWith(newElement);
+                        element = newElement;
+                    }
+                    break;
+                    
+                case 'Paragraph':
+                    if (property === 'content') {
+                        element.innerHTML = value;
+                    }
+                    break;
+                    
+                case 'Button':
+                    if (property === 'text') {
+                        element.textContent = value;
+                    } else if (property === 'url') {
+                        element.href = value;
+                    } else if (property === 'style') {
+                        element.className = value;
+                    }
+                    break;
+            }
+        }
+        
+        // Sync changes back to the Raw block
+        this.syncTemplateToRawBlock(element);
+    }
+    
+    /**
+     * Attach click handler to a template element
+     * @param {Element} element - DOM element
+     * @param {string} toolType - Type of tool
+     * @param {string} toolId - Tool ID
+     */
+    attachTemplateClickHandler(element, toolType, toolId) {
+        element.style.cursor = 'pointer';
+        element.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            console.log('🖱️ Template element clicked!', { toolType, toolId });
+            
+            const virtualBlockId = `template-${toolId}`;
+            
+            // Update element mapping
+            window.templateElementMap = window.templateElementMap || {};
+            window.templateElementMap[virtualBlockId] = {
+                ...window.templateElementMap[virtualBlockId],
+                element: element,
+                toolType: toolType
+            };
+            
+            // Trigger property panel update
+            this.setActive(null, virtualBlockId);
+        });
+    }
+    
+    /**
+     * Sync template element changes back to the Raw block content
+     * @param {Element} element - Modified element
+     */
+    syncTemplateToRawBlock(element) {
+        const previewContainer = element.closest('[x-ref="previewContainer"]');
+        if (previewContainer) {
+            const rawBlock = previewContainer.closest('.raw-block');
+            if (rawBlock) {
+                const blockId = rawBlock.getAttribute('data-block-id');
+                const block = this.blockManager.blocks.find(b => b.id === blockId);
+                if (block) {
+                    block.config.content = previewContainer.innerHTML;
+                    // Also update the textarea if it exists
+                    const textarea = rawBlock.querySelector('.code-input');
+                    if (textarea) {
+                        textarea.value = previewContainer.innerHTML;
+                    }
+                }
+            }
+        }
+    }
+
 
 
     /**

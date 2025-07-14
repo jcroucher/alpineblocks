@@ -239,6 +239,41 @@ class Button extends Tool {
             `}
         </div>`;
     }
+
+    /**
+     * Render the button as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        const icon = this.getIcon();
+        const buttonContent = `
+            ${this.config.iconPosition === 'left' && icon ? `<span class="button-icon">${icon}</span>` : ''}
+            <span class="button-text">${this.config.text}</span>
+            ${this.config.iconPosition === 'right' && icon ? `<span class="button-icon">${icon}</span>` : ''}
+        `;
+
+        return `${this.config.url ? `
+            <a href="${this.config.url}" 
+                data-tool="Button" 
+                data-tool-id="${toolId}"
+                class="button" 
+                style="${this.getButtonStyles()}; cursor: pointer;"
+                target="_blank"
+                rel="noopener noreferrer">
+                ${buttonContent}
+            </a>
+        ` : `
+            <button 
+                data-tool="Button" 
+                data-tool-id="${toolId}"
+                class="button" 
+                style="${this.getButtonStyles()}; cursor: pointer;"
+                ${this.config.disabled ? 'disabled' : ''}>
+                ${buttonContent}
+            </button>
+        `}`;
+    }
 }
 
 export default Button;

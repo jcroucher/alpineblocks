@@ -96,6 +96,22 @@ class Image extends Tool {
             <figcaption>${this.config.caption}</figcaption>
         </figure>`;
     }
+
+    /**
+     * Render the image as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        return `<img 
+            data-tool="Image" 
+            data-tool-id="${toolId}"
+            src="${this.config.src}" 
+            alt="${this.config.alt}"
+            style="width: ${this.config.width}; cursor: pointer;"
+            ${this.config.caption ? `data-caption="${this.config.caption}"` : ''}
+        />`;
+    }
 }
 
 export default Image;

@@ -15,6 +15,12 @@ dist/examples.*.js
 dist/index.js
 dist/index.esm.js
 dist/index.css
+# Ignore Parcel's hash-based chunk files
+dist/*.js
+dist/*.css
+!dist/index.js
+!dist/index.esm.js
+!dist/index.css
 
 # Environment files
 .env

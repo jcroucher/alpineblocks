@@ -43,6 +43,28 @@ export class Settings {
             return;
         }
 
+        // Check if this is a template element (format: template-toolId)
+        if (block_id.startsWith('template-')) {
+            const templateMap = window.templateElementMap;
+            if (templateMap && templateMap[block_id] && templateMap[block_id].toolInstance) {
+                const tool = templateMap[block_id].toolInstance;
+                const element = templateMap[block_id].element;
+                const toolType = templateMap[block_id].toolType;
+                
+                // Update the tool config
+                tool.config[property] = value;
+                
+                // Update the element using the editor's method
+                if (editorInstance.updateTemplateElement) {
+                    editorInstance.updateTemplateElement(element, toolType, property, value);
+                }
+                return;
+            } else {
+                Debug.error('Template element not found:', block_id);
+                return;
+            }
+        }
+
         // Check if this is a nested block (format: parentId::nestedId)
         if (block_id.includes('::')) {
             const [parentId, nestedId] = block_id.split('::');

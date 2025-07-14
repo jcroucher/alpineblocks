@@ -171,6 +171,20 @@ class Paragraph extends Tool {
         const styleString = this.getStyleString();
         return `<div class="paragraph-block" style="${styleString}">${this.config.content}</div>`;
     }
+
+    /**
+     * Render the paragraph as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        const styleString = this.getStyleString();
+        return `<p 
+            data-tool="Paragraph" 
+            data-tool-id="${toolId}"
+            style="${styleString}; cursor: pointer;"
+        >${this.config.content}</p>`;
+    }
 }
 
 export default Paragraph;

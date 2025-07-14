@@ -100,6 +100,43 @@ function rawCodeEditor() {
                 default:
                     return true;
             }
+        },
+
+        initializePreviewContainer(element, block) {
+            console.log('🔍 initializePreviewContainer called', { element, block });
+            if (!element || !block) return;
+            
+            // Set the HTML content
+            element.innerHTML = block.config.content || '';
+            console.log('📝 Set preview content:', block.config.content);
+            
+            // Set up template element click handlers
+            const templateElements = element.querySelectorAll('[data-tool]');
+            console.log(`🎯 Found ${templateElements.length} template elements with data-tool`);
+            
+            // Find the editor instance
+            let editor = null;
+            if (window.alpineEditors) {
+                for (const editorId in window.alpineEditors) {
+                    editor = window.alpineEditors[editorId];
+                    if (editor) break;
+                }
+            }
+            
+            templateElements.forEach(el => {
+                const toolType = el.getAttribute('data-tool');
+                const toolId = el.getAttribute('data-tool-id');
+                console.log('🔧 Setting up click handler for:', { toolType, toolId, element: el });
+                
+                if (toolType && toolId) {
+                    if (editor && typeof editor.attachTemplateClickHandler === 'function') {
+                        // Use the editor's method to attach the handler
+                        editor.attachTemplateClickHandler(el, toolType, toolId);
+                    } else {
+                        console.log('❌ Editor not found or missing attachTemplateClickHandler method');
+                    }
+                }
+            });
         }
     };
 }
@@ -278,37 +315,7 @@ class Raw extends Tool {
                     
                     <div x-ref="previewContainer"
                          contenteditable="true"
-                         x-init="
-                            // Initialize with current content
-                            $el.innerHTML = block ? (block.config.content || '') : '';
-                            
-                            // Track editing state to prevent updates during typing
-                            let isEditing = false;
-                            
-                            // Store update function for external calls
-                            $el._updateFromCode = (newContent) => {
-                                if (!isEditing) {
-                                    $el.innerHTML = newContent || '';
-                                }
-                            };
-                            
-                            // Track editing state
-                            $el.addEventListener('focus', () => { isEditing = true; });
-                            $el.addEventListener('blur', () => { 
-                                // Sync changes back to code when user finishes editing
-                                if (block) {
-                                    const newContent = $el.innerHTML;
-                                    block.config.content = newContent;
-                                    // Update the textarea value
-                                    const textarea = $el.closest('.raw-block').querySelector('.code-input');
-                                    if (textarea) {
-                                        textarea.value = newContent;
-                                    }
-                                }
-                                
-                                setTimeout(() => { isEditing = false; }, 100);
-                            });
-                         "
+                         x-init="initializePreviewContainer($el, block)"
                          style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px;">
                     </div>
                 </div>

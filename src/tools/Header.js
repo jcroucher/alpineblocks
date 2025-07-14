@@ -126,6 +126,23 @@ class Header extends Tool {
         
         return `<${this.config.level} ${anchorId} style="${styleString}">${this.config.content}</${this.config.level}>`;
     }
+
+    /**
+     * Render the header as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        const styleString = this.getStyleString();
+        const anchorId = this.config.anchor ? `id="${this.config.anchor}"` : '';
+        
+        return `<${this.config.level} 
+            data-tool="Header" 
+            data-tool-id="${toolId}"
+            ${anchorId}
+            style="${styleString}; cursor: pointer;"
+        >${this.config.content}</${this.config.level}>`;
+    }
 }
 
 export default Header;
