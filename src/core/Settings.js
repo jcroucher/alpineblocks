@@ -14,21 +14,51 @@ export class Settings {
      * Initialize settings panel event listeners
      */
     init() {
-        window.addEventListener('editor-block-changed', event => {
-            if (window.alpineEditors[this.editorId]) {
-                const newSettings = window.alpineEditors[this.editorId].getSettings(event.detail.block_id);
-                this.settings = newSettings || [];
-                
-                // Force Alpine to update by dispatching a custom event
-                document.dispatchEvent(new CustomEvent('settings-updated', { 
-                    detail: { 
-                        editorId: this.editorId, 
-                        settings: this.settings,
-                        blockId: event.detail.block_id
-                    } 
-                }));
+        this.editorReady = false;
+        
+        // Wait for editor to be ready
+        document.addEventListener('editor-ready', (event) => {
+            if (event.detail.id === this.editorId) {
+                this.editorReady = true;
+                Debug.debug('Settings: Editor ready for', this.editorId);
             }
         });
+        
+        window.addEventListener('editor-block-changed', event => {
+            Debug.debug('Settings: Received editor-block-changed event', event.detail);
+            
+            this.handleBlockChanged(event.detail.block_id);
+        });
+    }
+    
+    handleBlockChanged(blockId) {
+        if (window.alpineEditors && window.alpineEditors[this.editorId]) {
+            const newSettings = window.alpineEditors[this.editorId].getSettings(blockId);
+            this.settings = newSettings || [];
+            
+            Debug.debug('Settings: Updated settings for block', blockId, this.settings);
+            
+            // Force Alpine to update by dispatching a custom event
+            document.dispatchEvent(new CustomEvent('settings-updated', { 
+                detail: { 
+                    editorId: this.editorId, 
+                    settings: this.settings,
+                    blockId: blockId
+                } 
+            }));
+        } else {
+            Debug.warn('Settings: Editor instance not found', this.editorId);
+            Debug.debug('Settings: Available editors:', Object.keys(window.alpineEditors || {}));
+            
+            // Try again after a short delay in case editor is still initializing
+            setTimeout(() => {
+                if (window.alpineEditors && window.alpineEditors[this.editorId]) {
+                    this.handleBlockChanged(blockId);
+                } else {
+                    Debug.error('Settings: Editor instance still not found after delay', this.editorId);
+                }
+            }, 100);
+        }
     }
 
     /**

@@ -466,13 +466,6 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
                         <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-92.7-69.4z"/>
                     </svg>
                 </button>
-                <button class="toolbar-btn" 
-                        @click="handleSettings()"
-                        title="Editor Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                        <path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/>
-                    </svg>
-                </button>
             </div>
         `;
     }
@@ -510,8 +503,14 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    */ init() {
         (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Block editor initialized');
         this.id = this.$el.id;
+        if (!this.id) {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error('Editor element must have an ID attribute');
+            return;
+        }
         window.alpineEditors = window.alpineEditors || {};
         window.alpineEditors[this.id] = this;
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Editor registered with ID:', this.id);
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Available editors:', Object.keys(window.alpineEditors));
         // Initialize header toolbar now that we have the ID
         this.headerToolbar = new (0, $8a83916c83abff24$export$3c11ee1da7b7384)(this.id);
         this.headerToolbar.init();
@@ -531,6 +530,12 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             this.$dispatch('editor-ready', {
                 id: this.id
             });
+            // Also dispatch globally
+            document.dispatchEvent(new CustomEvent('editor-ready', {
+                detail: {
+                    id: this.id
+                }
+            }));
         });
     }
     /**
@@ -1195,6 +1200,12 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             this.$dispatch('editor-block-changed', {
                 block_id: block
             });
+            // Also dispatch globally for settings panel
+            document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                detail: {
+                    block_id: block
+                }
+            }));
         });
     }
     /**
@@ -1219,6 +1230,12 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
                 this.$dispatch('editor-block-changed', {
                     block_id: null
                 });
+                // Also dispatch globally for settings panel
+                document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                    detail: {
+                        block_id: null
+                    }
+                }));
             }
             (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info(`Block deleted: ${blockId}`);
             this.$dispatch('editor-updated', {
@@ -1492,20 +1509,41 @@ class $299948f22c89836d$export$c72f6eaae7b9adff {
     /**
    * Initialize settings panel event listeners
    */ init() {
-        window.addEventListener('editor-block-changed', (event)=>{
-            if (window.alpineEditors[this.editorId]) {
-                const newSettings = window.alpineEditors[this.editorId].getSettings(event.detail.block_id);
-                this.settings = newSettings || [];
-                // Force Alpine to update by dispatching a custom event
-                document.dispatchEvent(new CustomEvent('settings-updated', {
-                    detail: {
-                        editorId: this.editorId,
-                        settings: this.settings,
-                        blockId: event.detail.block_id
-                    }
-                }));
+        this.editorReady = false;
+        // Wait for editor to be ready
+        document.addEventListener('editor-ready', (event)=>{
+            if (event.detail.id === this.editorId) {
+                this.editorReady = true;
+                (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Settings: Editor ready for', this.editorId);
             }
         });
+        window.addEventListener('editor-block-changed', (event)=>{
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Settings: Received editor-block-changed event', event.detail);
+            this.handleBlockChanged(event.detail.block_id);
+        });
+    }
+    handleBlockChanged(blockId) {
+        if (window.alpineEditors && window.alpineEditors[this.editorId]) {
+            const newSettings = window.alpineEditors[this.editorId].getSettings(blockId);
+            this.settings = newSettings || [];
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Settings: Updated settings for block', blockId, this.settings);
+            // Force Alpine to update by dispatching a custom event
+            document.dispatchEvent(new CustomEvent('settings-updated', {
+                detail: {
+                    editorId: this.editorId,
+                    settings: this.settings,
+                    blockId: blockId
+                }
+            }));
+        } else {
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).warn('Settings: Editor instance not found', this.editorId);
+            (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Settings: Available editors:', Object.keys(window.alpineEditors || {}));
+            // Try again after a short delay in case editor is still initializing
+            setTimeout(()=>{
+                if (window.alpineEditors && window.alpineEditors[this.editorId]) this.handleBlockChanged(blockId);
+                else (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error('Settings: Editor instance still not found after delay', this.editorId);
+            }, 100);
+        }
     }
     /**
    * Handle property changes from the settings panel (supports nested blocks)
@@ -2733,6 +2771,371 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
 
 
 /**
+ * MediaPicker modal component for browsing and selecting remote media files
+ */ class $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9 {
+    constructor(config = {}){
+        this.config = {
+            apiUrl: config.apiUrl || null,
+            allowUpload: config.allowUpload !== false,
+            fileTypes: config.fileTypes || [
+                'all',
+                'image',
+                'video'
+            ],
+            onSelect: config.onSelect || null,
+            onUpload: config.onUpload || null
+        };
+        this.currentPath = '/';
+        this.currentFilter = 'all';
+        this.isOpen = false;
+        this.isLoading = false;
+        this.items = [];
+        this.breadcrumbs = [];
+        this.selectedItem = null;
+        this.uploadProgress = 0;
+    }
+    /**
+   * Initialize the media picker
+   */ init() {
+        this.generateModal();
+        this.bindEvents();
+    }
+    /**
+   * Generate the modal HTML
+   */ generateModal() {
+        const modalHtml = `
+            <div x-data="mediaPicker" 
+                 x-show="isOpen" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="media-picker-overlay"
+                 @click.self="close()">
+                
+                <div class="media-picker-modal"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 transform scale-90"
+                     x-transition:enter-end="opacity-100 transform scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 transform scale-100"
+                     x-transition:leave-end="opacity-0 transform scale-90">
+                    
+                    <div class="media-picker-header">
+                        <h2>Media Library</h2>
+                        <button @click="close()" class="media-picker-close">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="media-picker-toolbar">
+                        <div class="media-picker-breadcrumbs">
+                            <button @click="navigateToPath('/')" 
+                                    class="breadcrumb-item"
+                                    :class="{ 'active': currentPath === '/' }">
+                                Home
+                            </button>
+                            <template x-for="(crumb, index) in breadcrumbs" :key="index">
+                                <span>
+                                    <span class="breadcrumb-separator">/</span>
+                                    <button @click="navigateToBreadcrumb(index)" 
+                                            class="breadcrumb-item"
+                                            :class="{ 'active': index === breadcrumbs.length - 1 }"
+                                            x-text="crumb.name"></button>
+                                </span>
+                            </template>
+                        </div>
+
+                        <div class="media-picker-filters">
+                            <select @change="filterByType($event.target.value)" 
+                                    class="filter-select">
+                                <option value="all">All Files</option>
+                                <option value="image">Images</option>
+                                <option value="video">Videos</option>
+                            </select>
+                            
+                            <button x-show="config.allowUpload" 
+                                    @click="showUpload()" 
+                                    class="upload-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                                </svg>
+                                Upload
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="media-picker-content">
+                        <div x-show="isLoading" class="media-picker-loading">
+                            <div class="spinner"></div>
+                            <p>Loading media...</p>
+                        </div>
+
+                        <div x-show="!isLoading && items.length === 0" class="media-picker-empty">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                            <p>No media files found</p>
+                        </div>
+
+                        <div x-show="!isLoading && items.length > 0" class="media-picker-grid">
+                            <template x-for="item in items" :key="item.path">
+                                <div @click="selectItem(item)" 
+                                     class="media-item"
+                                     :class="{ 'selected': selectedItem && selectedItem.path === item.path, 'folder': item.type === 'folder' }">
+                                    
+                                    <div class="media-item-preview">
+                                        <template x-if="item.type === 'folder'">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+                                            </svg>
+                                        </template>
+                                        
+                                        <template x-if="item.type === 'image'">
+                                            <img :src="item.thumbnail || item.url" 
+                                                 :alt="item.name"
+                                                 @error="$event.target.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'%3E%3Crect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\' ry=\'2\'/%3E%3Ccircle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'/%3E%3Cpolyline points=\'21 15 16 10 5 21\'/%3E%3C/svg%3E'">
+                                        </template>
+                                        
+                                        <template x-if="item.type === 'video'">
+                                            <div class="video-preview">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                                                </svg>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    
+                                    <div class="media-item-info">
+                                        <p class="media-item-name" x-text="item.name"></p>
+                                        <p class="media-item-size" x-text="item.size || 'Folder'"></p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="showUploadPanel" class="media-picker-upload">
+                            <div class="upload-dropzone" 
+                                 @dragover.prevent="dragOver = true"
+                                 @dragleave.prevent="dragOver = false"
+                                 @drop.prevent="handleDrop($event)"
+                                 :class="{ 'drag-over': dragOver }">
+                                
+                                <input type="file" 
+                                       id="media-upload-input"
+                                       multiple
+                                       :accept="currentFilter === 'image' ? 'image/*' : currentFilter === 'video' ? 'video/*' : '*'"
+                                       @change="handleFileSelect($event)"
+                                       style="display: none;">
+                                
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                                </svg>
+                                
+                                <h3>Drop files here or click to browse</h3>
+                                <p>Supported formats: Images (JPG, PNG, GIF) and Videos (MP4, WebM)</p>
+                                
+                                <button @click="document.getElementById('media-upload-input').click()" 
+                                        class="browse-button">
+                                    Browse Files
+                                </button>
+                            </div>
+                            
+                            <div x-show="uploadProgress > 0" class="upload-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" :style="'width: ' + uploadProgress + '%'"></div>
+                                </div>
+                                <p x-text="'Uploading... ' + uploadProgress + '%'"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="media-picker-footer">
+                        <div class="selected-info">
+                            <template x-if="selectedItem && selectedItem.type !== 'folder'">
+                                <span>Selected: <strong x-text="selectedItem.name"></strong></span>
+                            </template>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button @click="close()" class="btn-cancel">Cancel</button>
+                            <button @click="confirmSelection()" 
+                                    :disabled="!selectedItem || selectedItem.type === 'folder'"
+                                    class="btn-confirm">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Add modal to body
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer.firstElementChild);
+    }
+    /**
+   * Bind Alpine.js data and events
+   */ bindEvents() {
+        document.addEventListener('alpine:init', ()=>{
+            Alpine.data('mediaPicker', ()=>({
+                    isOpen: false,
+                    isLoading: false,
+                    items: [],
+                    breadcrumbs: [],
+                    currentPath: '/',
+                    currentFilter: 'all',
+                    selectedItem: null,
+                    config: this.config,
+                    showUploadPanel: false,
+                    uploadProgress: 0,
+                    dragOver: false,
+                    init () {
+                        // Listen for open events
+                        window.addEventListener('open-media-picker', (event)=>{
+                            this.config = {
+                                ...this.config,
+                                ...event.detail
+                            };
+                            this.open();
+                        });
+                    },
+                    async open () {
+                        this.isOpen = true;
+                        this.selectedItem = null;
+                        this.showUploadPanel = false;
+                        await this.loadItems(this.currentPath);
+                    },
+                    close () {
+                        this.isOpen = false;
+                        this.selectedItem = null;
+                        this.showUploadPanel = false;
+                    },
+                    async loadItems (path) {
+                        if (!this.config.apiUrl) {
+                            console.error('No API URL configured for media picker');
+                            return;
+                        }
+                        this.isLoading = true;
+                        this.currentPath = path;
+                        this.updateBreadcrumbs(path);
+                        try {
+                            const response = await fetch(`${this.config.apiUrl}/browse`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    path: path,
+                                    filter: this.currentFilter
+                                })
+                            });
+                            if (!response.ok) throw new Error('Failed to load media');
+                            const data = await response.json();
+                            this.items = data.items || [];
+                        } catch (error) {
+                            console.error('Error loading media:', error);
+                            this.items = [];
+                        } finally{
+                            this.isLoading = false;
+                        }
+                    },
+                    updateBreadcrumbs (path) {
+                        if (path === '/') {
+                            this.breadcrumbs = [];
+                            return;
+                        }
+                        const parts = path.split('/').filter((p)=>p);
+                        this.breadcrumbs = parts.map((part, index)=>({
+                                name: part,
+                                path: '/' + parts.slice(0, index + 1).join('/')
+                            }));
+                    },
+                    async navigateToPath (path) {
+                        await this.loadItems(path);
+                    },
+                    async navigateToBreadcrumb (index) {
+                        const crumb = this.breadcrumbs[index];
+                        if (crumb) await this.loadItems(crumb.path);
+                    },
+                    async filterByType (type) {
+                        this.currentFilter = type;
+                        await this.loadItems(this.currentPath);
+                    },
+                    selectItem (item) {
+                        if (item.type === 'folder') this.navigateToPath(item.path);
+                        else this.selectedItem = item;
+                    },
+                    confirmSelection () {
+                        if (this.selectedItem && this.config.onSelect) {
+                            this.config.onSelect(this.selectedItem);
+                            this.close();
+                        }
+                    },
+                    showUpload () {
+                        this.showUploadPanel = !this.showUploadPanel;
+                    },
+                    handleDrop (event) {
+                        this.dragOver = false;
+                        const files = Array.from(event.dataTransfer.files);
+                        this.uploadFiles(files);
+                    },
+                    handleFileSelect (event) {
+                        const files = Array.from(event.target.files);
+                        this.uploadFiles(files);
+                    },
+                    async uploadFiles (files) {
+                        if (!this.config.apiUrl || files.length === 0) return;
+                        const formData = new FormData();
+                        files.forEach((file)=>{
+                            formData.append('files', file);
+                        });
+                        formData.append('path', this.currentPath);
+                        try {
+                            const xhr = new XMLHttpRequest();
+                            xhr.upload.addEventListener('progress', (e)=>{
+                                if (e.lengthComputable) this.uploadProgress = Math.round(e.loaded / e.total * 100);
+                            });
+                            xhr.addEventListener('load', ()=>{
+                                if (xhr.status === 200) {
+                                    const response = JSON.parse(xhr.responseText);
+                                    if (this.config.onUpload) this.config.onUpload(response);
+                                    this.uploadProgress = 0;
+                                    this.showUploadPanel = false;
+                                    this.loadItems(this.currentPath);
+                                }
+                            });
+                            xhr.addEventListener('error', ()=>{
+                                console.error('Upload failed');
+                                this.uploadProgress = 0;
+                            });
+                            xhr.open('POST', `${this.config.apiUrl}/upload`);
+                            xhr.send(formData);
+                        } catch (error) {
+                            console.error('Error uploading files:', error);
+                            this.uploadProgress = 0;
+                        }
+                    }
+                }));
+        });
+    }
+    /**
+   * Open the media picker
+   */ open(options = {}) {
+        window.dispatchEvent(new CustomEvent('open-media-picker', {
+            detail: options
+        }));
+    }
+}
+const $b5462ce2cda23cb5$export$417ca43547a04f0 = new $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9();
+
+
+/**
  * Base class for all AlpineBlocks tools
  * Provides common functionality for block rendering and interaction
  */ class $7a9b6788f4274d37$export$2e2bcd8739ae039 {
@@ -3472,6 +3875,16 @@ class $89b22059272e1d27$var$Image extends (0, $7a9b6788f4274d37$export$2e2bcd873
                 </div>`
             },
             {
+                name: 'mediaLibrary',
+                label: 'Media Library',
+                html: `<button type="button" 
+                    class="media-library-btn"
+                    @click="openMediaLibrary('${this.id}', 'image')"
+                    style="background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer; width: 100%;">
+                    \u{1F4DA} Browse Media Library
+                </button>`
+            },
+            {
                 name: 'imageUrl',
                 label: 'Or Image URL',
                 html: `<input type="text" 
@@ -3526,7 +3939,8 @@ class $89b22059272e1d27$var$Image extends (0, $7a9b6788f4274d37$export$2e2bcd873
         return `<figure class="image-block" style="text-align: ${this.config.alignment}">
             <img src="${this.config.src}" 
                 alt="${this.config.alt}"
-                style="width: ${this.config.width}">
+                style="width: ${this.config.width}"
+                @error="$event.target.src = \`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E\`">
             <figcaption 
                 contenteditable="true"
                 x-html="block.config.caption"
@@ -3537,7 +3951,8 @@ class $89b22059272e1d27$var$Image extends (0, $7a9b6788f4274d37$export$2e2bcd873
         return `<figure class="image-block" style="text-align: ${this.config.alignment}">
             <img src="${this.config.src}" 
                 alt="${this.config.alt}"
-                style="width: ${this.config.width}">
+                style="width: ${this.config.width}"
+                onerror="this.src=&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E&quot;">
             <figcaption>${this.config.caption}</figcaption>
         </figure>`;
     }
@@ -3935,6 +4350,16 @@ class $1d78d83887e524f6$var$VideoPlayer extends (0, $7a9b6788f4274d37$export$2e2
                     @change="trigger('${this.id}', 'url', $event.target.value)"
                     value="${(0, $a2a09715139b7460$export$4cf11838cdc2a8a8)(this.config.url)}"
                     placeholder="Enter video URL">`
+            },
+            {
+                name: 'mediaLibrary',
+                label: 'Media Library',
+                html: `<button type="button" 
+                    class="media-library-btn"
+                    @click="openMediaLibrary('${this.id}', 'video')"
+                    style="background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer; width: 100%;">
+                    \u{1F4DA} Browse Media Library
+                </button>`
             },
             {
                 name: 'type',
@@ -6305,28 +6730,38 @@ const $cf838c15c8b009ba$var$toolModules = {
     return config;
 }
 /**
- * Extract and parse tool configuration from DOM, with fallback to defaults
- * @returns {Object} Parsed tool configuration
- */ function $cf838c15c8b009ba$var$getToolConfigFromDOM() {
+ * Extract and parse editor configuration from DOM, with fallback to defaults
+ * @returns {Object} Parsed editor configuration
+ */ function $cf838c15c8b009ba$var$getEditorConfigFromDOM() {
     const editorElement = document.querySelector('[x-data*="alpineEditor"]');
     if (!editorElement) {
-        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No editor element found, using default tool config');
-        return $cf838c15c8b009ba$var$getDefaultToolConfig();
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No editor element found, using default config');
+        return {
+            tools: $cf838c15c8b009ba$var$getDefaultToolConfig(),
+            media: null
+        };
     }
     const xDataAttr = editorElement.getAttribute('x-data');
-    const match = xDataAttr.match(/alpineEditor\(\{[\s\n]*tools:\s*(\[[\s\S]*?\])\s*\}\)/);
-    if (!match) {
-        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No tools config found in DOM, using default tool config');
-        return $cf838c15c8b009ba$var$getDefaultToolConfig();
+    // Try to parse the entire config object
+    const configMatch = xDataAttr.match(/alpineEditor\(\{([\s\S]*?)\}\)/);
+    if (!configMatch) {
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No config found in DOM, using default config');
+        return {
+            tools: $cf838c15c8b009ba$var$getDefaultToolConfig(),
+            media: null
+        };
     }
     try {
-        const toolsConfig = new Function(`return ${match[1]}`)();
-        const config = {};
+        const configStr = `{${configMatch[1]}}`;
+        const fullConfig = new Function(`return ${configStr}`)();
+        // Parse tools configuration
+        const toolsConfig = fullConfig.tools || [];
+        const tools = {};
         (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('toolModules keys:', Object.keys($cf838c15c8b009ba$var$toolModules));
         toolsConfig.forEach((tool)=>{
             (0, $4c0d28162c26105d$export$153e5dc2c098b35c).debug('Loading tool:', tool.class);
             if ($cf838c15c8b009ba$var$toolModules[tool.class]) {
-                config[tool.class] = {
+                tools[tool.class] = {
                     class: $cf838c15c8b009ba$var$toolModules[tool.class],
                     config: tool.config || {}
                 };
@@ -6334,15 +6769,24 @@ const $cf838c15c8b009ba$var$toolModules = {
             } else (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Tool ${tool.class} not found in available modules`);
         });
         // If no tools were successfully parsed, fall back to defaults
-        if (Object.keys(config).length === 0) {
+        if (Object.keys(tools).length === 0) {
             (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('No tools successfully parsed, using default tool config');
-            return $cf838c15c8b009ba$var$getDefaultToolConfig();
+            return {
+                tools: $cf838c15c8b009ba$var$getDefaultToolConfig(),
+                media: fullConfig.media || null
+            };
         }
-        return config;
+        return {
+            tools: tools,
+            media: fullConfig.media || null
+        };
     } catch (e) {
-        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error('Error parsing tool configuration:', e);
-        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Using default tool config as fallback');
-        return $cf838c15c8b009ba$var$getDefaultToolConfig();
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error('Error parsing editor configuration:', e);
+        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Using default config as fallback');
+        return {
+            tools: $cf838c15c8b009ba$var$getDefaultToolConfig(),
+            media: null
+        };
     }
 }
 // Initialize Alpine with tool loading
@@ -6381,8 +6825,19 @@ document.addEventListener('alpine:init', ()=>{
             settings: initialSettings || [],
             currentBlockId: null,
             init () {
-                this.settingsInstance = new (0, $299948f22c89836d$export$c72f6eaae7b9adff)(editorId, this.settings);
-                this.settingsInstance.init();
+                // Debug: Log the editor ID and check if editor exists
+                console.log('Settings initialized for editor:', editorId);
+                console.log('Available editors:', Object.keys(window.alpineEditors || {}));
+                // Wait for the editor to be ready before initializing settings
+                const initializeSettings = ()=>{
+                    if (window.alpineEditors && window.alpineEditors[editorId]) {
+                        this.settingsInstance = new (0, $299948f22c89836d$export$c72f6eaae7b9adff)(editorId, this.settings);
+                        this.settingsInstance.init();
+                        console.log('Settings instance created for editor:', editorId);
+                    } else // Try again after a short delay
+                    setTimeout(initializeSettings, 50);
+                };
+                initializeSettings();
                 // Listen for settings updates
                 document.addEventListener('settings-updated', (event)=>{
                     if (event.detail.editorId === editorId) {
@@ -6476,14 +6931,23 @@ document.addEventListener('alpine:init', ()=>{
                 const $nextTick = this.$nextTick;
                 const $watch = this.$watch;
                 try {
-                    this.toolConfig = $cf838c15c8b009ba$var$getToolConfigFromDOM();
+                    const editorConfig = $cf838c15c8b009ba$var$getEditorConfigFromDOM();
+                    this.toolConfig = editorConfig.tools;
                     (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Tool config loaded:', Object.keys(this.toolConfig));
+                    // Initialize media picker if configured
+                    if (editorConfig.media) {
+                        this.mediaPicker = new (0, $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9)(editorConfig.media);
+                        this.mediaPicker.init();
+                        (0, $4c0d28162c26105d$export$153e5dc2c098b35c).info('Media picker initialized with config:', editorConfig.media);
+                    }
                     this.editor = new (0, $cda2b75602dff697$export$7cda8d932e2f33c0)(this.toolConfig);
                     // Add Alpine utilities to editor (not reactive references)
                     this.editor.$el = $el;
                     this.editor.$dispatch = $dispatch;
                     this.editor.$nextTick = $nextTick;
                     this.editor.$watch = $watch;
+                    // Add media picker reference to editor
+                    if (this.mediaPicker) this.editor.mediaPicker = this.mediaPicker;
                     // Initialize the editor
                     this.editor.init();
                     // Set up blocks array without circular references
@@ -7404,6 +7868,42 @@ document.addEventListener('alpine:init', ()=>{
             }
         }));
 });
+// Global media library function
+window.openMediaLibrary = function(blockId, mediaType = 'all') {
+    // Get the media picker from the first available editor
+    const firstEditor = Object.values(window.alpineEditors || {})[0];
+    if (!firstEditor || !firstEditor.mediaPicker) {
+        console.warn('Media picker not available. Please configure media settings in your editor initialization.');
+        return;
+    }
+    const mediaPicker = firstEditor.mediaPicker;
+    // Configure the media picker for this selection
+    mediaPicker.open({
+        fileTypes: [
+            mediaType
+        ],
+        onSelect: (selectedItem)=>{
+            // Find the block and update its configuration
+            for(const editorId in window.alpineEditors){
+                const editor = window.alpineEditors[editorId];
+                if (editor && editor.blocks) {
+                    const block = editor.blocks.find((b)=>b.id === blockId);
+                    if (block) {
+                        if (mediaType === 'image') {
+                            block.config.src = selectedItem.url;
+                            if (selectedItem.name) block.config.alt = selectedItem.name;
+                        } else if (mediaType === 'video') {
+                            block.config.url = selectedItem.url;
+                            block.config.type = 'direct';
+                        }
+                        block.triggerRedraw();
+                        break;
+                    }
+                }
+            }
+        }
+    });
+};
 // Global image upload function
 window.uploadImage = async function(event, blockId) {
     const file = event.target.files[0];
@@ -7451,7 +7951,84 @@ window.uploadImage = async function(event, blockId) {
         }
     }
 };
-(0, $5OpyM$alpinejs).start();
+class $cf838c15c8b009ba$export$2e2bcd8739ae039 {
+    constructor(config = {}){
+        this.config = {
+            holder: config.holder || null,
+            tools: config.tools || [],
+            media: config.media || null,
+            ...config
+        };
+        this.instance = null;
+        this.holder = this.config.holder;
+    }
+    async init() {
+        if (!this.holder) throw new Error('AlpineBlocks: holder element is required');
+        // Ensure Alpine is available
+        if (!window.Alpine) throw new Error('AlpineBlocks: Alpine.js is required');
+        // Set up the holder element with proper Alpine.js structure
+        this.holder.innerHTML = `
+            <div class="alpine-blocks-editor" id="${this.holder.id || 'alpine-editor'}" x-data="alpineEditor()">
+                <div class="editor-area">
+                    <div class="editor-content" x-ref="editorContent">
+                        <template x-for="block in blocks" :key="block.id">
+                            <div x-html="block.editorRender()"></div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Configure the editor with tools
+        if (this.config.tools.length > 0) this.holder.querySelector('[x-data]').setAttribute('x-data', `alpineEditor({ tools: ${JSON.stringify(this.config.tools)}, media: ${JSON.stringify(this.config.media)} })`);
+        // Initialize Alpine component
+        await new Promise((resolve)=>{
+            const checkEditor = ()=>{
+                const editorId = this.holder.id || 'alpine-editor';
+                if (window.alpineEditors && window.alpineEditors[editorId]) {
+                    this.instance = window.alpineEditors[editorId];
+                    resolve();
+                } else setTimeout(checkEditor, 50);
+            };
+            checkEditor();
+        });
+        return this;
+    }
+    save() {
+        if (!this.instance) throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        return this.instance.save();
+    }
+    render(data) {
+        if (!this.instance) throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        if (data && Array.isArray(data)) {
+            // Load blocks from data
+            this.instance.blocks = [];
+            data.forEach((blockData)=>{
+                const block = this.instance.initBlock(blockData.class, false);
+                if (block && blockData.data) {
+                    Object.assign(block.config, blockData.data);
+                    block.triggerRedraw();
+                }
+            });
+        }
+        return this.instance.getCleanHTML();
+    }
+    getHTML() {
+        if (!this.instance) throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        return this.instance.getCleanHTML();
+    }
+    destroy() {
+        if (this.instance && this.holder) {
+            // Clean up
+            const editorId = this.holder.id || 'alpine-editor';
+            if (window.alpineEditors && window.alpineEditors[editorId]) delete window.alpineEditors[editorId];
+            this.holder.innerHTML = '';
+            this.instance = null;
+        }
+    }
+}
+// Start Alpine.js if not already started
+if (!window.Alpine._started) (0, $5OpyM$alpinejs).start();
 
 
+export {$cf838c15c8b009ba$export$2e2bcd8739ae039 as default};
 //# sourceMappingURL=index.esm.js.map

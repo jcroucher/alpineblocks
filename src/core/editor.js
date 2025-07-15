@@ -48,8 +48,16 @@ export class Editor {
 
         this.id = this.$el.id;
 
+        if (!this.id) {
+            Debug.error('Editor element must have an ID attribute');
+            return;
+        }
+
         window.alpineEditors = window.alpineEditors || {};
         window.alpineEditors[this.id] = this;
+        
+        Debug.debug('Editor registered with ID:', this.id);
+        Debug.debug('Available editors:', Object.keys(window.alpineEditors));
 
         // Initialize header toolbar now that we have the ID
         this.headerToolbar = new HeaderToolbar(this.id);
@@ -77,6 +85,10 @@ export class Editor {
 
         this.$nextTick(() => {
             this.$dispatch('editor-ready', { id: this.id });
+            // Also dispatch globally
+            document.dispatchEvent(new CustomEvent('editor-ready', {
+                detail: { id: this.id }
+            }));
         });
     }
 
@@ -1012,6 +1024,10 @@ export class Editor {
 
         this.$nextTick(() => {
             this.$dispatch('editor-block-changed', { block_id: block });
+            // Also dispatch globally for settings panel
+            document.dispatchEvent(new CustomEvent('editor-block-changed', { 
+                detail: { block_id: block } 
+            }));
         });
     }
 
@@ -1041,6 +1057,10 @@ export class Editor {
             if (this.selectedBlock === blockId) {
                 this.selectedBlock = null;
                 this.$dispatch('editor-block-changed', { block_id: null });
+                // Also dispatch globally for settings panel
+                document.dispatchEvent(new CustomEvent('editor-block-changed', { 
+                    detail: { block_id: null } 
+                }));
             }
             
             Debug.info(`Block deleted: ${blockId}`);

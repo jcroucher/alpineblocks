@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlpineBlocks Media Picker Example</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="../dist/editor.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AlpineBlocks Media Picker Example</h1>
+        
+        <div class="editor-container">
+            <div 
+                id="editorjs"
+                class="editor-content"
+                x-data="alpineEditor({
+                    tools: [
+                        { class: 'Paragraph' },
+                        { class: 'Header' },
+                        { class: 'Image' },
+                        { class: 'VideoPlayer' }
+                    ],
+                    media: {
+                        apiUrl: 'https://your-api-server.com/api/media',
+                        allowUpload: true,
+                        fileTypes: ['all', 'image', 'video']
+                    }
+                })"
+            >
+                <div class="editor-toolbar">
+                    <div x-html="getHeaderToolbar()"></div>
+                </div>
+                
+                <div class="editor-blocks">
+                    <template x-for="block in getEditorBlocks()" :key="block.id">
+                        <div class="block-wrapper" 
+                             :class="{ 'selected': selectedBlock === block.id }"
+                             @click="setActive($event, block.id)">
+                            <div class="block-content" x-html="block.editorRender()"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <div class="settings-panel">
+                <div x-data="editorSettings('editorjs', [])">
+                    <div class="settings-header">
+                        <h3>Block Settings</h3>
+                    </div>
+                    
+                    <div class="settings-content">
+                        <template x-for="setting in settings" :key="setting.name">
+                            <div class="setting-group">
+                                <label x-text="setting.label"></label>
+                                <div x-html="setting.html"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/index.js"></script>
+    
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .editor-content {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .editor-toolbar {
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem;
+        }
+        
+        .editor-blocks {
+            padding: 1rem;
+            min-height: 400px;
+        }
+        
+        .block-wrapper {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border: 2px solid transparent;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        
+        .block-wrapper:hover {
+            border-color: #e5e7eb;
+        }
+        
+        .block-wrapper.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .settings-panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            height: fit-content;
+        }
+        
+        .settings-header {
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem;
+        }
+        
+        .settings-header h3 {
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        
+        .settings-content {
+            padding: 1rem;
+        }
+        
+        .setting-group {
+            margin-bottom: 1rem;
+        }
+        
+        .setting-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+        
+        .setting-group input,
+        .setting-group select,
+        .setting-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        
+        .setting-group input:focus,
+        .setting-group select:focus,
+        .setting-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Media picker integration styles */
+        .media-library-btn {
+            transition: all 0.2s;
+        }
+        
+        .media-library-btn:hover {
+            background-color: #059669 !important;
+            transform: translateY(-1px);
+        }
+        
+        .image-upload-section {
+            margin-bottom: 1rem;
+        }
+        
+        .upload-btn {
+            transition: all 0.2s;
+        }
+        
+        .upload-btn:hover {
+            background-color: #2563eb !important;
+            transform: translateY(-1px);
+        }
+    </style>
+</body>
+</html>

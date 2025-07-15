@@ -44,6 +44,16 @@ class Image extends Tool {
                 </div>`
             },
             {
+                name: 'mediaLibrary',
+                label: 'Media Library',
+                html: `<button type="button" 
+                    class="media-library-btn"
+                    @click="openMediaLibrary('${this.id}', 'image')"
+                    style="background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer; width: 100%;">
+                    📚 Browse Media Library
+                </button>`
+            },
+            {
                 name: 'imageUrl',
                 label: 'Or Image URL',
                 html: `<input type="text" 
@@ -100,7 +110,8 @@ class Image extends Tool {
         return `<figure class="image-block" style="text-align: ${this.config.alignment}">
             <img src="${this.config.src}" 
                 alt="${this.config.alt}"
-                style="width: ${this.config.width}">
+                style="width: ${this.config.width}"
+                @error="$event.target.src = \`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E\`">
             <figcaption 
                 contenteditable="true"
                 x-html="block.config.caption"
@@ -112,7 +123,8 @@ class Image extends Tool {
         return `<figure class="image-block" style="text-align: ${this.config.alignment}">
             <img src="${this.config.src}" 
                 alt="${this.config.alt}"
-                style="width: ${this.config.width}">
+                style="width: ${this.config.width}"
+                onerror="this.src=&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E&quot;">
             <figcaption>${this.config.caption}</figcaption>
         </figure>`;
     }

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Settings Panel</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="dist/editor.css">
+    <style>
+        .test-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .editor-wrapper {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .settings-wrapper {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+            background: #f9f9f9;
+        }
+        .block-wrapper {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            cursor: pointer;
+        }
+        .block-wrapper.selected {
+            border-color: #007cba;
+            background: #e6f3ff;
+        }
+        .settings-group {
+            margin-bottom: 1rem;
+        }
+        .settings-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .settings-group input, .settings-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="editor-wrapper">
+            <h2>Editor</h2>
+            <div id="editorjs" 
+                 x-data="alpineEditor({
+                     tools: [
+                         { class: 'Paragraph' },
+                         { class: 'Image' },
+                         { class: 'Header' }
+                     ]
+                 })">
+                
+                <div class="editor-blocks">
+                    <template x-for="block in getEditorBlocks()" :key="block.id">
+                        <div class="block-wrapper" 
+                             :class="{ 'selected': selectedBlock === block.id }"
+                             @click="setActive($event, block.id)">
+                            <div x-html="block.editorRender()"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-wrapper">
+            <h2>Settings</h2>
+            <div x-data="editorSettings('editorjs', [])">
+                <div x-show="settings.length === 0" class="no-selection">
+                    <p>No block selected</p>
+                </div>
+                
+                <div x-show="settings.length > 0">
+                    <h3>Block Properties</h3>
+                    <template x-for="setting in settings" :key="setting.name">
+                        <div class="settings-group">
+                            <label x-text="setting.label"></label>
+                            <div x-html="setting.html"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dist/index.js"></script>
+    
+    <script>
+        // Debug function to check if settings are being updated
+        document.addEventListener('settings-updated', (event) => {
+            console.log('Settings updated:', event.detail);
+        });
+        
+        document.addEventListener('editor-block-changed', (event) => {
+            console.log('Block changed:', event.detail);
+        });
+    </script>
+</body>
+</html>

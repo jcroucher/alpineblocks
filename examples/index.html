@@ -337,6 +337,7 @@
                             </div>
                             <!-- Editor Area -->
                             <div class="panel editor-area" 
+                                 id="editorjs"
                                  :class="{ 'print-mode': projectSettings.type === 'print' }"
                                  :style="projectSettings.type === 'print' ? `--print-width: ${projectSettings.printWidth || '210mm'}; --print-height: ${projectSettings.printMaxHeight || '297mm'};` : ''"
                                  x-data="alpineEditor({
@@ -475,7 +476,7 @@
                                     <div class="header-toolbar-container" x-html="getHeaderToolbar()"></div>
                                 </template>
                                 
-                                <div class="editor-content" id="editorjs">
+                                <div class="editor-content">
                                             
                                             <template x-for="block in getEditorBlocks()" :key="block.id">
                                                 <div class="drop-target ab-block"

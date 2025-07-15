@@ -75,7 +75,7 @@
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js"
     },
-    "./styles": "./dist/index.css",
+    "./css": "./dist/editor.css",
     "./frontend.css": "./dist/frontend.css",
     "./editor.css": "./dist/editor.css"
   },

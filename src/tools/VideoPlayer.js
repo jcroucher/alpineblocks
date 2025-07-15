@@ -26,6 +26,16 @@ class VideoPlayer extends Tool {
                     placeholder="Enter video URL">`
             },
             {
+                name: 'mediaLibrary',
+                label: 'Media Library',
+                html: `<button type="button" 
+                    class="media-library-btn"
+                    @click="openMediaLibrary('${this.id}', 'video')"
+                    style="background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer; width: 100%;">
+                    📚 Browse Media Library
+                </button>`
+            },
+            {
                 name: 'type',
                 label: 'Video Type',
                 html: `<select @change="trigger('${this.id}', 'type', $event.target.value)" value="${this.config.type}">

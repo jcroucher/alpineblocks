@@ -10,6 +10,7 @@ import { CommonEditorToolbar } from './core/CommonEditorToolbar';
 import { Debug } from './core/utils/Debug';
 import Layout from './core/Layout.js';
 import LayoutManager from './core/LayoutManager.js';
+import { MediaPicker } from './core/MediaPicker.js';
 
 /**
  * AlpineBlocks - A lightweight block-based content editor built with Alpine.js
@@ -80,27 +81,32 @@ function getDefaultToolConfig() {
 }
 
 /**
- * Extract and parse tool configuration from DOM, with fallback to defaults
- * @returns {Object} Parsed tool configuration
+ * Extract and parse editor configuration from DOM, with fallback to defaults
+ * @returns {Object} Parsed editor configuration
  */
-function getToolConfigFromDOM() {
+function getEditorConfigFromDOM() {
     const editorElement = document.querySelector('[x-data*="alpineEditor"]');
     if (!editorElement) {
-        Debug.info('No editor element found, using default tool config');
-        return getDefaultToolConfig();
+        Debug.info('No editor element found, using default config');
+        return { tools: getDefaultToolConfig(), media: null };
     }
 
     const xDataAttr = editorElement.getAttribute('x-data');
     
-    const match = xDataAttr.match(/alpineEditor\(\{[\s\n]*tools:\s*(\[[\s\S]*?\])\s*\}\)/);
-    if (!match) {
-        Debug.info('No tools config found in DOM, using default tool config');
-        return getDefaultToolConfig();
+    // Try to parse the entire config object
+    const configMatch = xDataAttr.match(/alpineEditor\(\{([\s\S]*?)\}\)/);
+    if (!configMatch) {
+        Debug.info('No config found in DOM, using default config');
+        return { tools: getDefaultToolConfig(), media: null };
     }
 
     try {
-        const toolsConfig = new Function(`return ${match[1]}`)();
-        const config = {};
+        const configStr = `{${configMatch[1]}}`;
+        const fullConfig = new Function(`return ${configStr}`)();
+        
+        // Parse tools configuration
+        const toolsConfig = fullConfig.tools || [];
+        const tools = {};
 
         Debug.debug('toolModules keys:', Object.keys(toolModules));
 
@@ -108,7 +114,7 @@ function getToolConfigFromDOM() {
             Debug.debug('Loading tool:', tool.class);
             
             if (toolModules[tool.class]) {
-                config[tool.class] = {
+                tools[tool.class] = {
                     class: toolModules[tool.class],
                     config: tool.config || {}
                 };
@@ -119,16 +125,16 @@ function getToolConfigFromDOM() {
         });
 
         // If no tools were successfully parsed, fall back to defaults
-        if (Object.keys(config).length === 0) {
+        if (Object.keys(tools).length === 0) {
             Debug.info('No tools successfully parsed, using default tool config');
-            return getDefaultToolConfig();
+            return { tools: getDefaultToolConfig(), media: fullConfig.media || null };
         }
 
-        return config;
+        return { tools, media: fullConfig.media || null };
     } catch (e) {
-        Debug.error('Error parsing tool configuration:', e);
-        Debug.info('Using default tool config as fallback');
-        return getDefaultToolConfig();
+        Debug.error('Error parsing editor configuration:', e);
+        Debug.info('Using default config as fallback');
+        return { tools: getDefaultToolConfig(), media: null };
     }
 }
 
@@ -183,8 +189,23 @@ document.addEventListener('alpine:init', () => {
         currentBlockId: null,
         
         init() {
-            this.settingsInstance = new Settings(editorId, this.settings);
-            this.settingsInstance.init();
+            // Debug: Log the editor ID and check if editor exists
+            console.log('Settings initialized for editor:', editorId);
+            console.log('Available editors:', Object.keys(window.alpineEditors || {}));
+            
+            // Wait for the editor to be ready before initializing settings
+            const initializeSettings = () => {
+                if (window.alpineEditors && window.alpineEditors[editorId]) {
+                    this.settingsInstance = new Settings(editorId, this.settings);
+                    this.settingsInstance.init();
+                    console.log('Settings instance created for editor:', editorId);
+                } else {
+                    // Try again after a short delay
+                    setTimeout(initializeSettings, 50);
+                }
+            };
+            
+            initializeSettings();
             
             // Listen for settings updates
             document.addEventListener('settings-updated', (event) => {
@@ -300,8 +321,17 @@ document.addEventListener('alpine:init', () => {
             const $watch = this.$watch;
             
             try {
-                this.toolConfig = getToolConfigFromDOM();
+                const editorConfig = getEditorConfigFromDOM();
+                this.toolConfig = editorConfig.tools;
                 Debug.info('Tool config loaded:', Object.keys(this.toolConfig));
+                
+                // Initialize media picker if configured
+                if (editorConfig.media) {
+                    this.mediaPicker = new MediaPicker(editorConfig.media);
+                    this.mediaPicker.init();
+                    Debug.info('Media picker initialized with config:', editorConfig.media);
+                }
+                
                 this.editor = new Editor(this.toolConfig);
                 
                 // Add Alpine utilities to editor (not reactive references)
@@ -309,6 +339,11 @@ document.addEventListener('alpine:init', () => {
                 this.editor.$dispatch = $dispatch;
                 this.editor.$nextTick = $nextTick;
                 this.editor.$watch = $watch;
+                
+                // Add media picker reference to editor
+                if (this.mediaPicker) {
+                    this.editor.mediaPicker = this.mediaPicker;
+                }
                 
                 // Initialize the editor
                 this.editor.init();
@@ -1357,6 +1392,45 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
+// Global media library function
+window.openMediaLibrary = function(blockId, mediaType = 'all') {
+    // Get the media picker from the first available editor
+    const firstEditor = Object.values(window.alpineEditors || {})[0];
+    if (!firstEditor || !firstEditor.mediaPicker) {
+        console.warn('Media picker not available. Please configure media settings in your editor initialization.');
+        return;
+    }
+    
+    const mediaPicker = firstEditor.mediaPicker;
+    
+    // Configure the media picker for this selection
+    mediaPicker.open({
+        fileTypes: [mediaType],
+        onSelect: (selectedItem) => {
+            // Find the block and update its configuration
+            for (const editorId in window.alpineEditors) {
+                const editor = window.alpineEditors[editorId];
+                if (editor && editor.blocks) {
+                    const block = editor.blocks.find(b => b.id === blockId);
+                    if (block) {
+                        if (mediaType === 'image') {
+                            block.config.src = selectedItem.url;
+                            if (selectedItem.name) {
+                                block.config.alt = selectedItem.name;
+                            }
+                        } else if (mediaType === 'video') {
+                            block.config.url = selectedItem.url;
+                            block.config.type = 'direct';
+                        }
+                        block.triggerRedraw();
+                        break;
+                    }
+                }
+            }
+        }
+    });
+};
+
 // Global image upload function
 window.uploadImage = async function(event, blockId) {
     const file = event.target.files[0];
@@ -1417,5 +1491,115 @@ window.uploadImage = async function(event, blockId) {
     }
 };
 
-Alpine.start();
+// AlpineBlocks class for external usage
+export default class AlpineBlocks {
+    constructor(config = {}) {
+        this.config = {
+            holder: config.holder || null,
+            tools: config.tools || [],
+            media: config.media || null,
+            ...config
+        };
+        this.instance = null;
+        this.holder = this.config.holder;
+    }
+
+    async init() {
+        if (!this.holder) {
+            throw new Error('AlpineBlocks: holder element is required');
+        }
+
+        // Ensure Alpine is available
+        if (!window.Alpine) {
+            throw new Error('AlpineBlocks: Alpine.js is required');
+        }
+
+        // Set up the holder element with proper Alpine.js structure
+        this.holder.innerHTML = `
+            <div class="alpine-blocks-editor" id="${this.holder.id || 'alpine-editor'}" x-data="alpineEditor()">
+                <div class="editor-area">
+                    <div class="editor-content" x-ref="editorContent">
+                        <template x-for="block in blocks" :key="block.id">
+                            <div x-html="block.editorRender()"></div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Configure the editor with tools
+        if (this.config.tools.length > 0) {
+            this.holder.querySelector('[x-data]').setAttribute('x-data', 
+                `alpineEditor({ tools: ${JSON.stringify(this.config.tools)}, media: ${JSON.stringify(this.config.media)} })`
+            );
+        }
+
+        // Initialize Alpine component
+        await new Promise(resolve => {
+            const checkEditor = () => {
+                const editorId = this.holder.id || 'alpine-editor';
+                if (window.alpineEditors && window.alpineEditors[editorId]) {
+                    this.instance = window.alpineEditors[editorId];
+                    resolve();
+                } else {
+                    setTimeout(checkEditor, 50);
+                }
+            };
+            checkEditor();
+        });
+
+        return this;
+    }
+
+    save() {
+        if (!this.instance) {
+            throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        }
+        return this.instance.save();
+    }
+
+    render(data) {
+        if (!this.instance) {
+            throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        }
+        
+        if (data && Array.isArray(data)) {
+            // Load blocks from data
+            this.instance.blocks = [];
+            data.forEach(blockData => {
+                const block = this.instance.initBlock(blockData.class, false);
+                if (block && blockData.data) {
+                    Object.assign(block.config, blockData.data);
+                    block.triggerRedraw();
+                }
+            });
+        }
+        
+        return this.instance.getCleanHTML();
+    }
+
+    getHTML() {
+        if (!this.instance) {
+            throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        }
+        return this.instance.getCleanHTML();
+    }
+
+    destroy() {
+        if (this.instance && this.holder) {
+            // Clean up
+            const editorId = this.holder.id || 'alpine-editor';
+            if (window.alpineEditors && window.alpineEditors[editorId]) {
+                delete window.alpineEditors[editorId];
+            }
+            this.holder.innerHTML = '';
+            this.instance = null;
+        }
+    }
+}
+
+// Start Alpine.js if not already started
+if (!window.Alpine._started) {
+    Alpine.start();
+}
 
