@@ -263,7 +263,7 @@
             </div>
             <div class="relative overflow-hidden pt-16">
                 <div class="mx-auto px-6 lg:px-8">
-                    <div class="container text-center" id="demo">
+                    <div class="container text-center" id="demo" x-data="editorPages()">
                         <div class="editor-layout">
                             <!-- Tools Panel -->
                             <div class="panel" x-data="{ activeTab: 'tools' }">
@@ -338,143 +338,144 @@
                             <!-- Editor Area -->
                             <div class="panel editor-area" 
                                  :class="{ 'print-mode': projectSettings.type === 'print' }"
-                                 :style="projectSettings.type === 'print' ? `--print-width: ${projectSettings.printWidth || '210mm'}; --print-height: ${projectSettings.printMaxHeight || '297mm'};` : ''">
-                                <div class="editor-content" id="editorjs"
-                                             x-data="alpineEditor({
-                                                  tools: [
-                                                    {
-                                                      class: 'Paragraph',
-                                                      config: {
-                                                        content: '<p>Hello, world!</p>'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Header',
-                                                      config: {
-                                                        content: 'Heading Text',
-                                                        level: 'h2'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'List',
-                                                      config: {
-                                                        content: '<li>List item 1</li>',
-                                                        type: 'ul'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Code',
-                                                      config: {
-                                                        content: '// Your code here',
-                                                        language: 'javascript',
-                                                        showLineNumbers: true
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Image',
-                                                      config: {
-                                                        src: '',
-                                                        alt: '',
-                                                        caption: '',
-                                                        alignment: 'center',
-                                                        width: 'auto'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Quote',
-                                                      config: {
-                                                        content: 'Enter your quote here',
-                                                        attribution: '',
-                                                        style: 'default'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'WYSIWYG',
-                                                      config: {
-                                                        content: 'Start typing here...',
-                                                        format: 'p'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Alert',
-                                                      config: {
-                                                        content: 'Alert message goes here',
-                                                        type: 'info',
-                                                        dismissible: false,
-                                                        icon: true
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'VideoPlayer',
-                                                      config: {
-                                                        url: '',
-                                                        type: 'youtube',
-                                                        autoplay: false,
-                                                        controls: true,
-                                                        caption: ''
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'AudioPlayer',
-                                                      config: {
-                                                        url: '',
-                                                        type: 'file',
-                                                        title: '',
-                                                        artist: '',
-                                                        controls: true
-                                                      }
-                                                    },
-                                                    {
-                                                        class: 'Carousel',
-                                                        config: {
-                                                          slides: [{ image: '', caption: '' }],
-                                                          showArrows: true,
-                                                          showDots: true
-                                                        }
-                                                      },
-                                                    {
-                                                      class: 'Columns',
-                                                      config: {
-                                                        columns: [
-                                                          { blocks: [], width: '1fr' },
-                                                          { blocks: [], width: '1fr' }
-                                                        ],
-                                                        gap: '20px',
-                                                        alignment: 'top',
-                                                        responsive: true
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Raw',
-                                                      config: {
-                                                        content: '',
-                                                        mode: 'html',
-                                                        showPreview: true,
-                                                        validateHtml: true
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Delimiter',
-                                                      config: {
-                                                        style: 'line',
-                                                        color: '#E8E8E8'
-                                                      }
-                                                    },
-                                                    {
-                                                      class: 'Button',
-                                                      config: {
-                                                        text: 'Click me',
-                                                        type: 'primary',
-                                                        size: 'medium'
-                                                      }
-                                                    }
-                                                ]
-                                              })"
-                                             >
-                                            <!-- Header toolbar rendered from editor - can be placed anywhere -->
-                                            <template x-if="editor">
-                                                <div x-html="getHeaderToolbar()"></div>
-                                            </template>
+                                 :style="projectSettings.type === 'print' ? `--print-width: ${projectSettings.printWidth || '210mm'}; --print-height: ${projectSettings.printMaxHeight || '297mm'};` : ''"
+                                 x-data="alpineEditor({
+                                      tools: [
+                                        {
+                                          class: 'Paragraph',
+                                          config: {
+                                            content: '<p>Hello, world!</p>'
+                                          }
+                                        },
+                                        {
+                                          class: 'Header',
+                                          config: {
+                                            content: 'Heading Text',
+                                            level: 'h2'
+                                          }
+                                        },
+                                        {
+                                          class: 'List',
+                                          config: {
+                                            content: '<li>List item 1</li>',
+                                            type: 'ul'
+                                          }
+                                        },
+                                        {
+                                          class: 'Code',
+                                          config: {
+                                            content: '// Your code here',
+                                            language: 'javascript',
+                                            showLineNumbers: true
+                                          }
+                                        },
+                                        {
+                                          class: 'Image',
+                                          config: {
+                                            src: '',
+                                            alt: '',
+                                            caption: '',
+                                            alignment: 'center',
+                                            width: 'auto'
+                                          }
+                                        },
+                                        {
+                                          class: 'Quote',
+                                          config: {
+                                            content: 'Enter your quote here',
+                                            attribution: '',
+                                            style: 'default'
+                                          }
+                                        },
+                                        {
+                                          class: 'WYSIWYG',
+                                          config: {
+                                            content: 'Start typing here...',
+                                            format: 'p'
+                                          }
+                                        },
+                                        {
+                                          class: 'Alert',
+                                          config: {
+                                            content: 'Alert message goes here',
+                                            type: 'info',
+                                            dismissible: false,
+                                            icon: true
+                                          }
+                                        },
+                                        {
+                                          class: 'VideoPlayer',
+                                          config: {
+                                            url: '',
+                                            type: 'youtube',
+                                            autoplay: false,
+                                            controls: true,
+                                            caption: ''
+                                          }
+                                        },
+                                        {
+                                          class: 'AudioPlayer',
+                                          config: {
+                                            url: '',
+                                            type: 'file',
+                                            title: '',
+                                            artist: '',
+                                            controls: true
+                                          }
+                                        },
+                                        {
+                                            class: 'Carousel',
+                                            config: {
+                                              slides: [{ image: '', caption: '' }],
+                                              showArrows: true,
+                                              showDots: true
+                                            }
+                                          },
+                                        {
+                                          class: 'Columns',
+                                          config: {
+                                            columns: [
+                                              { blocks: [], width: '1fr' },
+                                              { blocks: [], width: '1fr' }
+                                            ],
+                                            gap: '20px',
+                                            alignment: 'top',
+                                            responsive: true
+                                          }
+                                        },
+                                        {
+                                          class: 'Raw',
+                                          config: {
+                                            content: '',
+                                            mode: 'html',
+                                            showPreview: true,
+                                            validateHtml: true
+                                          }
+                                        },
+                                        {
+                                          class: 'Delimiter',
+                                          config: {
+                                            style: 'line',
+                                            color: '#E8E8E8'
+                                          }
+                                        },
+                                        {
+                                          class: 'Button',
+                                          config: {
+                                            text: 'Click me',
+                                            type: 'primary',
+                                            size: 'medium'
+                                          }
+                                        }
+                                    ]
+                                  })">
+                                
+                                <!-- Header toolbar rendered outside editor-content -->
+                                <template x-if="editor">
+                                    <div class="header-toolbar-container" x-html="getHeaderToolbar()"></div>
+                                </template>
+                                
+                                <div class="editor-content" id="editorjs">
                                             
                                             <template x-for="block in getEditorBlocks()" :key="block.id">
                                                 <div class="drop-target ab-block"
@@ -582,7 +583,7 @@
                                         </div>
                                         
                                         <!-- Pages Tab -->
-                                        <div x-show="activeTab === 'pages'" x-data="editorPages()">
+                                        <div x-show="activeTab === 'pages'">
                                             <div class="pages-section">
                                                 <div class="pages-header">
                                                     <button class="btn-add-page" @click="addPage()">
@@ -741,9 +742,26 @@
                         <div class="mt-16" x-data="{ jsonOutput: '[]' }" 
                              x-init="
                                 setInterval(() => {
-                                    const editorEl = document.getElementById('editorjs');
-                                    if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
-                                        jsonOutput = editorEl._x_dataStack[0].blocksJSON(false);
+                                    // Try to access the editor through the global registry
+                                    if (window.alpineEditors && window.alpineEditors.editorjs) {
+                                        try {
+                                            jsonOutput = window.alpineEditors.editorjs.blocksJSON(false);
+                                        } catch (e) {
+                                            console.warn('Error getting blocks JSON:', e);
+                                        }
+                                    } else {
+                                        // Fallback: try to find it in the Alpine data stack
+                                        // The editor data is now on the editor-area parent div, not the editorjs element
+                                        const editorEl = document.getElementById('editorjs');
+                                        const editorArea = editorEl?.closest('.editor-area');
+                                        if (editorArea && editorArea._x_dataStack && editorArea._x_dataStack.length > 0) {
+                                            for (let i = 0; i < editorArea._x_dataStack.length; i++) {
+                                                if (editorArea._x_dataStack[i].blocksJSON) {
+                                                    jsonOutput = editorArea._x_dataStack[i].blocksJSON(false);
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     }
                                 }, 1000)
                              ">
