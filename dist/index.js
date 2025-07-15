@@ -3323,7 +3323,37 @@ class $db7363abc9a57c89$var$List extends (0, $3e6ce1da8d004c46$export$2e2bcd8739
         return `<${this.config.type} 
             data-tool="List" 
             data-tool-id="${toolId}"
-            style="${styleString}; cursor: pointer;">${this.config.content}</${this.config.type}>`;
+            contenteditable="true"
+            style="${styleString}; cursor: pointer;"
+            onkeydown="
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const selection = window.getSelection();
+                    const range = selection.getRangeAt(0);
+                    
+                    // Create new list item
+                    const newLi = document.createElement('li');
+                    newLi.innerHTML = '&nbsp;';
+                    
+                    // Find the current li element
+                    let currentLi = range.startContainer;
+                    while (currentLi && currentLi.tagName !== 'LI') {
+                        currentLi = currentLi.parentNode;
+                    }
+                    
+                    if (currentLi) {
+                        // Insert new li after current one
+                        currentLi.parentNode.insertBefore(newLi, currentLi.nextSibling);
+                        
+                        // Move cursor to new li
+                        const newRange = document.createRange();
+                        newRange.setStart(newLi, 0);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                }
+            ">${this.config.content}</${this.config.type}>`;
     }
 }
 var $db7363abc9a57c89$export$2e2bcd8739ae039 = $db7363abc9a57c89$var$List;
@@ -3984,8 +4014,7 @@ class $4399172a73dade70$var$VideoPlayer extends (0, $3e6ce1da8d004c46$export$2e2
         return {
             name: 'Video',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M549.7 124.1c-6.3-23.7-24.8-42.3-48.3-48.6C458.8 64 288 64 288 64S117.2 64 74.6 75.5c-23.5 6.3-42 24.9-48.3 48.6-11.4 42.9-11.4 132.3-11.4 132.3s0 89.4 11.4 132.3c6.3 23.7 24.8 41.5 48.3 47.8C117.2 448 288 448 288 448s170.8 0 213.4-11.5c23.5-6.3 42-24.2 48.3-47.8 11.4-42.9 11.4-132.3 11.4-132.3s0-89.4-11.4-132.3zm-317.5 213.5V175.2l142.7 81.2-142.7 81.2z"/></svg>',
-            category: 'Media',
-            allowRawPreview: false
+            category: 'Media'
         };
     }
     getVideoEmbed() {
@@ -4195,8 +4224,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
         return {
             name: 'Audio',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v72V368c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V147L192 223.8V432c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V200 128c0-14.1 9.3-26.6 22.8-30.7l320-96c9.7-2.9 20.2-1.1 28.3 5z"/></svg>',
-            category: 'Media',
-            allowRawPreview: false
+            category: 'Media'
         };
     }
     getAudioEmbed() {
@@ -4293,6 +4321,52 @@ var $6ddc38c087d52cba$export$2e2bcd8739ae039 = $6ddc38c087d52cba$var$AudioPlayer
 
 // Define global Alpine.js functions for carousel functionality
 if (typeof window !== 'undefined') {
+    window.carouselSettings = function(blockId, initialSlides) {
+        return {
+            slides: JSON.parse(JSON.stringify(initialSlides || [])),
+            addSlide () {
+                this.slides.push({
+                    image: '',
+                    caption: ''
+                });
+                this.updateSlides();
+            },
+            removeSlide (index) {
+                if (this.slides.length > 1) {
+                    this.slides.splice(index, 1);
+                    this.updateSlides();
+                }
+            },
+            moveUp (index) {
+                if (index > 0) {
+                    const slide = this.slides.splice(index, 1)[0];
+                    this.slides.splice(index - 1, 0, slide);
+                    this.updateSlides();
+                }
+            },
+            moveDown (index) {
+                if (index < this.slides.length - 1) {
+                    const slide = this.slides.splice(index, 1)[0];
+                    this.slides.splice(index + 1, 0, slide);
+                    this.updateSlides();
+                }
+            },
+            updateSlides () {
+                // Trigger the block update
+                if (window.alpineEditors) for(const editorId in window.alpineEditors){
+                    const editor = window.alpineEditors[editorId];
+                    if (editor && editor.blocks) {
+                        const block = editor.blocks.find((b)=>b.id === blockId);
+                        if (block) {
+                            block.config.slides = JSON.parse(JSON.stringify(this.slides));
+                            block.triggerRedraw();
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+    };
     window.carouselEditor = function() {
         return {
             currentSlide: 0,
@@ -4428,52 +4502,98 @@ class $06ccccc81b3eddf4$var$Carousel extends (0, $3e6ce1da8d004c46$export$2e2bcd
         };
         this.settings = [
             {
+                name: 'slides_management',
+                label: 'Slides',
+                html: `<div x-data="carouselSettings('${this.id}', ${JSON.stringify(this.config.slides).replace(/"/g, '&quot;')})">
+                    <div class="slides-list">
+                        <template x-for="(slide, index) in slides" :key="index">
+                            <div class="slide-item">
+                                <div class="slide-header">
+                                    <span x-text="'Slide ' + (index + 1)"></span>
+                                    <div class="slide-actions">
+                                        <button type="button" @click="moveUp(index)" x-show="index > 0" title="Move up">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+                                            </svg>
+                                        </button>
+                                        <button type="button" @click="moveDown(index)" x-show="index < slides.length - 1" title="Move down">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                                            </svg>
+                                        </button>
+                                        <button type="button" @click="removeSlide(index)" x-show="slides.length > 1" title="Remove slide" class="remove-btn">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="slide-fields">
+                                    <input type="url" 
+                                           x-model="slide.image" 
+                                           @input="updateSlides()"
+                                           placeholder="Image URL"
+                                           class="slide-input">
+                                    <input type="text" 
+                                           x-model="slide.caption" 
+                                           @input="updateSlides()"
+                                           placeholder="Caption (optional)"
+                                           class="slide-input">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <button type="button" @click="addSlide()" class="add-slide-btn">Add Slide</button>
+                </div>`
+            },
+            {
                 name: 'autoplay',
                 label: 'Autoplay',
-                html: `<label>
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'autoplay', $event.target.checked)"
                         ${this.config.autoplay ? 'checked' : ''}>
-                    Autoplay
+                    Autoplay slides
                 </label>`
             },
             {
                 name: 'interval',
-                label: 'Interval (ms)',
+                label: 'Autoplay Interval (ms)',
                 html: `<input type="number" 
-                    @change="trigger('${this.id}', 'interval', $event.target.value)"
+                    @change="trigger('${this.id}', 'interval', parseInt($event.target.value))"
                     value="${this.config.interval}"
                     min="1000"
-                    step="500">`
+                    step="500"
+                    class="settings-input">`
             },
             {
                 name: 'showArrows',
-                label: 'Show Arrows',
-                html: `<label>
+                label: 'Show Navigation Arrows',
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showArrows', $event.target.checked)"
                         ${this.config.showArrows ? 'checked' : ''}>
-                    Show Arrows
+                    Show arrows
                 </label>`
             },
             {
                 name: 'showDots',
-                label: 'Show Dots',
-                html: `<label>
+                label: 'Show Navigation Dots',
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showDots', $event.target.checked)"
                         ${this.config.showDots ? 'checked' : ''}>
-                    Show Dots
+                    Show dots
                 </label>`
             },
             {
                 name: 'showCaptions',
                 label: 'Show Captions',
-                html: `<label>
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showCaptions', $event.target.checked)"
                         ${this.config.showCaptions ? 'checked' : ''}>
-                    Show Captions
+                    Show captions
                 </label>`
             }
         ];
@@ -5535,6 +5655,7 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
             }
             // Find insertion point
             const insertionPoint = this.getInsertionPoint(element, e);
+            if (!toolHtml) return;
             // Insert the HTML
             if (insertionPoint.type === 'end') element.insertAdjacentHTML('beforeend', toolHtml);
             else {

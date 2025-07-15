@@ -667,6 +667,55 @@ body {
     list-style-type: decimal;
 }
 
+/* General List Styles (for toolbar-created lists) */
+ul, ol {
+    margin: var(--space-2) 0;
+    padding-left: var(--space-6);
+    line-height: 1.6;
+}
+
+li {
+    margin: var(--space-1) 0;
+    color: var(--gray-700);
+}
+
+ul {
+    list-style-type: disc;
+}
+
+ol {
+    list-style-type: decimal;
+}
+
+/* Nested lists */
+ul ul, ol ol, ul ol, ol ul {
+    margin: var(--space-1) 0;
+    padding-left: var(--space-4);
+}
+
+/* Ensure list styles are visible in contenteditable areas */
+[contenteditable] ul,
+[contenteditable] ol {
+    margin: var(--space-2) 0;
+    padding-left: var(--space-6);
+    line-height: 1.6;
+    list-style-position: inside;
+}
+
+[contenteditable] li {
+    margin: var(--space-1) 0;
+    color: var(--gray-700);
+    display: list-item;
+}
+
+[contenteditable] ul {
+    list-style-type: disc;
+}
+
+[contenteditable] ol {
+    list-style-type: decimal;
+}
+
 /* Quote Tool Styles */
 .quote-block {
     margin: var(--space-6) 0;

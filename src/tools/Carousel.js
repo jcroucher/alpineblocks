@@ -3,6 +3,57 @@ import { escapeHtml } from '../utils/HtmlEscape';
 
 // Define global Alpine.js functions for carousel functionality
 if (typeof window !== 'undefined') {
+    window.carouselSettings = function(blockId, initialSlides) {
+        return {
+            slides: JSON.parse(JSON.stringify(initialSlides || [])),
+            
+            addSlide() {
+                this.slides.push({ image: '', caption: '' });
+                this.updateSlides();
+            },
+            
+            removeSlide(index) {
+                if (this.slides.length > 1) {
+                    this.slides.splice(index, 1);
+                    this.updateSlides();
+                }
+            },
+            
+            moveUp(index) {
+                if (index > 0) {
+                    const slide = this.slides.splice(index, 1)[0];
+                    this.slides.splice(index - 1, 0, slide);
+                    this.updateSlides();
+                }
+            },
+            
+            moveDown(index) {
+                if (index < this.slides.length - 1) {
+                    const slide = this.slides.splice(index, 1)[0];
+                    this.slides.splice(index + 1, 0, slide);
+                    this.updateSlides();
+                }
+            },
+            
+            updateSlides() {
+                // Trigger the block update
+                if (window.alpineEditors) {
+                    for (const editorId in window.alpineEditors) {
+                        const editor = window.alpineEditors[editorId];
+                        if (editor && editor.blocks) {
+                            const block = editor.blocks.find(b => b.id === blockId);
+                            if (block) {
+                                block.config.slides = JSON.parse(JSON.stringify(this.slides));
+                                block.triggerRedraw();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    };
+    
     window.carouselEditor = function() {
         return {
             currentSlide: 0,
@@ -144,52 +195,98 @@ class Carousel extends Tool {
 
         this.settings = [
             {
+                name: 'slides_management',
+                label: 'Slides',
+                html: `<div x-data="carouselSettings('${this.id}', ${JSON.stringify(this.config.slides).replace(/"/g, '&quot;')})">
+                    <div class="slides-list">
+                        <template x-for="(slide, index) in slides" :key="index">
+                            <div class="slide-item">
+                                <div class="slide-header">
+                                    <span x-text="'Slide ' + (index + 1)"></span>
+                                    <div class="slide-actions">
+                                        <button type="button" @click="moveUp(index)" x-show="index > 0" title="Move up">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+                                            </svg>
+                                        </button>
+                                        <button type="button" @click="moveDown(index)" x-show="index < slides.length - 1" title="Move down">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+                                            </svg>
+                                        </button>
+                                        <button type="button" @click="removeSlide(index)" x-show="slides.length > 1" title="Remove slide" class="remove-btn">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="slide-fields">
+                                    <input type="url" 
+                                           x-model="slide.image" 
+                                           @input="updateSlides()"
+                                           placeholder="Image URL"
+                                           class="slide-input">
+                                    <input type="text" 
+                                           x-model="slide.caption" 
+                                           @input="updateSlides()"
+                                           placeholder="Caption (optional)"
+                                           class="slide-input">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <button type="button" @click="addSlide()" class="add-slide-btn">Add Slide</button>
+                </div>`
+            },
+            {
                 name: 'autoplay',
                 label: 'Autoplay',
-                html: `<label>
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'autoplay', $event.target.checked)"
                         ${this.config.autoplay ? 'checked' : ''}>
-                    Autoplay
+                    Autoplay slides
                 </label>`
             },
             {
                 name: 'interval',
-                label: 'Interval (ms)',
+                label: 'Autoplay Interval (ms)',
                 html: `<input type="number" 
-                    @change="trigger('${this.id}', 'interval', $event.target.value)"
+                    @change="trigger('${this.id}', 'interval', parseInt($event.target.value))"
                     value="${this.config.interval}"
                     min="1000"
-                    step="500">`
+                    step="500"
+                    class="settings-input">`
             },
             {
                 name: 'showArrows',
-                label: 'Show Arrows',
-                html: `<label>
+                label: 'Show Navigation Arrows',
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showArrows', $event.target.checked)"
                         ${this.config.showArrows ? 'checked' : ''}>
-                    Show Arrows
+                    Show arrows
                 </label>`
             },
             {
                 name: 'showDots',
-                label: 'Show Dots',
-                html: `<label>
+                label: 'Show Navigation Dots',
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showDots', $event.target.checked)"
                         ${this.config.showDots ? 'checked' : ''}>
-                    Show Dots
+                    Show dots
                 </label>`
             },
             {
                 name: 'showCaptions',
                 label: 'Show Captions',
-                html: `<label>
+                html: `<label class="checkbox-label">
                     <input type="checkbox" 
                         @change="trigger('${this.id}', 'showCaptions', $event.target.checked)"
                         ${this.config.showCaptions ? 'checked' : ''}>
-                    Show Captions
+                    Show captions
                 </label>`
             }
         ];

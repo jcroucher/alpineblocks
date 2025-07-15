@@ -1810,3 +1810,215 @@ body {
         padding: 0;
     }
 }
+
+/* Carousel Settings Styles */
+.slides-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: var(--space-3);
+}
+
+.slide-item {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+
+.slide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.slide-header span {
+    font-weight: var(--font-medium);
+    color: var(--gray-700);
+    font-size: var(--text-sm);
+}
+
+.slide-actions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.slide-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--gray-300);
+    background: white;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-normal);
+    color: var(--gray-600);
+}
+
+.slide-actions button:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-400);
+    color: var(--gray-700);
+}
+
+.slide-actions button.remove-btn:hover {
+    background: var(--error-50);
+    border-color: var(--error-300);
+    color: var(--error-600);
+}
+
+.slide-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.slide-input {
+    width: 100%;
+    padding: var(--space-2);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    transition: var(--transition-normal);
+    background: white;
+}
+
+.slide-input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.add-slide-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--primary-500);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.add-slide-btn:hover {
+    background: var(--primary-600);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: white;
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+    background: var(--primary-600);
+    border-color: var(--primary-600);
+}
+
+.checkbox-label input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Common Toolbar Styles */
+.toolbar-btn {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 6px !important;
+    border: 1px solid var(--gray-300) !important;
+    background: white !important;
+    border-radius: var(--radius-sm) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    transition: var(--transition-normal) !important;
+    color: var(--gray-600) !important;
+}
+
+.toolbar-btn:hover {
+    background: var(--gray-50) !important;
+    border-color: var(--gray-400) !important;
+    color: var(--gray-700) !important;
+}
+
+.toolbar-btn:active,
+.toolbar-btn.active {
+    background: var(--primary-500) !important;
+    border-color: var(--primary-500) !important;
+    color: white !important;
+}
+
+.toolbar-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    fill: currentColor !important;
+}
+
+.toolbar-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+}
+
+.toolbar-separator {
+    width: 1px !important;
+    height: 20px !important;
+    background: var(--gray-300) !important;
+    margin: 0 4px !important;
+}
+
+/* List styles for contenteditable areas in editor */
+.wysiwyg-content ul,
+.wysiwyg-content ol,
+[contenteditable] ul,
+[contenteditable] ol {
+    margin: var(--space-2) 0 !important;
+    padding-left: var(--space-6) !important;
+    line-height: 1.6 !important;
+}
+
+.wysiwyg-content li,
+[contenteditable] li {
+    margin: var(--space-1) 0 !important;
+    color: var(--gray-700) !important;
+    display: list-item !important;
+    list-style-position: inside !important;
+}
+
+.wysiwyg-content ul,
+[contenteditable] ul {
+    list-style-type: disc !important;
+}
+
+.wysiwyg-content ol,
+[contenteditable] ol {
+    list-style-type: decimal !important;
+}

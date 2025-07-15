@@ -393,6 +393,10 @@ function rawCodeEditor() {
             // Find insertion point
             const insertionPoint = this.getInsertionPoint(element, e);
             
+            if (!toolHtml) {
+                return;
+            }
+            
             // Insert the HTML
             if (insertionPoint.type === 'end') {
                 element.insertAdjacentHTML('beforeend', toolHtml);

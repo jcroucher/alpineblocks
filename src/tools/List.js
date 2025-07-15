@@ -124,7 +124,37 @@ class List extends Tool {
         return `<${this.config.type} 
             data-tool="List" 
             data-tool-id="${toolId}"
-            style="${styleString}; cursor: pointer;">${this.config.content}</${this.config.type}>`;
+            contenteditable="true"
+            style="${styleString}; cursor: pointer;"
+            onkeydown="
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const selection = window.getSelection();
+                    const range = selection.getRangeAt(0);
+                    
+                    // Create new list item
+                    const newLi = document.createElement('li');
+                    newLi.innerHTML = '&nbsp;';
+                    
+                    // Find the current li element
+                    let currentLi = range.startContainer;
+                    while (currentLi && currentLi.tagName !== 'LI') {
+                        currentLi = currentLi.parentNode;
+                    }
+                    
+                    if (currentLi) {
+                        // Insert new li after current one
+                        currentLi.parentNode.insertBefore(newLi, currentLi.nextSibling);
+                        
+                        // Move cursor to new li
+                        const newRange = document.createRange();
+                        newRange.setStart(newLi, 0);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                }
+            ">${this.config.content}</${this.config.type}>`;
     }
 }
 
