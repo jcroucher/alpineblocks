@@ -1434,6 +1434,8 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         this.dragStartTime = Date.now();
         event.dataTransfer.setData('text/plain', tool.class);
         event.dataTransfer.effectAllowed = 'copy';
+        // Store current dragged tool globally for access during dragover
+        window.currentDraggedTool = tool.class;
     }
     /**
    * Handle drag end event for tools
@@ -1443,6 +1445,8 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         setTimeout(()=>{
             this.isDragging = false;
             this.dragStartTime = null;
+            // Clear the global dragged tool
+            window.currentDraggedTool = null;
         }, 100);
     }
     /**
@@ -5341,35 +5345,42 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
             element.addEventListener('dragover', (e)=>{
                 e.preventDefault();
                 e.stopPropagation();
-                // Check if tool is allowed for raw preview
-                const toolName = e.dataTransfer.getData('text/plain');
+                // Check if tool is allowed for raw preview using global variable
+                const toolName = window.currentDraggedTool;
                 if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
                     const toolConfig = editor.toolConfig[toolName];
                     const toolboxConfig = toolConfig.class.toolbox();
                     if (toolboxConfig.allowRawPreview === false) {
-                        // Show no-drop cursor
+                        // Show no-drop cursor and visual feedback
                         element.style.cursor = 'no-drop';
+                        this.showNoDropOverlay(element, toolboxConfig.name);
                         return;
                     }
                 }
                 // Show drop cursor for allowed tools
                 element.style.cursor = 'default';
+                this.hideNoDropOverlay(element);
                 this.showDropCursor(element, e);
             });
             element.addEventListener('dragleave', (e)=>{
                 e.preventDefault();
                 e.stopPropagation();
                 // Only hide cursor if we're leaving the container entirely
-                if (!element.contains(e.relatedTarget)) this.hideDropCursor(element);
+                if (!element.contains(e.relatedTarget)) {
+                    this.hideDropCursor(element);
+                    this.hideNoDropOverlay(element);
+                }
             });
             element.addEventListener('drop', (e)=>{
                 e.preventDefault();
                 e.stopPropagation();
-                // Hide drop cursor
+                // Hide drop cursor and overlay
                 this.hideDropCursor(element);
+                this.hideNoDropOverlay(element);
                 element.style.cursor = 'default';
-                // Get the dropped tool data
-                const toolName = e.dataTransfer.getData('text/plain');
+                // Get the dropped tool data from global variable as fallback
+                let toolName = e.dataTransfer.getData('text/plain');
+                if (!toolName) toolName = window.currentDraggedTool;
                 if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
                     // Check if tool is allowed for raw preview
                     const toolConfig = editor.toolConfig[toolName];
@@ -5378,6 +5389,58 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
                     this.insertToolAtCursor(element, block, toolName, e, editor);
                 }
             });
+        },
+        showNoDropOverlay (element, toolName) {
+            // Remove existing overlay
+            this.hideNoDropOverlay(element);
+            // Create overlay element
+            const overlay = document.createElement('div');
+            overlay.id = 'raw-no-drop-overlay';
+            overlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(239, 68, 68, 0.1);
+                border: 2px dashed #ef4444;
+                border-radius: 8px;
+                z-index: 1000;
+                pointer-events: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(2px);
+            `;
+            // Create message element
+            const message = document.createElement('div');
+            message.style.cssText = `
+                background: #ef4444;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            message.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M15 9l-6 6"/>
+                    <path d="M9 9l6 6"/>
+                </svg>
+                Cannot drop "${toolName}" here
+            `;
+            overlay.appendChild(message);
+            element.appendChild(overlay);
+        },
+        hideNoDropOverlay (element) {
+            const overlay = element.querySelector('#raw-no-drop-overlay');
+            if (overlay) overlay.remove();
         },
         showDropCursor (element, e) {
             // Remove existing cursor

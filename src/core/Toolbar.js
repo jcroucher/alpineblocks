@@ -30,6 +30,9 @@ export class Toolbar {
         this.dragStartTime = Date.now();
         event.dataTransfer.setData('text/plain', tool.class);
         event.dataTransfer.effectAllowed = 'copy';
+        
+        // Store current dragged tool globally for access during dragover
+        window.currentDraggedTool = tool.class;
     }
 
     /**
@@ -41,6 +44,8 @@ export class Toolbar {
         setTimeout(() => {
             this.isDragging = false;
             this.dragStartTime = null;
+            // Clear the global dragged tool
+            window.currentDraggedTool = null;
         }, 100);
     }
 
