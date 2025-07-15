@@ -6,6 +6,7 @@ import { Editor } from './core/editor';
 import { Toolbar } from './core/Toolbar';
 import { Settings } from './core/Settings';
 import { HeaderToolbar } from './core/HeaderToolbar';
+import { CommonEditorToolbar } from './core/CommonEditorToolbar';
 import { Debug } from './core/utils/Debug';
 import Layout from './core/Layout.js';
 import LayoutManager from './core/LayoutManager.js';
@@ -179,6 +180,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('editorSettings', (editorId, initialSettings) => ({
         settingsInstance: null,
         settings: initialSettings || [],
+        currentBlockId: null,
         
         init() {
             this.settingsInstance = new Settings(editorId, this.settings);
@@ -188,6 +190,7 @@ document.addEventListener('alpine:init', () => {
             document.addEventListener('settings-updated', (event) => {
                 if (event.detail.editorId === editorId) {
                     this.settings = event.detail.settings || [];
+                    this.currentBlockId = event.detail.blockId;
                 }
             });
         },
@@ -196,6 +199,89 @@ document.addEventListener('alpine:init', () => {
             if (this.settingsInstance) {
                 this.settingsInstance.trigger(blockId, property, value);
             }
+        },
+        
+        doCallback(callback) {
+            if (this.settingsInstance) {
+                this.settingsInstance.doCallback(callback);
+            }
+        },
+        
+        deleteBlock() {
+            if (!this.currentBlockId) return;
+            
+            // Use the existing delete confirmation system
+            window.dispatchEvent(new CustomEvent('show-delete-confirmation', { 
+                detail: { 
+                    blockId: this.currentBlockId,
+                    type: 'block',
+                    title: 'Delete Block',
+                    description: 'Are you sure you want to delete this block? This action cannot be undone.'
+                } 
+            }));
+        },
+        
+        duplicateBlock() {
+            if (!this.currentBlockId) return;
+            
+            // Check if this is a template element (they can't be duplicated)
+            if (this.currentBlockId.startsWith('template-')) {
+                alert('Template elements cannot be duplicated. Only regular blocks can be duplicated.');
+                return;
+            }
+            
+            const editorInstance = window.alpineEditors[editorId];
+            if (!editorInstance) {
+                console.error('Editor instance not found:', editorId);
+                return;
+            }
+            
+            // Find the block to duplicate
+            const originalBlock = editorInstance.blocks.find(b => b.id === this.currentBlockId);
+            if (!originalBlock) {
+                console.error('Block not found:', this.currentBlockId);
+                return;
+            }
+            
+            // Get the block class name
+            const blockClass = originalBlock.class || originalBlock.constructor.name;
+            
+            // Create a new block of the same type
+            const newBlock = editorInstance.initBlock(blockClass);
+            if (!newBlock) {
+                console.error('Failed to create duplicate block');
+                return;
+            }
+            
+            // Copy the configuration from the original block
+            const originalConfig = JSON.parse(JSON.stringify(originalBlock.config));
+            // Remove any properties that shouldn't be copied
+            delete originalConfig.editor;
+            delete originalConfig.updateFunction;
+            
+            // Apply the configuration to the new block
+            Object.assign(newBlock.config, originalConfig);
+            
+            // Find the position of the original block and insert the new block after it
+            const originalIndex = editorInstance.blocks.findIndex(b => b.id === this.currentBlockId);
+            if (originalIndex !== -1) {
+                editorInstance.blocks.splice(originalIndex + 1, 0, newBlock);
+            } else {
+                // If we can't find the original block, just add to the end
+                editorInstance.blocks.push(newBlock);
+            }
+            
+            // Trigger redraw and save state
+            newBlock.triggerRedraw();
+            editorInstance.saveState('Duplicated block');
+            
+            // Dispatch events to update the UI
+            document.dispatchEvent(new CustomEvent('editor-updated', { detail: { id: editorId } }));
+            document.dispatchEvent(new CustomEvent('editor-changed'));
+        },
+        
+        canDuplicate() {
+            return this.currentBlockId && !this.currentBlockId.startsWith('template-');
         }
     }));
     window.Alpine.data('alpineEditor', () => ({
@@ -398,6 +484,56 @@ document.addEventListener('alpine:init', () => {
             return serialized;
         },
 
+        // Export clean HTML content without editor UI
+        getCleanHTML() {
+            if (!this.editor) return '';
+            
+            // Use the editor's getEditorContent method which calls renderBlocks
+            if (typeof this.editor.getEditorContent === 'function') {
+                return this.editor.getEditorContent();
+            }
+            
+            // Fallback: manually render blocks
+            return this.editor.blocks.map(block => {
+                if (typeof block.render === 'function') {
+                    return block.render();
+                }
+                return '';
+            }).join('');
+        },
+
+        // Export clean HTML for a specific block by ID
+        getBlockHTML(blockId) {
+            if (!this.editor) return '';
+            
+            const block = this.editor.blocks.find(b => b.id === blockId);
+            if (!block || typeof block.render !== 'function') {
+                return '';
+            }
+            
+            return block.render();
+        },
+
+        // Export HTML with data attributes for template/design tools
+        getTemplateHTML() {
+            if (!this.editor) return '';
+            
+            return this.editor.blocks.map(block => {
+                // Try to use renderTemplateElement if available
+                if (typeof block.renderTemplateElement === 'function') {
+                    return block.renderTemplateElement(block.id);
+                }
+                
+                // Fallback: add data attributes to regular render output
+                let html = block.render();
+                const className = block.class || block.constructor.name;
+                
+                // Add data attributes to the first element
+                html = html.replace(/^<(\w+)/, `<$1 data-tool="${className}" data-tool-id="${block.id}"`);
+                return html;
+            }).join('');
+        },
+
         handleDragOver(event, blockId) {
             event.preventDefault();
             
@@ -545,10 +681,16 @@ document.addEventListener('alpine:init', () => {
     // Page Management Component
     window.Alpine.data('editorPages', () => ({
         pages: [
-            { id: 'page-1', title: 'Home', blocks: [] }
+            { id: 'page-1', title: 'Home', blocks: [], image: null }
         ],
         currentPageId: 'page-1',
         switchingPages: false,
+        projectSettings: {
+            type: 'digital',
+            printMaxHeight: '297mm',
+            printOrientation: 'portrait',
+            exportFormat: 'html'
+        },
         
         init() {
             // Load pages from localStorage if available
@@ -559,6 +701,16 @@ document.addEventListener('alpine:init', () => {
                     this.currentPageId = this.pages[0]?.id || 'page-1';
                 } catch (e) {
                     console.warn('Failed to load saved pages:', e);
+                }
+            }
+            
+            // Load project settings
+            const savedSettings = localStorage.getItem('alpineblocks-project-settings');
+            if (savedSettings) {
+                try {
+                    this.projectSettings = JSON.parse(savedSettings);
+                } catch (e) {
+                    console.warn('Failed to load project settings:', e);
                 }
             }
             
@@ -634,7 +786,8 @@ document.addEventListener('alpine:init', () => {
                 const newPage = {
                     id: `page-${Date.now()}`,
                     title: pageName.trim(),
-                    blocks: []
+                    blocks: [],
+                    image: null
                 };
                 this.pages.push(newPage);
                 this.savePagesToStorage();
@@ -818,6 +971,33 @@ document.addEventListener('alpine:init', () => {
         
         savePagesToStorage() {
             localStorage.setItem('alpineblocks-pages', JSON.stringify(this.pages));
+        },
+        
+        saveProjectSettings() {
+            localStorage.setItem('alpineblocks-project-settings', JSON.stringify(this.projectSettings));
+        },
+        
+        setPageImage(pageId, imageUrl) {
+            const page = this.pages.find(p => p.id === pageId);
+            if (page) {
+                page.image = imageUrl;
+                this.savePagesToStorage();
+            }
+        },
+        
+        getCurrentPageImage() {
+            const currentPage = this.pages.find(p => p.id === this.currentPageId);
+            return currentPage?.image || null;
+        },
+        
+        updateProjectSetting(key, value) {
+            this.projectSettings[key] = value;
+            this.saveProjectSettings();
+            
+            // Dispatch event for UI updates
+            document.dispatchEvent(new CustomEvent('project-settings-changed', { 
+                detail: { settings: this.projectSettings } 
+            }));
         },
         
         updateCurrentPageBlocks() {
@@ -1116,6 +1296,66 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
+
+// Global image upload function
+window.uploadImage = async function(event, blockId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById(`upload-status-${blockId}`);
+    if (statusEl) {
+        statusEl.textContent = 'Uploading...';
+        statusEl.style.color = '#3b82f6';
+    }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('blockId', blockId);
+    
+    try {
+        // You can configure this endpoint in your server
+        const uploadEndpoint = window.ALPINEBLOCKS_CONFIG?.uploadEndpoint || '/api/upload-image';
+        
+        const response = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+            // Update the image source
+            const editorInstance = window.alpineEditors?.editorjs;
+            if (editorInstance) {
+                const block = editorInstance.blocks.find(b => b.id === blockId);
+                if (block) {
+                    block.config.src = result.url;
+                    block.triggerRedraw();
+                }
+            }
+            
+            if (statusEl) {
+                statusEl.textContent = '✅ Upload successful';
+                statusEl.style.color = '#10b981';
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                }, 3000);
+            }
+        } else {
+            throw new Error(result.message || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        if (statusEl) {
+            statusEl.textContent = '❌ Upload failed: ' + error.message;
+            statusEl.style.color = '#ef4444';
+        }
+    }
+};
 
 Alpine.start();
 

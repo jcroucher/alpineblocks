@@ -7,6 +7,7 @@
       },*/
 
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class Quote extends Tool {
     constructor({id, updateFunction, config}) {
@@ -80,21 +81,21 @@ class Quote extends Tool {
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${escapeHtml(this.config.textColor)}">`
             },
             {
                 name: 'backgroundColor',
                 label: 'Background Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
+                    value="${escapeHtml(this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor)}">`
             },
             {
                 name: 'borderColor',
                 label: 'Border Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'borderColor', $event.target.value)"
-                    value="${this.config.borderColor}"
+                    value="${escapeHtml(this.config.borderColor)}"
                     ${this.config.borderStyle === 'none' ? 'style="display:none"' : ''}>`
             }
         ];
@@ -104,7 +105,8 @@ class Quote extends Tool {
         return {
             name: 'Quote',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 216C0 149.7 53.7 96 120 96h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V216zm256 0c0-66.3 53.7-120 120-120h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H320c-35.3 0-64-28.7-64-64V216z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
 
@@ -171,6 +173,23 @@ class Quote extends Tool {
     render() {
         const styleString = this.getStyleString();
         return `<blockquote class="quote-block quote-${this.config.style}" style="${styleString}">
+            <div class="quote-content">${this.config.content}</div>
+            ${this.config.attribution ? `<cite class="quote-attribution" style="font-style: normal; font-size: 0.875rem; margin-top: 0.5rem; display: block;">${this.config.attribution}</cite>` : ''}
+        </blockquote>`;
+    }
+
+    /**
+     * Render the quote as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        const styleString = this.getStyleString();
+        return `<blockquote 
+            data-tool="Quote" 
+            data-tool-id="${toolId}"
+            class="quote-block quote-${this.config.style}" 
+            style="${styleString}; cursor: pointer;">
             <div class="quote-content">${this.config.content}</div>
             ${this.config.attribution ? `<cite class="quote-attribution" style="font-style: normal; font-size: 0.875rem; margin-top: 0.5rem; display: block;">${this.config.attribution}</cite>` : ''}
         </blockquote>`;

@@ -1,5 +1,6 @@
 import Tool from '../core/Tool';
 import { Debug } from '../core/utils/Debug';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 /**
  * Columns tool for creating multi-column layouts with nested blocks
@@ -35,7 +36,7 @@ class Columns extends Tool {
                 label: 'Column Gap',
                 html: `<input type="text" class="settings-input"
                     @change="trigger('${this.id}', 'gap', $event.target.value)"
-                    value="${this.config.gap}"
+                    value="${escapeHtml(this.config.gap)}"
                     placeholder="20px">`
             },
             {
@@ -61,7 +62,7 @@ class Columns extends Tool {
                     <input type="text" class="settings-input"
                         x-show="${this.config.responsive}"
                         @change="trigger('${this.id}', 'breakpoint', $event.target.value)"
-                        value="${this.config.breakpoint}"
+                        value="${escapeHtml(this.config.breakpoint)}"
                         placeholder="Breakpoint (e.g. 768px)">
                 </div>`
             }
@@ -72,7 +73,8 @@ class Columns extends Tool {
         return {
             name: 'Columns',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zm64 0v64h64V96H64zm384 0H192v64H448V96zM64 224v64h64V224H64zm384 0H192v64H448V224zM64 352v64h64V352H64zm384 0H192v64H448V352z"/></svg>',
-            category: 'Layout'
+            category: 'Layout',
+            allowRawPreview: false
         };
     }
 

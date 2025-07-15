@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { CommonEditorToolbar } from '../core/CommonEditorToolbar';
 
 // Alpine.js component for Raw code editor
 function rawCodeEditor() {
@@ -7,6 +8,19 @@ function rawCodeEditor() {
         block: null,
         isValid: true,
         previewContent: '',
+        toolbar: null,
+        
+        handleToolbarCommand(command, value) {
+            const previewEl = this.$refs.previewContainer;
+            if (previewEl) {
+                previewEl.focus();
+                document.execCommand(command, false, value);
+                // Update the block content when user makes changes
+                if (this.block) {
+                    this.block.config.content = previewEl.innerHTML;
+                }
+            }
+        },
         
         init(blockId) {
             // Find the block instance - try multiple approaches
@@ -28,6 +42,11 @@ function rawCodeEditor() {
                 this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
+                
+                // Initialize toolbar for preview mode
+                this.toolbar = new CommonEditorToolbar({
+                    className: 'raw-preview-toolbar'
+                });
             }
         },
         
@@ -144,7 +163,21 @@ function rawCodeEditor() {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Show drop cursor
+                // Check if tool is allowed for raw preview
+                const toolName = e.dataTransfer.getData('text/plain');
+                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
+                    const toolConfig = editor.toolConfig[toolName];
+                    const toolboxConfig = toolConfig.class.toolbox();
+                    
+                    if (toolboxConfig.allowRawPreview === false) {
+                        // Show no-drop cursor
+                        element.style.cursor = 'no-drop';
+                        return;
+                    }
+                }
+                
+                // Show drop cursor for allowed tools
+                element.style.cursor = 'default';
                 this.showDropCursor(element, e);
             });
             
@@ -164,11 +197,20 @@ function rawCodeEditor() {
                 
                 // Hide drop cursor
                 this.hideDropCursor(element);
+                element.style.cursor = 'default';
                 
                 // Get the dropped tool data
                 const toolName = e.dataTransfer.getData('text/plain');
                 
                 if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
+                    // Check if tool is allowed for raw preview
+                    const toolConfig = editor.toolConfig[toolName];
+                    const toolboxConfig = toolConfig.class.toolbox();
+                    
+                    if (toolboxConfig.allowRawPreview === false) {
+                        return; // Don't insert disallowed tools
+                    }
+                    
                     this.insertToolAtCursor(element, block, toolName, e, editor);
                 }
             });
@@ -347,7 +389,8 @@ class Raw extends Tool {
         return {
             name: 'Raw Code',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>',
-            category: 'Advanced'
+            category: 'Advanced',
+            allowRawPreview: false
         };
     }
 
@@ -483,12 +526,20 @@ class Raw extends Tool {
                 <div 
                     x-show="showPreview" 
                     class="preview-content" 
-                    style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); padding: var(--space-4); background: white;">
+                    style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); background: white;">
+                    
+                    <!-- Rich Text Toolbar for Preview -->
+                    <div x-show="showPreview && toolbar" 
+                         class="preview-toolbar-wrapper"
+                         style="border-bottom: 1px solid #e5e7eb; padding: 8px;"
+                         x-html="toolbar ? toolbar.render() : ''">
+                    </div>
                     
                     <div x-ref="previewContainer"
                          contenteditable="true"
                          x-init="initializePreviewContainer($el, block)"
-                         style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px;">
+                         @blur="if(block) { block.config.content = $el.innerHTML; }"
+                         style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px; margin: 8px;">
                     </div>
                 </div>
             </div>

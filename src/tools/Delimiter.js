@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class Delimiter extends Tool {
     constructor({id, updateFunction, config}) {
@@ -29,21 +30,21 @@ class Delimiter extends Tool {
                 html: `<div class="delimiter-appearance">
                     <input type="color" 
                         @change="trigger('${this.id}', 'color', $event.target.value)"
-                        value="${this.config.color}"
+                        value="${escapeHtml(this.config.color)}"
                         title="Color">
                     <input type="text" 
                         @change="trigger('${this.id}', 'width', $event.target.value)"
-                        value="${this.config.width}"
+                        value="${escapeHtml(this.config.width)}"
                         placeholder="Width (%, px)"
                         title="Width">
                     <input type="text" 
                         @change="trigger('${this.id}', 'thickness', $event.target.value)"
-                        value="${this.config.thickness}"
+                        value="${escapeHtml(this.config.thickness)}"
                         placeholder="Thickness (px)"
                         title="Thickness">
                     <input type="text" 
                         @change="trigger('${this.id}', 'spacing', $event.target.value)"
-                        value="${this.config.spacing}"
+                        value="${escapeHtml(this.config.spacing)}"
                         placeholder="Spacing (px)"
                         title="Spacing">
                 </div>`
@@ -64,7 +65,8 @@ class Delimiter extends Tool {
         return {
             name: 'Delimiter',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/></svg>',
-            category: 'Layout'
+            category: 'Layout',
+            allowRawPreview: true
         };
     }
 
@@ -115,6 +117,21 @@ class Delimiter extends Tool {
 
     render() {
         return `<div class="delimiter-block" style="width: ${this.config.width}; margin: 0 auto;">
+            ${this.getDelimiterContent()}
+        </div>`;
+    }
+
+    /**
+     * Render the delimiter as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="Delimiter" 
+            data-tool-id="${toolId}"
+            class="delimiter-block" 
+            style="width: ${this.config.width}; margin: 0 auto; cursor: pointer;">
             ${this.getDelimiterContent()}
         </div>`;
     }

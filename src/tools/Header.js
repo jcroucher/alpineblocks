@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class Header extends Tool {
     constructor({id, updateFunction, config}) {
@@ -48,7 +49,7 @@ class Header extends Tool {
                 label: 'Anchor ID',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'anchor', $event.target.value)"
-                    value="${this.config.anchor}"
+                    value="${escapeHtml(this.config.anchor)}"
                     placeholder="Optional anchor ID">`
             },
             {
@@ -75,7 +76,7 @@ class Header extends Tool {
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${escapeHtml(this.config.textColor)}">`
             }
         ];
     }
@@ -84,7 +85,8 @@ class Header extends Tool {
         return {
             name: 'Header',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 46.3 14.3 32 32 32H80h48c17.7 0 32 14.3 32 32s-14.3 32-32 32H112V208H336V96H320c-17.7 0-32-14.3-32-32s14.3-32 32-32h48 48c17.7 0 32 14.3 32 32s-14.3 32-32 32H400V240 416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H368 320c-17.7 0-32-14.3-32-32s14.3-32 32-32h16V272H112V416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V240 96H32C14.3 96 0 81.7 0 64z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
 

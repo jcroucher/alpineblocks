@@ -320,6 +320,10 @@ npm test
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+### Third-Party Licenses
+
+This project uses icons from [Font Awesome Free](https://fontawesome.com/), which is licensed under the [SIL OFL 1.1 License](https://scripts.sil.org/OFL). Font Awesome Free is free for commercial and personal use.
+
 ## Support
 
 - 📚 [Documentation](https://jcroucher.github.io/alpineblocks/)

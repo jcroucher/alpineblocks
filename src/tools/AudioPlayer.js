@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class AudioPlayer extends Tool {
     constructor({id, updateFunction, config = {}}) {
@@ -26,7 +27,7 @@ class AudioPlayer extends Tool {
                 label: 'Audio URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    value="${this.config.url}"
+                    value="${escapeHtml(this.config.url)}"
                     placeholder="Enter audio URL">`
             },
             {
@@ -44,7 +45,7 @@ class AudioPlayer extends Tool {
                 html: `<div>
                     <input type="text" 
                         @change="trigger('${this.id}', 'title', $event.target.value)"
-                        value="${this.config.title}"
+                        value="${escapeHtml(this.config.title)}"
                         placeholder="Title">
                     <input type="text" 
                         @change="trigger('${this.id}', 'artist', $event.target.value)"
@@ -99,7 +100,8 @@ class AudioPlayer extends Tool {
         return {
             name: 'Audio',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v72V368c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V147L192 223.8V432c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V200 128c0-14.1 9.3-26.6 22.8-30.7l320-96c9.7-2.9 20.2-1.1 28.3 5z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: false
         };
     }
 
@@ -168,6 +170,27 @@ class AudioPlayer extends Tool {
 
     render() {
         return `<div class="audio-block">
+            ${this.config.showMetadata ? `
+                <div class="audio-metadata">
+                    <div class="audio-title">${this.config.title}</div>
+                    <div class="audio-artist">${this.config.artist}</div>
+                </div>
+            ` : ''}
+            ${this.getAudioEmbed()}
+        </div>`;
+    }
+
+    /**
+     * Render the audio player as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="AudioPlayer" 
+            data-tool-id="${toolId}"
+            class="audio-block" 
+            style="cursor: pointer;">
             ${this.config.showMetadata ? `
                 <div class="audio-metadata">
                     <div class="audio-title">${this.config.title}</div>

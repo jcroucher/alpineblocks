@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class Standfirst extends Tool {
     constructor({id, updateFunction, config}) {
@@ -95,7 +96,8 @@ class Standfirst extends Tool {
         return {
             name: 'Standfirst',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 46.3 14.3 32 32 32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64zM0 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 320c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
 
@@ -145,6 +147,21 @@ class Standfirst extends Tool {
 
     render() {
         return `<div class="standfirst-block" style="${this.getStyleString()}">
+            <p>${this.config.content}</p>
+        </div>`;
+    }
+
+    /**
+     * Render the standfirst as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="Standfirst" 
+            data-tool-id="${toolId}"
+            class="standfirst-block" 
+            style="${this.getStyleString()}; cursor: pointer;">
             <p>${this.config.content}</p>
         </div>`;
     }

@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 // Define global Alpine.js functions for carousel functionality
 if (typeof window !== 'undefined') {
@@ -198,7 +199,8 @@ class Carousel extends Tool {
         return {
             name: 'Carousel',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: false
         };
     }
 
@@ -343,6 +345,70 @@ class Carousel extends Tool {
                 
                 ${dots}
             </div>`;
+    }
+
+    /**
+     * Render the carousel as a template element with data attributes
+     * @param {string} toolId - The tool ID for data attributes
+     * @returns {string} HTML string with data attributes
+     */
+    renderTemplateElement(toolId) {
+        const slides = this.config.slides
+            .filter(slide => slide.image) // Only show slides with images
+            .map((slide, index) => `
+                <div class="carousel-slide">
+                    <img src="${slide.image}" alt="Slide ${index + 1}" loading="lazy">
+                    ${this.config.showCaptions && slide.caption ? `
+                        <div class="carousel-caption">${slide.caption}</div>
+                    ` : ''}
+                </div>
+            `).join('');
+
+        const arrows = this.config.showArrows ? `
+            <button class="carousel-prev" aria-label="Previous slide">←</button>
+            <button class="carousel-next" aria-label="Next slide">→</button>
+        ` : '';
+
+        const dots = this.config.showDots ? `
+            <div class="carousel-dots" role="tablist">
+                ${this.config.slides
+                    .filter(slide => slide.image)
+                    .map((_, index) => `
+                        <button class="carousel-dot${index === 0 ? ' active' : ''}" 
+                                role="tab" 
+                                aria-label="Go to slide ${index + 1}"></button>
+                    `).join('')}
+            </div>
+        ` : '';
+
+        const validSlides = this.config.slides.filter(slide => slide.image);
+        const slidesCount = validSlides.length;
+
+        if (slidesCount === 0) {
+            return `<div 
+                data-tool="Carousel" 
+                data-tool-id="${toolId}"
+                class="carousel-block carousel-empty" 
+                style="cursor: pointer;">
+                <p>No images added to carousel</p>
+            </div>`;
+        }
+
+        return `<div 
+            data-tool="Carousel" 
+            data-tool-id="${toolId}"
+            class="carousel-block" 
+            style="cursor: pointer;"
+            role="region" 
+            aria-label="Image carousel">
+            
+            <div class="carousel-container">
+                ${slides}
+                ${arrows}
+            </div>
+            
+            ${dots}
+        </div>`;
     }
 }
 

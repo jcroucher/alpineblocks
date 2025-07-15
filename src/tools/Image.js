@@ -10,6 +10,7 @@ image: {
  */
 
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 class Image extends Tool {
     constructor({id, updateFunction, config}) {
@@ -25,11 +26,29 @@ class Image extends Tool {
 
         this.settings = [
             {
+                name: 'imageUpload',
+                label: 'Upload Image',
+                html: `<div class="image-upload-section">
+                    <input type="file" 
+                        id="upload-${this.id}"
+                        accept="image/*"
+                        @change="uploadImage($event, '${this.id}')"
+                        style="display: none;">
+                    <button type="button" 
+                        class="upload-btn"
+                        @click="document.getElementById('upload-${this.id}').click()"
+                        style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer;">
+                        📁 Choose File
+                    </button>
+                    <div id="upload-status-${this.id}" style="font-size: 0.875rem; color: #666;"></div>
+                </div>`
+            },
+            {
                 name: 'imageUrl',
-                label: 'Image URL',
+                label: 'Or Image URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'src', $event.target.value)"
-                    value="${this.config.src}"
+                    value="${escapeHtml(this.config.src)}"
                     placeholder="Enter image URL">`
             },
             {
@@ -37,7 +56,7 @@ class Image extends Tool {
                 label: 'Alt Text',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'alt', $event.target.value)"
-                    value="${this.config.alt}"
+                    value="${escapeHtml(this.config.alt)}"
                     placeholder="Enter alt text">`
             },
             {
@@ -45,7 +64,7 @@ class Image extends Tool {
                 label: 'Caption',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'caption', $event.target.value)"
-                    value="${this.config.caption}"
+                    value="${escapeHtml(this.config.caption)}"
                     placeholder="Enter image caption">`
             },
             {
@@ -62,7 +81,7 @@ class Image extends Tool {
                 label: 'Width',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'width', $event.target.value)"
-                    value="${this.config.width}"
+                    value="${escapeHtml(this.config.width)}"
                     placeholder="auto, 100%, or specific px">`
             }
         ];
@@ -72,7 +91,8 @@ class Image extends Tool {
         return {
             name: 'Image',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: true
         };
     }
 

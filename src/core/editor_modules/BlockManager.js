@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+import { generateId } from '../../utils/generateId.js';
 
 export class BlockManager {
     constructor() {
@@ -7,7 +7,7 @@ export class BlockManager {
 
     addBlock(BlockClass, config) {
         const block = new BlockClass({
-            id: uuidv4(),
+            id: generateId(),
             updateFunction: this.updateBlock.bind(this),
             config: config
         });
@@ -27,6 +27,10 @@ export class BlockManager {
     }
 
     renderBlocks() {
+        return this.blocks.map(block => block.editorRender()).join('');
+    }
+
+    renderCleanBlocks() {
         return this.blocks.map(block => block.render()).join('');
     }
 

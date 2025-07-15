@@ -55,10 +55,12 @@ export class HeaderToolbar {
         const editor = window.alpineEditors?.[this.editorId];
         if (editor) {
             // Dispatch preview event for custom handling
+            const cleanContent = editor.getCleanContent ? editor.getCleanContent() : editor.getEditorContent();
+            
             document.dispatchEvent(new CustomEvent('editor-preview', { 
                 detail: { 
                     editorId: this.editorId,
-                    content: editor.getEditorContent(),
+                    content: cleanContent,
                     json: editor.blocksJSON()
                 } 
             }));

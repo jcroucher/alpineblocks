@@ -1,3 +1,5 @@
+import { TemplateGenerator } from "../utils/TemplateGenerator";
+
 class Layout {
     constructor(id, name, icon, html, description = '') {
         this.id = id;
@@ -112,8 +114,19 @@ class Layout {
         return blocks;
     }
 
+    // Helper method to create a template using tool instances
+    static createTemplateWithTools(toolConfig, elements, wrapperConfig = {}) {
+        if (!toolConfig) {
+            console.warn('No tool configuration provided for template generation');
+            return '';
+        }
+
+        const generator = new TemplateGenerator(toolConfig);
+        return generator.generateRawTemplate(elements, wrapperConfig);
+    }
+
     // Static method to get all predefined layouts
-    static getAll() {
+    static getAll(toolConfig = null) {
         return [
             // Test Template
             new Layout(
@@ -129,8 +142,53 @@ class Layout {
                 'modern-hero',
                 'Modern Hero',
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
-                `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;">
-                </div>`,
+                toolConfig ? Layout.createTemplateWithTools(toolConfig, [
+                    {
+                        toolName: 'Header',
+                        toolId: 'hero-title',
+                        config: {
+                            content: 'Transform Your Business Today',
+                            level: 'h1',
+                            fontSize: 'xlarge',
+                            fontWeight: 'bold',
+                            textColor: '#ffffff',
+                            alignment: 'center'
+                        }
+                    },
+                    {
+                        toolName: 'Paragraph',
+                        toolId: 'hero-subtitle',
+                        config: {
+                            content: 'Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.',
+                            fontSize: 'large',
+                            textColor: 'rgba(255,255,255,0.9)',
+                            alignment: 'center',
+                            margin: 'large'
+                        }
+                    },
+                    {
+                        toolName: 'Button',
+                        toolId: 'hero-cta',
+                        config: {
+                            text: 'Get Started Free',
+                            type: 'primary',
+                            size: 'large',
+                            customStyles: {
+                                backgroundColor: '#3b82f6',
+                                textColor: 'white',
+                                padding: '1rem 2rem',
+                                borderRadius: '0.5rem'
+                            }
+                        }
+                    }
+                ], {
+                    wrapperStyles: {
+                        'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        'padding': '5rem 2rem',
+                        'text-align': 'center',
+                        'color': 'white'
+                    }
+                }) : `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;"></div>`,
                 'Professional hero section with gradient background, compelling copy, and CTA'
             ),
 

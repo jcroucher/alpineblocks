@@ -1,5 +1,4 @@
 var $gXNCa$alpinejs = require("alpinejs");
-var $gXNCa$uuid = require("uuid");
 
 
 function $parcel$interopDefault(a) {
@@ -124,15 +123,29 @@ class $d91c3dbba958750e$export$df4a79c26d3b48ff {
 }
 
 
+/**
+ * Simple UUID v4 generator without external dependencies
+ * This ensures compatibility across different bundlers and environments
+ */ function $f5d660d4506b8aa6$export$567fc7097e064344() {
+    // Use crypto.randomUUID if available (modern browsers)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    // Fallback UUID v4 implementation
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : r & 0x3 | 0x8;
+        return v.toString(16);
+    });
+}
+const $f5d660d4506b8aa6$export$afaf85bc510dd0d6 = $f5d660d4506b8aa6$export$567fc7097e064344;
 
-var $c1a596c4149c0a47$require$uuidv4 = $gXNCa$uuid.v4;
+
 class $c1a596c4149c0a47$export$d3ae936b397926f7 {
     constructor(){
         this.blocks = [];
     }
     addBlock(BlockClass, config) {
         const block = new BlockClass({
-            id: $c1a596c4149c0a47$require$uuidv4(),
+            id: (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
             updateFunction: this.updateBlock.bind(this),
             config: config
         });
@@ -147,6 +160,9 @@ class $c1a596c4149c0a47$export$d3ae936b397926f7 {
         if (block) block.config = config;
     }
     renderBlocks() {
+        return this.blocks.map((block)=>block.editorRender()).join('');
+    }
+    renderCleanBlocks() {
         return this.blocks.map((block)=>block.render()).join('');
     }
     triggerRedraw() {
@@ -397,14 +413,17 @@ class $bc5955414cf94f77$export$a268db361d674bec {
    * Handle preview action
    */ handlePreview() {
         const editor = window.alpineEditors?.[this.editorId];
-        if (editor) // Dispatch preview event for custom handling
-        document.dispatchEvent(new CustomEvent('editor-preview', {
-            detail: {
-                editorId: this.editorId,
-                content: editor.getEditorContent(),
-                json: editor.blocksJSON()
-            }
-        }));
+        if (editor) {
+            // Dispatch preview event for custom handling
+            const cleanContent = editor.getCleanContent ? editor.getCleanContent() : editor.getEditorContent();
+            document.dispatchEvent(new CustomEvent('editor-preview', {
+                detail: {
+                    editorId: this.editorId,
+                    content: cleanContent,
+                    json: editor.blocksJSON()
+                }
+            }));
+        }
     }
     /**
    * Handle settings action
@@ -468,7 +487,6 @@ class $bc5955414cf94f77$export$a268db361d674bec {
 
 
 
-var $56b81aadc5b5902e$require$uuidv4 = $gXNCa$uuid.v4;
 class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
     constructor(toolConfig, log_level = 2, historySize = 30){
         this.id = '';
@@ -691,6 +709,9 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
    * @returns {string} HTML string of all blocks
    */ getEditorContent() {
         return this.blockManager.renderBlocks();
+    }
+    getCleanContent() {
+        return this.blockManager.renderCleanBlocks();
     }
     /**
    * Get settings for a specific block (including nested blocks)
@@ -927,7 +948,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
         const newBlock = new BlockClass({
-            id: existingId || $56b81aadc5b5902e$require$uuidv4(),
+            id: existingId || (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
@@ -1009,7 +1030,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
                 const newBlock = new BlockClass({
-                    id: $56b81aadc5b5902e$require$uuidv4(),
+                    id: (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
                     updateFunction: this.updateFunction.bind(this),
                     config: mergedConfig
                 });
@@ -1034,7 +1055,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                                         const nestedBaseConfig = JSON.parse(JSON.stringify(this.toolConfig[nestedToolName].config));
                                         const nestedMergedConfig = Object.assign(nestedBaseConfig, nestedBlockData.data || {});
                                         const nestedBlock = new NestedBlockClass({
-                                            id: $56b81aadc5b5902e$require$uuidv4(),
+                                            id: (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
                                             updateFunction: this.updateFunction.bind(this),
                                             config: nestedMergedConfig
                                         });
@@ -1464,6 +1485,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
 
 
 
+
 class $acadc144a2722177$export$c72f6eaae7b9adff {
     constructor(editorId, settings = {}){
         this.editorId = editorId;
@@ -1555,9 +1577,637 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
         callback();
         window.alpineEditors[this.editorId].blockManager.triggerRedraw();
     }
+    /**
+   * Delete a block or template element
+   * @param {string} blockId - The ID of the block to delete
+   */ deleteBlock(blockId) {
+        const editorInstance = window.alpineEditors[this.editorId];
+        if (!editorInstance) {
+            (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Editor instance not found:', this.editorId);
+            return;
+        }
+        // Check if this is a template element
+        if (blockId.startsWith('template-')) {
+            this.deleteTemplateElement(blockId);
+            return;
+        }
+        // Show confirmation dialog for regular blocks
+        if (editorInstance.showDeleteConfirmation) editorInstance.showDeleteConfirmation(blockId);
+        else // Fallback direct deletion
+        this.confirmDeleteBlock(blockId);
+    }
+    /**
+   * Delete a template element from Raw Code preview
+   * @param {string} virtualBlockId - The virtual block ID of the template element
+   */ deleteTemplateElement(virtualBlockId) {
+        const templateMap = window.templateElementMap;
+        if (!templateMap || !templateMap[virtualBlockId]) return;
+        const { element: element } = templateMap[virtualBlockId];
+        // Remove the element from DOM
+        if (element && element.parentNode) {
+            element.remove();
+            // Update the Raw block content
+            const previewContainer = element.closest('[x-ref="previewContainer"]');
+            if (previewContainer) {
+                const rawBlock = previewContainer.closest('.raw-block');
+                if (rawBlock) {
+                    const blockId = rawBlock.getAttribute('data-block-id');
+                    const editorInstance = window.alpineEditors[this.editorId];
+                    const block = editorInstance.blocks.find((b)=>b.id === blockId);
+                    if (block) {
+                        block.config.content = previewContainer.innerHTML;
+                        // Also update the textarea
+                        const textarea = rawBlock.querySelector('.code-input');
+                        if (textarea) textarea.value = previewContainer.innerHTML;
+                    }
+                }
+            }
+            // Clean up the template mapping
+            delete templateMap[virtualBlockId];
+            // Clear the properties panel
+            this.settings = [];
+            document.dispatchEvent(new CustomEvent('settings-updated', {
+                detail: {
+                    editorId: this.editorId,
+                    settings: this.settings,
+                    blockId: null
+                }
+            }));
+        }
+    }
+    /**
+   * Confirm and delete a regular block
+   * @param {string} blockId - The ID of the block to delete
+   */ confirmDeleteBlock(blockId) {
+        const editorInstance = window.alpineEditors[this.editorId];
+        if (!editorInstance) return;
+        // Find and remove the block
+        const blockIndex = editorInstance.blocks.findIndex((b)=>b.id === blockId);
+        if (blockIndex !== -1) {
+            editorInstance.blocks.splice(blockIndex, 1);
+            // Clear selection if deleted block was selected
+            if (editorInstance.selectedBlock === blockId) {
+                editorInstance.selectedBlock = null;
+                this.settings = [];
+                document.dispatchEvent(new CustomEvent('settings-updated', {
+                    detail: {
+                        editorId: this.editorId,
+                        settings: this.settings,
+                        blockId: null
+                    }
+                }));
+            }
+            // Trigger redraw
+            editorInstance.blockManager.triggerRedraw();
+            // Save state
+            if (editorInstance.debouncedSaveState) editorInstance.debouncedSaveState();
+        }
+    }
+    /**
+   * Duplicate a block (only for regular blocks, not template elements)
+   * @param {string} blockId - The ID of the block to duplicate
+   */ duplicateBlock(blockId) {
+        const editorInstance = window.alpineEditors[this.editorId];
+        if (!editorInstance) {
+            (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Editor instance not found:', this.editorId);
+            return;
+        }
+        // Don't allow duplication of template elements
+        if (blockId.startsWith('template-')) return;
+        // Find the block to duplicate
+        const blockIndex = editorInstance.blocks.findIndex((b)=>b.id === blockId);
+        if (blockIndex === -1) {
+            (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Block not found for duplication:', blockId);
+            return;
+        }
+        const originalBlock = editorInstance.blocks[blockIndex];
+        // Create a new block with the same configuration
+        const toolName = originalBlock.class || originalBlock.constructor.name;
+        const toolConfig = editorInstance.toolConfig[toolName];
+        if (!toolConfig) {
+            (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Tool config not found for duplication:', toolName);
+            return;
+        }
+        // Generate new ID
+        const newId = (0, $f5d660d4506b8aa6$export$567fc7097e064344)();
+        // Create new block instance
+        const BlockClass = toolConfig.class;
+        const newBlock = new BlockClass({
+            id: newId,
+            updateFunction: editorInstance.updateFunction.bind(editorInstance),
+            config: JSON.parse(JSON.stringify(originalBlock.config)) // Deep copy config
+        });
+        // Preserve the class name
+        newBlock.class = toolName;
+        // Initialize the new block
+        newBlock.init(editorInstance);
+        // Insert the new block after the original
+        editorInstance.blocks.splice(blockIndex + 1, 0, newBlock);
+        // Trigger redraw
+        editorInstance.blockManager.triggerRedraw();
+        // Save state
+        if (editorInstance.debouncedSaveState) editorInstance.debouncedSaveState();
+        // Select the new block
+        editorInstance.setActive(null, newId);
+    }
+    /**
+   * Get action buttons for the current block
+   * @param {string} blockId - The current block ID
+   * @returns {Array} Array of action button configurations
+   */ getActionButtons(blockId) {
+        const isTemplateElement = blockId && blockId.startsWith('template-');
+        return [
+            {
+                name: 'delete',
+                label: 'Delete',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="14" height="14"><path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>',
+                action: `settings.deleteBlock('${blockId}')`,
+                style: 'background: #ef4444; color: white;'
+            },
+            {
+                name: 'duplicate',
+                label: 'Duplicate',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="14" height="14"><path d="M208 0H332.1c12.7 0 24.9 5.1 33.9 14.1l67.9 67.9c9 9 14.1 21.2 14.1 33.9V336c0 26.5-21.5 48-48 48H208c-26.5 0-48-21.5-48-48V48c0-26.5 21.5-48 48-48zM48 128h80v64H64V448H256V416h64v48c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V176c0-26.5 21.5-48 48-48z"/></svg>',
+                action: `settings.duplicateBlock('${blockId}')`,
+                style: 'background: #3b82f6; color: white;',
+                disabled: isTemplateElement
+            }
+        ];
+    }
+    /**
+   * Get project settings configuration
+   * @returns {Object} Project settings object
+   */ static getProjectSettings() {
+        const settings = localStorage.getItem('alpineblocks-project-settings');
+        return settings ? JSON.parse(settings) : {
+            type: 'digital',
+            // 'digital' or 'print'
+            printMaxHeight: '297mm',
+            // A4 height default
+            printOrientation: 'portrait',
+            // 'portrait' or 'landscape'
+            exportFormat: 'html' // 'html', 'pdf', etc.
+        };
+    }
+    /**
+   * Save project settings to localStorage
+   * @param {Object} settings - Project settings to save
+   */ static saveProjectSettings(settings) {
+        localStorage.setItem('alpineblocks-project-settings', JSON.stringify(settings));
+        // Dispatch event for UI updates
+        document.dispatchEvent(new CustomEvent('project-settings-changed', {
+            detail: {
+                settings: settings
+            }
+        }));
+    }
+    /**
+   * Update a single project setting
+   * @param {string} key - Setting key
+   * @param {*} value - Setting value
+   */ updateProjectSetting(key, value) {
+        const settings = $acadc144a2722177$export$c72f6eaae7b9adff.getProjectSettings();
+        settings[key] = value;
+        $acadc144a2722177$export$c72f6eaae7b9adff.saveProjectSettings(settings);
+    }
 }
 
 
+
+/**
+ * CommonEditorToolbar - A reusable rich text editing toolbar
+ * Extracted from WYSIWYG tool to be used across multiple components
+ */ class $4070b2c197de59da$export$c4f883ba50227a95 {
+    constructor(options = {}){
+        this.options = {
+            features: {
+                bold: true,
+                italic: true,
+                underline: true,
+                strikethrough: true,
+                formatBlock: true,
+                lists: true,
+                links: true,
+                alignment: true,
+                indentation: true,
+                textColor: true,
+                backgroundColor: true,
+                fontSize: true,
+                fontFamily: true,
+                ...options.features
+            },
+            customTools: options.customTools || [],
+            className: options.className || 'common-editor-toolbar',
+            onCommand: options.onCommand || null,
+            target: options.target || null
+        };
+    }
+    /**
+   * Render the toolbar HTML
+   * @param {string} targetId - Optional target element ID for commands
+   * @returns {string} HTML string for the toolbar
+   */ render(targetId = null) {
+        const features = this.options.features;
+        const customTools = this.options.customTools;
+        let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">`;
+        // Text formatting group
+        if (features.bold || features.italic || features.underline || features.strikethrough) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            if (features.bold) toolbarHTML += this.renderButton('bold', 'Bold', this.getIcon('bold'), 'Ctrl+B');
+            if (features.italic) toolbarHTML += this.renderButton('italic', 'Italic', this.getIcon('italic'), 'Ctrl+I');
+            if (features.underline) toolbarHTML += this.renderButton('underline', 'Underline', this.getIcon('underline'), 'Ctrl+U');
+            if (features.strikethrough) toolbarHTML += this.renderButton('strikeThrough', 'Strikethrough', this.getIcon('strikethrough'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if (features.formatBlock && (features.bold || features.italic || features.underline || features.strikethrough)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Format block group
+        if (features.formatBlock) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center;">';
+            toolbarHTML += this.renderFormatSelect(targetId);
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if (features.lists && features.formatBlock) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Lists group
+        if (features.lists) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderButton('insertUnorderedList', 'Bullet List', this.getIcon('unorderedList'));
+            toolbarHTML += this.renderButton('insertOrderedList', 'Numbered List', this.getIcon('orderedList'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if (features.links && features.lists) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Links group
+        if (features.links) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderLinkButton();
+            toolbarHTML += this.renderButton('unlink', 'Remove Link', this.getIcon('unlink'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if (features.alignment && features.links) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Alignment group
+        if (features.alignment) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderButton('justifyLeft', 'Align Left', this.getIcon('alignLeft'));
+            toolbarHTML += this.renderButton('justifyCenter', 'Align Center', this.getIcon('alignCenter'));
+            toolbarHTML += this.renderButton('justifyRight', 'Align Right', this.getIcon('alignRight'));
+            toolbarHTML += this.renderButton('justifyFull', 'Justify', this.getIcon('alignJustify'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if (features.indentation && features.alignment) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Indentation group
+        if (features.indentation) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderButton('outdent', 'Decrease Indent', this.getIcon('outdent'));
+            toolbarHTML += this.renderButton('indent', 'Increase Indent', this.getIcon('indent'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if ((features.textColor || features.backgroundColor) && features.indentation) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Color group
+        if (features.textColor || features.backgroundColor) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            if (features.textColor) toolbarHTML += this.renderColorPicker('foreColor', 'Text Color', this.getIcon('textColor'));
+            if (features.backgroundColor) toolbarHTML += this.renderColorPicker('backColor', 'Background Color', this.getIcon('backgroundColor'));
+            toolbarHTML += '</div>';
+        }
+        // Separator
+        if ((features.fontSize || features.fontFamily) && (features.textColor || features.backgroundColor)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        // Font group
+        if (features.fontSize || features.fontFamily) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 4px;">';
+            if (features.fontFamily) toolbarHTML += this.renderFontFamilySelect();
+            if (features.fontSize) toolbarHTML += this.renderFontSizeSelect();
+            toolbarHTML += '</div>';
+        }
+        // Custom tools
+        if (customTools.length > 0) {
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            customTools.forEach((tool)=>{
+                toolbarHTML += this.renderCustomTool(tool);
+            });
+            toolbarHTML += '</div>';
+        }
+        toolbarHTML += '</div>';
+        return toolbarHTML;
+    }
+    /**
+   * Render a toolbar button
+   * @param {string} command - The execCommand command
+   * @param {string} title - Button title/tooltip
+   * @param {string} icon - SVG icon
+   * @param {string} shortcut - Keyboard shortcut (optional)
+   * @returns {string} Button HTML
+   */ renderButton(command, title, icon, shortcut = '') {
+        const tooltipText = shortcut ? `${title} (${shortcut})` : title;
+        return `
+            <button class="toolbar-btn" 
+                    @click="handleToolbarCommand('${command}')" 
+                    title="${tooltipText}"
+                    type="button"
+                    data-command="${command}"
+                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                ${icon}
+            </button>
+        `;
+    }
+    /**
+   * Render the format block selector
+   * @param {string} targetId - Target element ID
+   * @returns {string} Select HTML
+   */ renderFormatSelect(targetId) {
+        return `
+            <select class="toolbar-select" 
+                    @change="handleToolbarCommand('formatBlock', $event.target.value)"
+                    title="Format"
+                    style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                <option value="p">Paragraph</option>
+                <option value="h1">Heading 1</option>
+                <option value="h2">Heading 2</option>
+                <option value="h3">Heading 3</option>
+                <option value="h4">Heading 4</option>
+                <option value="h5">Heading 5</option>
+                <option value="h6">Heading 6</option>
+                <option value="blockquote">Quote</option>
+            </select>
+        `;
+    }
+    /**
+   * Render the link button with prompt
+   * @returns {string} Button HTML
+   */ renderLinkButton() {
+        return `
+            <button class="toolbar-btn" 
+                    @click="handleToolbarCommand('createLink', prompt('Enter link URL'))" 
+                    title="Insert Link"
+                    type="button">
+                ${this.getIcon('link')}
+            </button>
+        `;
+    }
+    /**
+   * Render a color picker button
+   * @param {string} command - The color command (foreColor or backColor)
+   * @param {string} title - Button title
+   * @param {string} icon - Button icon
+   * @returns {string} Color picker HTML
+   */ renderColorPicker(command, title, icon) {
+        return `
+            <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
+                <input type="color" 
+                       class="toolbar-color-input" 
+                       @change="handleToolbarCommand('${command}', $event.target.value)"
+                       title="${title}"
+                       value="#000000"
+                       style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer;">
+                <button class="toolbar-btn toolbar-color-btn" 
+                        @click="$event.target.previousElementSibling.click()"
+                        title="${title}"
+                        type="button"
+                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    ${icon}
+                </button>
+            </div>
+        `;
+    }
+    /**
+   * Render font family selector
+   * @returns {string} Font family select HTML
+   */ renderFontFamilySelect() {
+        return `
+            <select class="toolbar-select toolbar-font-family" 
+                    @change="handleToolbarCommand('fontName', $event.target.value)"
+                    title="Font Family"
+                    style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                <option value="">Font Family</option>
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Trebuchet MS">Trebuchet MS</option>
+                <option value="Arial Black">Arial Black</option>
+                <option value="Impact">Impact</option>
+            </select>
+        `;
+    }
+    /**
+   * Render font size selector
+   * @returns {string} Font size select HTML
+   */ renderFontSizeSelect() {
+        return `
+            <select class="toolbar-select toolbar-font-size" 
+                    @change="handleToolbarCommand('fontSize', $event.target.value)"
+                    title="Font Size"
+                    style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                <option value="">Size</option>
+                <option value="1">8pt</option>
+                <option value="2">10pt</option>
+                <option value="3">12pt</option>
+                <option value="4">14pt</option>
+                <option value="5">18pt</option>
+                <option value="6">24pt</option>
+                <option value="7">36pt</option>
+            </select>
+        `;
+    }
+    /**
+   * Render a custom tool
+   * @param {Object} tool - Custom tool configuration
+   * @returns {string} Tool HTML
+   */ renderCustomTool(tool) {
+        const clickHandler = tool.callback || 'console.log("Custom tool clicked")';
+        return `
+            <button class="toolbar-btn toolbar-btn-custom" 
+                    @click="${clickHandler}" 
+                    title="${tool.title || tool.name}"
+                    type="button"
+                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                ${tool.icon || "\uD83D\uDD27"}
+            </button>
+        `;
+    }
+    /**
+   * Get FontAwesome SVG icon for a command
+   * @param {string} command - Command name
+   * @returns {string} FontAwesome SVG icon
+   */ getIcon(command) {
+        const icons = {
+            bold: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H80 96 224c70.7 0 128 57.3 128 128c0 31.3-11.3 60.1-30 82.3c37.1 22.4 62 63.1 62 109.7c0 70.7-57.3 128-128 128H96 80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V256 96H32C14.3 96 0 81.7 0 64zM224 224c35.3 0 64-28.7 64-64s-28.7-64-64-64H112V224H224zM112 288V416H256c35.3 0 64-28.7 64-64s-28.7-64-64-64H224 112z"/></svg>',
+            italic: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M128 64c0-17.7 14.3-32 32-32H352c17.7 0 32 14.3 32 32s-14.3 32-32 32H293.3L160 416h64c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H90.7L224 96H160c-17.7 0-32-14.3-32-32z"/></svg>',
+            underline: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M16 64c0-17.7 14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H128V224c0 53 43 96 96 96s96-43 96-96V96H304c-17.7 0-32-14.3-32-32s14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H384V224c0 88.4-71.6 160-160 160s-160-71.6-160-160V96H48C30.3 96 16 81.7 16 64zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32z"/></svg>',
+            strikethrough: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M161.3 144c3.2-17.2 14-30.1 33.7-38.6c21.1-9 51.8-12.3 88.6-6.5c11.9 1.9 48.8 9.1 60.1 12c17.1 4.5 34.6-5.6 39.2-22.7s-5.6-34.6-22.7-39.2c-14.3-3.8-53.6-11.4-66.6-13.4c-44.7-7-88.3-4.2-123.7 10.9c-36.5 15.6-64.4 44.8-71.8 87.3c-.1 .6-.2 1.1-.2 1.7c-2.8 23.9 .5 45.6 10.1 64.6c4.5 9 10.2 16.9 16.7 23.9H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H270.1c-.1 0-.3-.1-.4-.1l-1.1-.3c-36-10.8-65.2-19.6-85.2-33.1c-9.3-6.3-15-12.6-18.2-19.1c-2.8-5.8-3.2-10.8-2.7-14.5zM348.9 337.2c2.7 6.5 4.4 15.8 1.9 25.9c-3.2 17.2-14 30.1-33.7 38.6c-21.1 9-51.8 12.3-88.6 6.5c-18-2.9-49.1-13.5-74.4-22.1c-5.6-1.9-11-3.7-15.9-5.4c-16.8-5.6-34.9 3.5-40.5 20.3s3.5 34.9 20.3 40.5c3.6 1.2 7.9 2.7 12.7 4.3c0 0 0 0 0 0s0 0 0 0c24.9 8.5 63.6 21.7 87.6 25.6c0 0 .1 0 .1 0c44.7 7 88.3 4.2 123.7-10.9c36.5-15.6 64.4-44.8 71.8-87.3c3.6-21 2.7-40.4-3.1-58.1H348.9z"/></svg>',
+            unorderedList: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M40 48C26.7 48 16 58.7 16 72v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V72c0-13.3-10.7-24-24-24H40zM192 64c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zM16 232v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24H40c-13.3 0-24 10.7-24 24zM40 368c-13.3 0-24 10.7-24 24v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V392c0-13.3-10.7-24-24-24H40z"/></svg>',
+            orderedList: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M24 56c0-13.3 10.7-24 24-24H80c13.3 0 24 10.7 24 24V176h16c13.3 0 24 10.7 24 24s-10.7 24-24 24H48c-13.3 0-24-10.7-24-24s10.7-24 24-24H56V80H48c-13.3 0-24-10.7-24-24zM86.7 341.2c-6.5-7.4-18.3-6.9-24 1.2L51.5 357.9c-7.7 10.8-22.7 13.3-33.5 5.6s-13.3-22.7-5.6-33.5l11.1-15.6c23.7-33.2 72.3-35.6 99.2-4.9c21.3 24.4 20.8 60.9-1.1 84.7L86.8 432H120c13.3 0 24 10.7 24 24s-10.7 24-24 24H48c-9.5 0-18.2-5.6-22-14.4s-2.1-18.9 4.3-25.9l72-78c5.3-5.8 5.4-14.6 .3-20.5zM224 64H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zm0 160H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zm0 160H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32z"/></svg>',
+            link: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 512" fill="currentColor"><path d="M579.8 267.7c56.5-56.5 56.5-148 0-204.5c-50-50-128.8-56.5-186.3-15.4l-1.6 1.1c-14.4 10.3-17.7 30.3-7.4 44.6s30.3 17.7 44.6 7.4l1.6-1.1c32.1-22.9 76-19.3 103.8 8.6c31.5 31.5 31.5 82.5 0 114L422.3 334.8c-31.5 31.5-82.5 31.5-114 0c-27.9-27.9-31.5-71.8-8.6-103.8l1.1-1.6c10.3-14.4 6.9-34.4-7.4-44.6s-34.4-6.9-44.6 7.4l-1.1 1.6C206.5 251.2 213 330 263 380c56.5 56.5 148 56.5 204.5 0L579.8 267.7zM60.2 244.3c-56.5 56.5-56.5 148 0 204.5c50 50 128.8 56.5 186.3 15.4l1.6-1.1c14.4-10.3 17.7-30.3 7.4-44.6s-30.3-17.7-44.6-7.4l-1.6 1.1c-32.1 22.9-76 19.3-103.8-8.6C74 372.1 74 321.1 105.5 289.5L217.7 177.2c31.5-31.5 82.5-31.5 114 0c27.9 27.9 31.5 71.8 8.6 103.9l-1.1 1.6c-10.3 14.4-6.9 34.4 7.4 44.6s34.4 6.9 44.6-7.4l1.1-1.6C433.5 260.8 427 182 377 132c-56.5-56.5-148-56.5-204.5 0L60.2 244.3z"/></svg>',
+            unlink: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 512" fill="currentColor"><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L489.3 358.2l90.5-90.5c56.5-56.5 56.5-148 0-204.5c-50-50-128.8-56.5-186.3-15.4l-1.6 1.1c-14.4 10.3-17.7 30.3-7.4 44.6s30.3 17.7 44.6 7.4l1.6-1.1c32.1-22.9 76-19.3 103.8 8.6c31.5 31.5 31.5 82.5 0 114L422.3 334.8c-31.5 31.5-82.5 31.5-114 0c-27.9-27.9-31.5-71.8-8.6-103.8l1.1-1.6c10.3-14.4 6.9-34.4-7.4-44.6s-34.4-6.9-44.6 7.4l-1.1 1.6C206.5 251.2 213 330 263 380c56.5 56.5 148 56.5 204.5 0l12.5-12.5L38.8 5.1zm149 187.8L235.5 230c-11.8 33-3.9 70 23.3 96.9c31.5 31.5 82.5 31.5 114 0L422.3 277.2c31.5-31.5 31.5-82.5 0-114c-27.9-27.9-71.8-31.5-103.8-8.6l-1.6 1.1c-14.4 10.3-34.4 6.9-44.6-7.4c-10.3-14.4-6.9-34.4 7.4-44.6l1.6-1.1c57.5-41.1 136.3-34.6 186.3 15.4c56.5 56.5 56.5 148 0 204.5L354.5 435.1c-56.5 56.5-148 56.5-204.5 0c-50-50-56.5-128.8-15.4-186.3z"/></svg>',
+            alignLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M288 64c0 17.7-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32H256c17.7 0 32 14.3 32 32zm0 256c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H256c17.7 0 32 14.3 32 32zM0 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 448c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg>',
+            alignCenter: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M352 64c0-17.7-14.3-32-32-32H128c-17.7 0-32 14.3-32 32s14.3 32 32 32H320c17.7 0 32-14.3 32-32zm96 128c0-17.7-14.3-32-32-32H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32zM0 448c0 17.7 14.3 32 32 32H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H32c-17.7 0-32 14.3-32 32zM352 320c0-17.7-14.3-32-32-32H128c-17.7 0-32 14.3-32 32s14.3 32 32 32H320c17.7 0 32-14.3 32-32z"/></svg>',
+            alignRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M448 64c0 17.7-14.3 32-32 32H192c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32zm0 256c0 17.7-14.3 32-32 32H192c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32zM0 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 448c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg>',
+            alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M448 64c0-17.7-14.3-32-32-32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32zm0 256c0-17.7-14.3-32-32-32H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32zM0 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 448c0-17.7-14.3-32-32-32H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32z"/></svg>',
+            indent: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64zM192 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32zm32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM127.8 268.6L25.8 347.9C15.3 356.1 0 348.6 0 335.3V176.7c0-13.3 15.3-20.8 25.8-12.6l101.9 79.3c8.2 6.4 8.2 18.9 0 25.3z"/></svg>',
+            outdent: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64zM192 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32zm32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM25.8 268.6c-8.2-6.4-8.2-18.9 0-25.3L127.8 164c10.5-8.2 25.8-.7 25.8 12.6V335.3c0 13.3-15.3 20.8-25.8 12.6L25.8 268.6z"/></svg>',
+            textColor: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M221.5 51.7C216.6 39.8 204.9 32 192 32s-24.6 7.8-29.5 19.7l-120 288-40 96c-6.8 16.3 .9 35 17.2 41.8s35-.9 41.8-17.2L93.3 384H290.7l31.8 76.3c6.8 16.3 25.5 24 41.8 17.2s24-25.5 17.2-41.8l-40-96-120-288zM264 320H120l72-172.8L264 320z"/></svg>',
+            backgroundColor: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 576 512" fill="currentColor"><path d="M339.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L568.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S517.7-4.4 494.1 9.2L262.4 187.2c-24 18-38.2 46.1-38.2 76.1v73.1L339.3 367.1zm-19.6 25.4l-116-104.4C143.9 304.3 96 356.4 96 416c0 53 43 96 96 96s96-43 96-96c0-30.4-14.2-57.7-36.3-75.5zM406.2 416c0 79.5-64.5 144-144 144s-144-64.5-144-144c0-27.7 22.3-50 50-50s50 22.3 50 50c0 30.9 25.1 56 56 56s56-25.1 56-56c0-27.7 22.3-50 50-50s50 22.3 50 50zM192 128c-17.7 0-32-14.3-32-32V32c0-17.7 14.3-32 32-32s32 14.3 32 32V96c0 17.7-14.3 32-32 32z"/></svg>'
+        };
+        return icons[command] || '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
+    }
+    /**
+   * Execute a formatting command
+   * @param {string} command - The command to execute
+   * @param {*} value - Optional value for the command
+   * @param {HTMLElement} target - Target element (optional)
+   */ executeCommand(command, value = null, target = null) {
+        if (target) target.focus();
+        try {
+            document.execCommand(command, false, value);
+        } catch (error) {
+            console.warn('Command execution failed:', command, error);
+        }
+        if (this.options.onCommand) this.options.onCommand(command, value);
+    }
+    /**
+   * Add a custom tool to the toolbar
+   * @param {Object} tool - Tool configuration
+   */ addCustomTool(tool) {
+        if (!tool.name || !tool.callback) {
+            console.warn('Custom tool requires name and callback properties');
+            return;
+        }
+        this.options.customTools.push({
+            name: tool.name,
+            title: tool.title || tool.name,
+            icon: tool.icon || "\uD83D\uDD27",
+            callback: tool.callback
+        });
+    }
+    /**
+   * Remove a custom tool from the toolbar
+   * @param {string} name - Tool name to remove
+   */ removeCustomTool(name) {
+        this.options.customTools = this.options.customTools.filter((tool)=>tool.name !== name);
+    }
+    /**
+   * Enable or disable specific features
+   * @param {Object} features - Features to enable/disable
+   */ setFeatures(features) {
+        this.options.features = {
+            ...this.options.features,
+            ...features
+        };
+    }
+}
+
+
+
+/**
+ * Utility for generating template HTML using tool instances
+ */ /**
+ * Shared HTML escaping utility for tools
+ */ function $18a503a6c7863084$export$4cf11838cdc2a8a8(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, (m)=>map[m]);
+}
+
+
+class $d520e56908c10f17$export$3962e98abd6ec965 {
+    constructor(toolConfig){
+        this.toolConfig = toolConfig;
+    }
+    /**
+   * Create a tool instance with given configuration
+   * @param {string} toolName - Name of the tool
+   * @param {string} toolId - Unique ID for the tool
+   * @param {Object} config - Tool configuration
+   * @returns {Object} Tool instance
+   */ createTool(toolName, toolId, config = {}) {
+        const toolConfig = this.toolConfig[toolName];
+        if (!toolConfig || !toolConfig.class) throw new Error(`Tool ${toolName} not found`);
+        const ToolClass = toolConfig.class;
+        const mergedConfig = {
+            ...toolConfig.config,
+            ...config
+        };
+        return new ToolClass({
+            id: toolId,
+            updateFunction: ()=>{},
+            // No-op for template generation
+            config: mergedConfig
+        });
+    }
+    /**
+   * Generate HTML for a tool as a template element
+   * @param {string} toolName - Name of the tool
+   * @param {string} toolId - Unique ID for the tool
+   * @param {Object} config - Tool configuration
+   * @returns {string} HTML string
+   */ generateToolHtml(toolName, toolId, config = {}) {
+        const tool = this.createTool(toolName, toolId, config);
+        if (typeof tool.renderTemplateElement === 'function') return tool.renderTemplateElement(toolId);
+        else {
+            // Fallback to regular render with data attributes
+            let html = tool.render();
+            // Add data attributes to the first element
+            html = html.replace(/^<(\w+)/, `<$1 data-tool="${toolName}" data-tool-id="${toolId}"`);
+            return html;
+        }
+    }
+    /**
+   * Generate a Raw block with template elements
+   * @param {Array} elements - Array of element configurations
+   * @param {Object} wrapperConfig - Wrapper element configuration
+   * @returns {string} Raw block HTML
+   */ generateRawTemplate(elements, wrapperConfig = {}) {
+        const { wrapperTag: wrapperTag = 'div', wrapperStyles: wrapperStyles = {}, wrapperClasses: wrapperClasses = '' } = wrapperConfig;
+        // Generate HTML for each element
+        const elementsHtml = elements.map((element)=>{
+            const { toolName: toolName, toolId: toolId, config: config } = element;
+            return this.generateToolHtml(toolName, toolId, config);
+        }).join('');
+        // Build wrapper styles
+        const styleString = Object.entries(wrapperStyles).map(([key, value])=>`${key}: ${value}`).join('; ');
+        const wrapperAttrs = [
+            wrapperClasses ? `class="${wrapperClasses}"` : '',
+            styleString ? `style="${styleString}"` : ''
+        ].filter(Boolean).join(' ');
+        const wrapperHtml = `<${wrapperTag} ${wrapperAttrs}>${elementsHtml}</${wrapperTag}>`;
+        // HTML encode for data-config-content attribute
+        const encodedContent = (0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(wrapperHtml);
+        return `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="${encodedContent}"></div>`;
+    }
+    /**
+   * Generate a complete layout template
+   * @param {string} id - Layout ID
+   * @param {string} name - Layout name
+   * @param {string} icon - Layout icon SVG
+   * @param {Array} elements - Array of element configurations
+   * @param {Object} wrapperConfig - Wrapper configuration
+   * @param {string} description - Layout description
+   * @returns {Object} Layout configuration
+   */ generateLayout(id, name, icon, elements, wrapperConfig, description) {
+        const content = this.generateRawTemplate(elements, wrapperConfig);
+        return {
+            id: id,
+            name: name,
+            icon: icon,
+            content: content,
+            description: description
+        };
+    }
+}
+var $d520e56908c10f17$export$2e2bcd8739ae039 = $d520e56908c10f17$export$3962e98abd6ec965;
 
 
 class $8ebbeef8d21b3552$var$Layout {
@@ -1642,15 +2292,69 @@ class $8ebbeef8d21b3552$var$Layout {
         });
         return blocks;
     }
+    // Helper method to create a template using tool instances
+    static createTemplateWithTools(toolConfig, elements, wrapperConfig = {}) {
+        if (!toolConfig) {
+            console.warn('No tool configuration provided for template generation');
+            return '';
+        }
+        const generator = new (0, $d520e56908c10f17$export$3962e98abd6ec965)(toolConfig);
+        return generator.generateRawTemplate(elements, wrapperConfig);
+    }
     // Static method to get all predefined layouts
-    static getAll() {
+    static getAll(toolConfig = null) {
         return [
             // Test Template
             new $8ebbeef8d21b3552$var$Layout('test-template', 'Test Template', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='padding: 2rem; text-align: center;'&gt;&lt;h1 data-tool='Header' data-tool-id='header-1' style='font-size: 2rem; margin-bottom: 1rem; cursor: pointer; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Interactive Template&lt;/h1&gt;&lt;img data-tool='Image' data-tool-id='image-1' src='https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&amp;fit=crop' alt='Sample image' style='width: 100%; max-width: 400px; border-radius: 0.5rem; margin: 1rem 0; cursor: pointer; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;' /&gt;&lt;p data-tool='Paragraph' data-tool-id='paragraph-1' style='margin: 1rem 0; cursor: pointer; border: 2px dashed transparent; padding: 0.5rem;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Click any element to edit its properties. This creates reusable, interactive templates!&lt;/p&gt;&lt;button data-tool='Button' data-tool-id='button-1' style='background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Edit Me&lt;/button&gt;&lt;/div&gt;">
                 </div>`, 'Interactive template with clickable elements that show tool properties'),
             // 1. Modern Hero Section
-            new $8ebbeef8d21b3552$var$Layout('modern-hero', 'Modern Hero', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;">
-                </div>`, 'Professional hero section with gradient background, compelling copy, and CTA'),
+            new $8ebbeef8d21b3552$var$Layout('modern-hero', 'Modern Hero', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', toolConfig ? $8ebbeef8d21b3552$var$Layout.createTemplateWithTools(toolConfig, [
+                {
+                    toolName: 'Header',
+                    toolId: 'hero-title',
+                    config: {
+                        content: 'Transform Your Business Today',
+                        level: 'h1',
+                        fontSize: 'xlarge',
+                        fontWeight: 'bold',
+                        textColor: '#ffffff',
+                        alignment: 'center'
+                    }
+                },
+                {
+                    toolName: 'Paragraph',
+                    toolId: 'hero-subtitle',
+                    config: {
+                        content: 'Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.',
+                        fontSize: 'large',
+                        textColor: 'rgba(255,255,255,0.9)',
+                        alignment: 'center',
+                        margin: 'large'
+                    }
+                },
+                {
+                    toolName: 'Button',
+                    toolId: 'hero-cta',
+                    config: {
+                        text: 'Get Started Free',
+                        type: 'primary',
+                        size: 'large',
+                        customStyles: {
+                            backgroundColor: '#3b82f6',
+                            textColor: 'white',
+                            padding: '1rem 2rem',
+                            borderRadius: '0.5rem'
+                        }
+                    }
+                }
+            ], {
+                wrapperStyles: {
+                    'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    'padding': '5rem 2rem',
+                    'text-align': 'center',
+                    'color': 'white'
+                }
+            }) : `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;"></div>`, 'Professional hero section with gradient background, compelling copy, and CTA'),
             // 2. Three Column Feature Grid
             new $8ebbeef8d21b3552$var$Layout('feature-grid', 'Feature Grid', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/></svg>', `<div data-block="columns" data-config-columns='[
                     {
@@ -2169,6 +2873,7 @@ var $294ef9f20b3a5b48$export$2e2bcd8739ae039 = $294ef9f20b3a5b48$var$LayoutManag
 }
 
 
+
 /**
  * Paragraph tool for creating editable text blocks
  */ class $80c6fdb5c294ffa6$var$Paragraph extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
@@ -2270,14 +2975,14 @@ var $294ef9f20b3a5b48$export$2e2bcd8739ae039 = $294ef9f20b3a5b48$var$LayoutManag
                 label: 'Text Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.textColor)}">`
             },
             {
                 name: 'backgroundColor',
                 label: 'Background Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor)}">`
             },
             {
                 name: 'padding',
@@ -2305,7 +3010,8 @@ var $294ef9f20b3a5b48$export$2e2bcd8739ae039 = $294ef9f20b3a5b48$var$LayoutManag
         return {
             name: 'Paragraph',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M192 32h64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H384l0 352c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-352H288l0 352c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-96H192c-88.4 0-160-71.6-160-160s71.6-160 160-160z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
     /**
@@ -2375,6 +3081,7 @@ var $80c6fdb5c294ffa6$export$2e2bcd8739ae039 = $80c6fdb5c294ffa6$var$Paragraph;
 
 
 
+
 class $de5191df6222c084$var$Header extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
@@ -2420,7 +3127,7 @@ class $de5191df6222c084$var$Header extends (0, $3e6ce1da8d004c46$export$2e2bcd87
                 label: 'Anchor ID',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'anchor', $event.target.value)"
-                    value="${this.config.anchor}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.anchor)}"
                     placeholder="Optional anchor ID">`
             },
             {
@@ -2447,7 +3154,7 @@ class $de5191df6222c084$var$Header extends (0, $3e6ce1da8d004c46$export$2e2bcd87
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.textColor)}">`
             }
         ];
     }
@@ -2455,7 +3162,8 @@ class $de5191df6222c084$var$Header extends (0, $3e6ce1da8d004c46$export$2e2bcd87
         return {
             name: 'Header',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 46.3 14.3 32 32 32H80h48c17.7 0 32 14.3 32 32s-14.3 32-32 32H112V208H336V96H320c-17.7 0-32-14.3-32-32s14.3-32 32-32h48 48c17.7 0 32 14.3 32 32s-14.3 32-32 32H400V240 416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H368 320c-17.7 0-32-14.3-32-32s14.3-32 32-32h16V272H112V416h16c17.7 0 32 14.3 32 32s-14.3 32-32 32H80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V240 96H32C14.3 96 0 81.7 0 64z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
     getStyleString() {
@@ -2504,6 +3212,7 @@ class $de5191df6222c084$var$Header extends (0, $3e6ce1da8d004c46$export$2e2bcd87
     }
 }
 var $de5191df6222c084$export$2e2bcd8739ae039 = $de5191df6222c084$var$Header;
+
 
 
 
@@ -2566,7 +3275,8 @@ class $db7363abc9a57c89$var$List extends (0, $3e6ce1da8d004c46$export$2e2bcd8739
         return {
             name: 'List',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M40 48C26.7 48 16 58.7 16 72v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V72c0-13.3-10.7-24-24-24H40zM192 64c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zM16 232v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24H40c-13.3 0-24 10.7-24 24zM40 368c-13.3 0-24 10.7-24 24v48c0 13.3 10.7 24 24 24H88c13.3 0 24-10.7 24-24V392c0-13.3-10.7-24-24-24H40z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
     getStyleString() {
@@ -2594,14 +3304,26 @@ class $db7363abc9a57c89$var$List extends (0, $3e6ce1da8d004c46$export$2e2bcd8739
             contenteditable="true"
             x-html="block.config.content"
             @blur="block.config.content = $event.target.innerHTML"
-            @keydown.enter.prevent="$event.target.innerHTML += '<li>New item</li>'"></${this.config.type}>`;
+            @keydown.enter.prevent="$event.target.innerHTML += '<li>New item</li>'">${this.config.content}</${this.config.type}>`;
     }
     render() {
         const styleString = this.getStyleString();
         return `<${this.config.type} style="${styleString}">${this.config.content}</${this.config.type}>`;
     }
+    /**
+   * Render the list as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        const styleString = this.getStyleString();
+        return `<${this.config.type} 
+            data-tool="List" 
+            data-tool-id="${toolId}"
+            style="${styleString}; cursor: pointer;">${this.config.content}</${this.config.type}>`;
+    }
 }
 var $db7363abc9a57c89$export$2e2bcd8739ae039 = $db7363abc9a57c89$var$List;
+
 
 
 
@@ -2644,7 +3366,8 @@ class $f832c373f6c04470$var$Code extends (0, $3e6ce1da8d004c46$export$2e2bcd8739
         return {
             name: 'Code',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>',
-            category: 'Advanced'
+            category: 'Advanced',
+            allowRawPreview: true
         };
     }
     editorRender() {
@@ -2662,6 +3385,20 @@ class $f832c373f6c04470$var$Code extends (0, $3e6ce1da8d004c46$export$2e2bcd8739
             <code class="language-${this.config.language}">${this.config.content}</code>
         </pre>`;
     }
+    /**
+   * Render the code as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        const lineNumbersClass = this.config.showLineNumbers ? 'line-numbers' : '';
+        return `<pre 
+            data-tool="Code" 
+            data-tool-id="${toolId}"
+            class="code-block ${lineNumbersClass}"
+            style="cursor: pointer;">
+            <code class="language-${this.config.language}">${this.config.content}</code>
+        </pre>`;
+    }
 }
 var $f832c373f6c04470$export$2e2bcd8739ae039 = $f832c373f6c04470$var$Code;
 
@@ -2676,6 +3413,7 @@ image: {
         }
       }
  */ 
+
 class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
@@ -2688,11 +3426,29 @@ class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd873
         };
         this.settings = [
             {
+                name: 'imageUpload',
+                label: 'Upload Image',
+                html: `<div class="image-upload-section">
+                    <input type="file" 
+                        id="upload-${this.id}"
+                        accept="image/*"
+                        @change="uploadImage($event, '${this.id}')"
+                        style="display: none;">
+                    <button type="button" 
+                        class="upload-btn"
+                        @click="document.getElementById('upload-${this.id}').click()"
+                        style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; margin-bottom: 0.5rem; cursor: pointer;">
+                        \u{1F4C1} Choose File
+                    </button>
+                    <div id="upload-status-${this.id}" style="font-size: 0.875rem; color: #666;"></div>
+                </div>`
+            },
+            {
                 name: 'imageUrl',
-                label: 'Image URL',
+                label: 'Or Image URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'src', $event.target.value)"
-                    value="${this.config.src}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.src)}"
                     placeholder="Enter image URL">`
             },
             {
@@ -2700,7 +3456,7 @@ class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd873
                 label: 'Alt Text',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'alt', $event.target.value)"
-                    value="${this.config.alt}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.alt)}"
                     placeholder="Enter alt text">`
             },
             {
@@ -2708,7 +3464,7 @@ class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd873
                 label: 'Caption',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'caption', $event.target.value)"
-                    value="${this.config.caption}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.caption)}"
                     placeholder="Enter image caption">`
             },
             {
@@ -2725,7 +3481,7 @@ class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd873
                 label: 'Width',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'width', $event.target.value)"
-                    value="${this.config.width}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.width)}"
                     placeholder="auto, 100%, or specific px">`
             }
         ];
@@ -2734,7 +3490,8 @@ class $27011ebc47b257c8$var$Image extends (0, $3e6ce1da8d004c46$export$2e2bcd873
         return {
             name: 'Image',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: true
         };
     }
     editorRender() {
@@ -2781,6 +3538,7 @@ var $27011ebc47b257c8$export$2e2bcd8739ae039 = $27011ebc47b257c8$var$Image;
         quotePlaceholder: 'Enter a quote',
         captionPlaceholder: 'Quote\'s author',
       },*/ 
+
 class $3c596c9f1e11bbb7$var$Quote extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
@@ -2851,21 +3609,21 @@ class $3c596c9f1e11bbb7$var$Quote extends (0, $3e6ce1da8d004c46$export$2e2bcd873
                 label: 'Text Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.textColor)}">`
             },
             {
                 name: 'backgroundColor',
                 label: 'Background Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor)}">`
             },
             {
                 name: 'borderColor',
                 label: 'Border Color',
                 html: `<input type="color" 
                     @change="trigger('${this.id}', 'borderColor', $event.target.value)"
-                    value="${this.config.borderColor}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.borderColor)}"
                     ${this.config.borderStyle === 'none' ? 'style="display:none"' : ''}>`
             }
         ];
@@ -2874,7 +3632,8 @@ class $3c596c9f1e11bbb7$var$Quote extends (0, $3e6ce1da8d004c46$export$2e2bcd873
         return {
             name: 'Quote',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 216C0 149.7 53.7 96 120 96h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V216zm256 0c0-66.3 53.7-120 120-120h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H320c-35.3 0-64-28.7-64-64V216z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
     getBorderStyle() {
@@ -2934,8 +3693,25 @@ class $3c596c9f1e11bbb7$var$Quote extends (0, $3e6ce1da8d004c46$export$2e2bcd873
             ${this.config.attribution ? `<cite class="quote-attribution" style="font-style: normal; font-size: 0.875rem; margin-top: 0.5rem; display: block;">${this.config.attribution}</cite>` : ''}
         </blockquote>`;
     }
+    /**
+   * Render the quote as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        const styleString = this.getStyleString();
+        return `<blockquote 
+            data-tool="Quote" 
+            data-tool-id="${toolId}"
+            class="quote-block quote-${this.config.style}" 
+            style="${styleString}; cursor: pointer;">
+            <div class="quote-content">${this.config.content}</div>
+            ${this.config.attribution ? `<cite class="quote-attribution" style="font-style: normal; font-size: 0.875rem; margin-top: 0.5rem; display: block;">${this.config.attribution}</cite>` : ''}
+        </blockquote>`;
+    }
 }
 var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
+
+
 
 
 
@@ -2946,6 +3722,10 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
             content: this.config.content || 'Start typing here...',
             format: this.config.format || 'p'
         };
+        // Initialize common toolbar
+        this.toolbar = new (0, $4070b2c197de59da$export$c4f883ba50227a95)({
+            className: 'wysiwyg-toolbar'
+        });
         this.settings = [
             {
                 name: 'format',
@@ -2962,121 +3742,23 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
         return {
             name: 'Rich Text',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M57.7 193l9.4 16.4c8.3 14.5 21.9 25.2 38 29.8L163 255.7c17.2 4.9 29 20.6 29 38.5v39.9c0 11 6.2 21 16 25.9s16 14.9 16 25.9v39c0 15.6 14.9 26.9 29.9 22.6c16.1-4.6 28.6-17.5 32.7-33.8l2.8-11.2c4.2-16.9 15.2-31.4 30.3-40l8.1-4.6c15-8.5 24.2-24.5 24.2-41.7v-8.3c0-12.7-5.1-24.9-14.1-33.9l-3.9-3.9c-9-9-21.2-14.1-33.9-14.1H257c-11.1 0-22.1-2.9-31.8-8.4l-34.5-19.7c-4.3-2.5-7.6-6.5-9.2-11.2c-3.2-9.6 1.1-20 10.2-24.5l5.9-3c6.6-3.3 14.3-3.9 21.3-1.5l23.2 7.7c8.2 2.7 17.2-.4 21.9-7.5c4.7-7 4.2-16.3-1.2-22.8l-13.6-16.3c-10-12-9.9-29.5 .3-41.3l15.7-18.3c8.8-10.3 10.2-25 3.5-36.7l-2.4-4.2c-3.5-.2-6.9-.3-10.4-.3C163.1 48 84.4 108.9 57.7 193zM464 256c0-36.8-9.6-71.4-26.4-101.5L412 164.8c-15.7 6.3-23.8 23.8-18.5 39.8l16.9 50.7c3.5 10.4 12 18.3 22.6 20.9l29.1 7.3c1.2-9 1.8-18.2 1.8-27.5zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: false
         };
     }
     editorRender() {
-        return `<div class="wysiwyg-editor">
-            <div class="wysiwyg-toolbar">
-                <div class="wysiwyg-toolbar-group">
-                    <button class="wysiwyg-btn wysiwyg-btn-bold" 
-                            @click="document.execCommand('bold')" 
-                            title="Bold">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-                        </svg>
-                    </button>
-                    <button class="wysiwyg-btn wysiwyg-btn-italic" 
-                            @click="document.execCommand('italic')" 
-                            title="Italic">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="19" y1="4" x2="10" y2="4"/>
-                            <line x1="14" y1="20" x2="5" y2="20"/>
-                            <line x1="15" y1="4" x2="9" y2="20"/>
-                        </svg>
-                    </button>
-                    <button class="wysiwyg-btn wysiwyg-btn-underline" 
-                            @click="document.execCommand('underline')" 
-                            title="Underline">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
-                            <line x1="4" y1="20" x2="20" y2="20"/>
-                        </svg>
-                    </button>
-                    <button class="wysiwyg-btn wysiwyg-btn-strike" 
-                            @click="document.execCommand('strikeThrough')" 
-                            title="Strikethrough">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 4H9a3 3 0 0 0-2.83 4"/>
-                            <path d="M14 12a4 4 0 0 1 0 8H6"/>
-                            <line x1="4" y1="12" x2="20" y2="12"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="wysiwyg-toolbar-separator"></div>
-                
-                <div class="wysiwyg-toolbar-group">
-                    <select class="wysiwyg-select" 
-                            @change="document.execCommand('formatBlock', false, $event.target.value)"
-                            title="Format">
-                        <option value="p">Paragraph</option>
-                        <option value="h1">Heading 1</option>
-                        <option value="h2">Heading 2</option>
-                        <option value="h3">Heading 3</option>
-                        <option value="h4">Heading 4</option>
-                        <option value="h5">Heading 5</option>
-                        <option value="h6">Heading 6</option>
-                        <option value="blockquote">Quote</option>
-                    </select>
-                </div>
-                
-                <div class="wysiwyg-toolbar-separator"></div>
-                
-                <div class="wysiwyg-toolbar-group">
-                    <button class="wysiwyg-btn wysiwyg-btn-ul" 
-                            @click="document.execCommand('insertUnorderedList')" 
-                            title="Bullet List">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="8" y1="6" x2="21" y2="6"/>
-                            <line x1="8" y1="12" x2="21" y2="12"/>
-                            <line x1="8" y1="18" x2="21" y2="18"/>
-                            <line x1="3" y1="6" x2="3.01" y2="6"/>
-                            <line x1="3" y1="12" x2="3.01" y2="12"/>
-                            <line x1="3" y1="18" x2="3.01" y2="18"/>
-                        </svg>
-                    </button>
-                    <button class="wysiwyg-btn wysiwyg-btn-ol" 
-                            @click="document.execCommand('insertOrderedList')" 
-                            title="Numbered List">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="10" y1="6" x2="21" y2="6"/>
-                            <line x1="10" y1="12" x2="21" y2="12"/>
-                            <line x1="10" y1="18" x2="21" y2="18"/>
-                            <path d="M4 6h1v4"/>
-                            <path d="M4 10h2"/>
-                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="wysiwyg-toolbar-separator"></div>
-                
-                <div class="wysiwyg-toolbar-group">
-                    <button class="wysiwyg-btn wysiwyg-btn-link" 
-                            @click="document.execCommand('createLink', false, prompt('Enter link URL'))" 
-                            title="Insert Link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                    </button>
-                    <button class="wysiwyg-btn wysiwyg-btn-unlink" 
-                            @click="document.execCommand('unlink')" 
-                            title="Remove Link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18.84 12.25l1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07a5.006 5.006 0 0 0-7.07-.12l-1.71 1.72"/>
-                            <path d="M5.17 11.75l-1.72 1.71a5.004 5.004 0 0 0 .12 7.07a5.006 5.006 0 0 0 7.07.12l1.71-1.72"/>
-                            <line x1="8" y1="2" x2="8" y2="5"/>
-                            <line x1="2" y1="8" x2="5" y2="8"/>
-                            <line x1="16" y1="14" x2="16" y2="17"/>
-                            <line x1="14" y1="16" x2="17" y2="16"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+        return `<div class="wysiwyg-editor" x-data="{ 
+            handleToolbarCommand(command, value) {
+                const contentEl = document.getElementById('wysiwyg-content-${this.id}');
+                if (contentEl) {
+                    contentEl.focus();
+                    document.execCommand(command, false, value);
+                }
+            }
+        }">
+            ${this.toolbar.render()}
             <${this.config.format} 
+                id="wysiwyg-content-${this.id}"
                 class="wysiwyg-content"
                 contenteditable="true"
                 x-html="block.config.content"
@@ -3104,6 +3786,7 @@ alert: {
       },
     },
  */ 
+
 class $c6b5f9fc4fa47998$var$Alert extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
@@ -3150,7 +3833,8 @@ class $c6b5f9fc4fa47998$var$Alert extends (0, $3e6ce1da8d004c46$export$2e2bcd873
         return {
             name: 'Alert',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
     getIcon() {
@@ -3179,8 +3863,24 @@ class $c6b5f9fc4fa47998$var$Alert extends (0, $3e6ce1da8d004c46$export$2e2bcd873
             ${this.config.dismissible ? '<button class="alert-dismiss">\xd7</button>' : ''}
         </div>`;
     }
+    /**
+   * Render the alert as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="Alert" 
+            data-tool-id="${toolId}"
+            class="alert-block alert-${this.config.type}"
+            style="cursor: pointer;">
+            ${this.config.icon ? this.getIcon() : ''}
+            <div class="alert-content">${this.config.content}</div>
+            ${this.config.dismissible ? '<button class="alert-dismiss">\xd7</button>' : ''}
+        </div>`;
+    }
 }
 var $c6b5f9fc4fa47998$export$2e2bcd8739ae039 = $c6b5f9fc4fa47998$var$Alert;
+
 
 
 
@@ -3205,7 +3905,7 @@ class $4399172a73dade70$var$VideoPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 label: 'Video URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    value="${this.config.url}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.url)}"
                     placeholder="Enter video URL">`
             },
             {
@@ -3280,7 +3980,8 @@ class $4399172a73dade70$var$VideoPlayer extends (0, $3e6ce1da8d004c46$export$2e2
         return {
             name: 'Video',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M549.7 124.1c-6.3-23.7-24.8-42.3-48.3-48.6C458.8 64 288 64 288 64S117.2 64 74.6 75.5c-23.5 6.3-42 24.9-48.3 48.6-11.4 42.9-11.4 132.3-11.4 132.3s0 89.4 11.4 132.3c6.3 23.7 24.8 41.5 48.3 47.8C117.2 448 288 448 288 448s170.8 0 213.4-11.5c23.5-6.3 42-24.2 48.3-47.8 11.4-42.9 11.4-132.3 11.4-132.3s0-89.4-11.4-132.3zm-317.5 213.5V175.2l142.7 81.2-142.7 81.2z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: false
         };
     }
     getVideoEmbed() {
@@ -3375,8 +4076,23 @@ class $4399172a73dade70$var$VideoPlayer extends (0, $3e6ce1da8d004c46$export$2e2
             ${this.config.caption ? `<figcaption>${this.config.caption}</figcaption>` : ''}
         </figure>`;
     }
+    /**
+   * Render the video player as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        return `<figure 
+            data-tool="VideoPlayer" 
+            data-tool-id="${toolId}"
+            class="video-block" 
+            style="cursor: pointer;">
+            ${this.getVideoEmbed()}
+            ${this.config.caption ? `<figcaption>${this.config.caption}</figcaption>` : ''}
+        </figure>`;
+    }
 }
 var $4399172a73dade70$export$2e2bcd8739ae039 = $4399172a73dade70$var$VideoPlayer;
+
 
 
 
@@ -3403,7 +4119,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 label: 'Audio URL',
                 html: `<input type="text" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    value="${this.config.url}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.url)}"
                     placeholder="Enter audio URL">`
             },
             {
@@ -3421,7 +4137,7 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
                 html: `<div>
                     <input type="text" 
                         @change="trigger('${this.id}', 'title', $event.target.value)"
-                        value="${this.config.title}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.title)}"
                         placeholder="Title">
                     <input type="text" 
                         @change="trigger('${this.id}', 'artist', $event.target.value)"
@@ -3475,7 +4191,8 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
         return {
             name: 'Audio',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v72V368c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V147L192 223.8V432c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V200 128c0-14.1 9.3-26.6 22.8-30.7l320-96c9.7-2.9 20.2-1.1 28.3 5z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: false
         };
     }
     getAudioEmbed() {
@@ -3545,8 +4262,28 @@ class $6ddc38c087d52cba$var$AudioPlayer extends (0, $3e6ce1da8d004c46$export$2e2
             ${this.getAudioEmbed()}
         </div>`;
     }
+    /**
+   * Render the audio player as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="AudioPlayer" 
+            data-tool-id="${toolId}"
+            class="audio-block" 
+            style="cursor: pointer;">
+            ${this.config.showMetadata ? `
+                <div class="audio-metadata">
+                    <div class="audio-title">${this.config.title}</div>
+                    <div class="audio-artist">${this.config.artist}</div>
+                </div>
+            ` : ''}
+            ${this.getAudioEmbed()}
+        </div>`;
+    }
 }
 var $6ddc38c087d52cba$export$2e2bcd8739ae039 = $6ddc38c087d52cba$var$AudioPlayer;
+
 
 
 
@@ -3741,7 +4478,8 @@ class $06ccccc81b3eddf4$var$Carousel extends (0, $3e6ce1da8d004c46$export$2e2bcd
         return {
             name: 'Carousel',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>',
-            category: 'Media'
+            category: 'Media',
+            allowRawPreview: false
         };
     }
     editorRender() {
@@ -3868,8 +4606,61 @@ class $06ccccc81b3eddf4$var$Carousel extends (0, $3e6ce1da8d004c46$export$2e2bcd
                 ${dots}
             </div>`;
     }
+    /**
+   * Render the carousel as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        const slides = this.config.slides.filter((slide)=>slide.image) // Only show slides with images
+        .map((slide, index)=>`
+                <div class="carousel-slide">
+                    <img src="${slide.image}" alt="Slide ${index + 1}" loading="lazy">
+                    ${this.config.showCaptions && slide.caption ? `
+                        <div class="carousel-caption">${slide.caption}</div>
+                    ` : ''}
+                </div>
+            `).join('');
+        const arrows = this.config.showArrows ? `
+            <button class="carousel-prev" aria-label="Previous slide">\u{2190}</button>
+            <button class="carousel-next" aria-label="Next slide">\u{2192}</button>
+        ` : '';
+        const dots = this.config.showDots ? `
+            <div class="carousel-dots" role="tablist">
+                ${this.config.slides.filter((slide)=>slide.image).map((_, index)=>`
+                        <button class="carousel-dot${index === 0 ? ' active' : ''}" 
+                                role="tab" 
+                                aria-label="Go to slide ${index + 1}"></button>
+                    `).join('')}
+            </div>
+        ` : '';
+        const validSlides = this.config.slides.filter((slide)=>slide.image);
+        const slidesCount = validSlides.length;
+        if (slidesCount === 0) return `<div 
+                data-tool="Carousel" 
+                data-tool-id="${toolId}"
+                class="carousel-block carousel-empty" 
+                style="cursor: pointer;">
+                <p>No images added to carousel</p>
+            </div>`;
+        return `<div 
+            data-tool="Carousel" 
+            data-tool-id="${toolId}"
+            class="carousel-block" 
+            style="cursor: pointer;"
+            role="region" 
+            aria-label="Image carousel">
+            
+            <div class="carousel-container">
+                ${slides}
+                ${arrows}
+            </div>
+            
+            ${dots}
+        </div>`;
+    }
 }
 var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
+
 
 
 
@@ -3911,7 +4702,7 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                 label: 'Column Gap',
                 html: `<input type="text" class="settings-input"
                     @change="trigger('${this.id}', 'gap', $event.target.value)"
-                    value="${this.config.gap}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.gap)}"
                     placeholder="20px">`
             },
             {
@@ -3937,7 +4728,7 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                     <input type="text" class="settings-input"
                         x-show="${this.config.responsive}"
                         @change="trigger('${this.id}', 'breakpoint', $event.target.value)"
-                        value="${this.config.breakpoint}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.breakpoint)}"
                         placeholder="Breakpoint (e.g. 768px)">
                 </div>`
             }
@@ -3947,7 +4738,8 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
         return {
             name: 'Columns',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zm64 0v64h64V96H64zm384 0H192v64H448V96zM64 224v64h64V224H64zm384 0H192v64H448V224zM64 352v64h64V352H64zm384 0H192v64H448V352z"/></svg>',
-            category: 'Layout'
+            category: 'Layout',
+            allowRawPreview: false
         };
     }
     /**
@@ -4417,6 +5209,7 @@ var $02817afdb34def6d$export$2e2bcd8739ae039 = $02817afdb34def6d$var$Columns;
 
 
 
+
 // Alpine.js component for Raw code editor
 function $dbf99af480fb2d13$var$rawCodeEditor() {
     return {
@@ -4424,6 +5217,16 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
         block: null,
         isValid: true,
         previewContent: '',
+        toolbar: null,
+        handleToolbarCommand (command, value) {
+            const previewEl = this.$refs.previewContainer;
+            if (previewEl) {
+                previewEl.focus();
+                document.execCommand(command, false, value);
+                // Update the block content when user makes changes
+                if (this.block) this.block.config.content = previewEl.innerHTML;
+            }
+        },
         init (blockId) {
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find((b)=>b.id === blockId);
@@ -4440,6 +5243,10 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
                 this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
+                // Initialize toolbar for preview mode
+                this.toolbar = new (0, $4070b2c197de59da$export$c4f883ba50227a95)({
+                    className: 'raw-preview-toolbar'
+                });
             }
         },
         handleInput (event) {
@@ -4538,7 +5345,19 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
             element.addEventListener('dragover', (e)=>{
                 e.preventDefault();
                 e.stopPropagation();
-                // Show drop cursor
+                // Check if tool is allowed for raw preview
+                const toolName = e.dataTransfer.getData('text/plain');
+                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
+                    const toolConfig = editor.toolConfig[toolName];
+                    const toolboxConfig = toolConfig.class.toolbox();
+                    if (toolboxConfig.allowRawPreview === false) {
+                        // Show no-drop cursor
+                        element.style.cursor = 'no-drop';
+                        return;
+                    }
+                }
+                // Show drop cursor for allowed tools
+                element.style.cursor = 'default';
                 this.showDropCursor(element, e);
             });
             element.addEventListener('dragleave', (e)=>{
@@ -4552,9 +5371,16 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
                 e.stopPropagation();
                 // Hide drop cursor
                 this.hideDropCursor(element);
+                element.style.cursor = 'default';
                 // Get the dropped tool data
                 const toolName = e.dataTransfer.getData('text/plain');
-                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) this.insertToolAtCursor(element, block, toolName, e, editor);
+                if (toolName && editor.toolConfig && editor.toolConfig[toolName]) {
+                    // Check if tool is allowed for raw preview
+                    const toolConfig = editor.toolConfig[toolName];
+                    const toolboxConfig = toolConfig.class.toolbox();
+                    if (toolboxConfig.allowRawPreview === false) return; // Don't insert disallowed tools
+                    this.insertToolAtCursor(element, block, toolName, e, editor);
+                }
             });
         },
         showDropCursor (element, e) {
@@ -4694,7 +5520,8 @@ class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739a
         return {
             name: 'Raw Code',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>',
-            category: 'Advanced'
+            category: 'Advanced',
+            allowRawPreview: false
         };
     }
     validateContent() {
@@ -4822,12 +5649,20 @@ class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739a
                 <div 
                     x-show="showPreview" 
                     class="preview-content" 
-                    style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); padding: var(--space-4); background: white;">
+                    style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); background: white;">
+                    
+                    <!-- Rich Text Toolbar for Preview -->
+                    <div x-show="showPreview && toolbar" 
+                         class="preview-toolbar-wrapper"
+                         style="border-bottom: 1px solid #e5e7eb; padding: 8px;"
+                         x-html="toolbar ? toolbar.render() : ''">
+                    </div>
                     
                     <div x-ref="previewContainer"
                          contenteditable="true"
                          x-init="initializePreviewContainer($el, block)"
-                         style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px;">
+                         @blur="if(block) { block.config.content = $el.innerHTML; }"
+                         style="outline: none; cursor: text; min-height: 180px; border: 1px dashed #ccc; padding: 10px; margin: 8px;">
                     </div>
                 </div>
             </div>
@@ -4850,6 +5685,7 @@ class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739a
     }
 }
 var $dbf99af480fb2d13$export$2e2bcd8739ae039 = $dbf99af480fb2d13$var$Raw;
+
 
 
 
@@ -4881,21 +5717,21 @@ class $e5fc3b2383ff720a$var$Delimiter extends (0, $3e6ce1da8d004c46$export$2e2bc
                 html: `<div class="delimiter-appearance">
                     <input type="color" 
                         @change="trigger('${this.id}', 'color', $event.target.value)"
-                        value="${this.config.color}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.color)}"
                         title="Color">
                     <input type="text" 
                         @change="trigger('${this.id}', 'width', $event.target.value)"
-                        value="${this.config.width}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.width)}"
                         placeholder="Width (%, px)"
                         title="Width">
                     <input type="text" 
                         @change="trigger('${this.id}', 'thickness', $event.target.value)"
-                        value="${this.config.thickness}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.thickness)}"
                         placeholder="Thickness (px)"
                         title="Thickness">
                     <input type="text" 
                         @change="trigger('${this.id}', 'spacing', $event.target.value)"
-                        value="${this.config.spacing}"
+                        value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.spacing)}"
                         placeholder="Spacing (px)"
                         title="Spacing">
                 </div>`
@@ -4915,7 +5751,8 @@ class $e5fc3b2383ff720a$var$Delimiter extends (0, $3e6ce1da8d004c46$export$2e2bc
         return {
             name: 'Delimiter',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/></svg>',
-            category: 'Layout'
+            category: 'Layout',
+            allowRawPreview: true
         };
     }
     getDelimiterContent() {
@@ -4963,8 +5800,22 @@ class $e5fc3b2383ff720a$var$Delimiter extends (0, $3e6ce1da8d004c46$export$2e2bc
             ${this.getDelimiterContent()}
         </div>`;
     }
+    /**
+   * Render the delimiter as a template element with data attributes
+   * @param {string} toolId - The tool ID for data attributes
+   * @returns {string} HTML string with data attributes
+   */ renderTemplateElement(toolId) {
+        return `<div 
+            data-tool="Delimiter" 
+            data-tool-id="${toolId}"
+            class="delimiter-block" 
+            style="width: ${this.config.width}; margin: 0 auto; cursor: pointer;">
+            ${this.getDelimiterContent()}
+        </div>`;
+    }
 }
 var $e5fc3b2383ff720a$export$2e2bcd8739ae039 = $e5fc3b2383ff720a$var$Delimiter;
+
 
 
 
@@ -4996,7 +5847,7 @@ class $981f6cf7cc85cc93$var$Button extends (0, $3e6ce1da8d004c46$export$2e2bcd87
                 label: 'Button Text',
                 html: `<input type="text" class="settings-input" 
                     @change="trigger('${this.id}', 'text', $event.target.value)"
-                    :value="${this.config.text}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.text)}"
                     placeholder="Enter button text">`
             },
             {
@@ -5004,7 +5855,7 @@ class $981f6cf7cc85cc93$var$Button extends (0, $3e6ce1da8d004c46$export$2e2bcd87
                 label: 'URL',
                 html: `<input type="text" class="settings-input" 
                     @change="trigger('${this.id}', 'url', $event.target.value)"
-                    :value="${this.config.url}"
+                    value="${(0, $18a503a6c7863084$export$4cf11838cdc2a8a8)(this.config.url)}"
                     placeholder="Enter URL">`
             },
             {
@@ -5100,7 +5951,8 @@ class $981f6cf7cc85cc93$var$Button extends (0, $3e6ce1da8d004c46$export$2e2bcd87
         return {
             name: 'Button',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256zM256 368C269.3 368 280 357.3 280 344V280H344C357.3 280 368 269.3 368 256C368 242.7 357.3 232 344 232H280V168C280 154.7 269.3 144 256 144C242.7 144 232 154.7 232 168V232H168C154.7 232 144 242.7 144 256C144 269.3 154.7 280 168 280H232V344C232 357.3 242.7 368 256 368z"/></svg>',
-            category: 'Interactive'
+            category: 'Interactive',
+            allowRawPreview: true
         };
     }
     getIcon() {
@@ -5349,16 +6201,87 @@ document.addEventListener('alpine:init', ()=>{
     window.Alpine.data('editorSettings', (editorId, initialSettings)=>({
             settingsInstance: null,
             settings: initialSettings || [],
+            currentBlockId: null,
             init () {
                 this.settingsInstance = new (0, $acadc144a2722177$export$c72f6eaae7b9adff)(editorId, this.settings);
                 this.settingsInstance.init();
                 // Listen for settings updates
                 document.addEventListener('settings-updated', (event)=>{
-                    if (event.detail.editorId === editorId) this.settings = event.detail.settings || [];
+                    if (event.detail.editorId === editorId) {
+                        this.settings = event.detail.settings || [];
+                        this.currentBlockId = event.detail.blockId;
+                    }
                 });
             },
             trigger (blockId, property, value) {
                 if (this.settingsInstance) this.settingsInstance.trigger(blockId, property, value);
+            },
+            doCallback (callback) {
+                if (this.settingsInstance) this.settingsInstance.doCallback(callback);
+            },
+            deleteBlock () {
+                if (!this.currentBlockId) return;
+                // Use the existing delete confirmation system
+                window.dispatchEvent(new CustomEvent('show-delete-confirmation', {
+                    detail: {
+                        blockId: this.currentBlockId,
+                        type: 'block',
+                        title: 'Delete Block',
+                        description: 'Are you sure you want to delete this block? This action cannot be undone.'
+                    }
+                }));
+            },
+            duplicateBlock () {
+                if (!this.currentBlockId) return;
+                // Check if this is a template element (they can't be duplicated)
+                if (this.currentBlockId.startsWith('template-')) {
+                    alert('Template elements cannot be duplicated. Only regular blocks can be duplicated.');
+                    return;
+                }
+                const editorInstance = window.alpineEditors[editorId];
+                if (!editorInstance) {
+                    console.error('Editor instance not found:', editorId);
+                    return;
+                }
+                // Find the block to duplicate
+                const originalBlock = editorInstance.blocks.find((b)=>b.id === this.currentBlockId);
+                if (!originalBlock) {
+                    console.error('Block not found:', this.currentBlockId);
+                    return;
+                }
+                // Get the block class name
+                const blockClass = originalBlock.class || originalBlock.constructor.name;
+                // Create a new block of the same type
+                const newBlock = editorInstance.initBlock(blockClass);
+                if (!newBlock) {
+                    console.error('Failed to create duplicate block');
+                    return;
+                }
+                // Copy the configuration from the original block
+                const originalConfig = JSON.parse(JSON.stringify(originalBlock.config));
+                // Remove any properties that shouldn't be copied
+                delete originalConfig.editor;
+                delete originalConfig.updateFunction;
+                // Apply the configuration to the new block
+                Object.assign(newBlock.config, originalConfig);
+                // Find the position of the original block and insert the new block after it
+                const originalIndex = editorInstance.blocks.findIndex((b)=>b.id === this.currentBlockId);
+                if (originalIndex !== -1) editorInstance.blocks.splice(originalIndex + 1, 0, newBlock);
+                else // If we can't find the original block, just add to the end
+                editorInstance.blocks.push(newBlock);
+                // Trigger redraw and save state
+                newBlock.triggerRedraw();
+                editorInstance.saveState('Duplicated block');
+                // Dispatch events to update the UI
+                document.dispatchEvent(new CustomEvent('editor-updated', {
+                    detail: {
+                        id: editorId
+                    }
+                }));
+                document.dispatchEvent(new CustomEvent('editor-changed'));
+            },
+            canDuplicate () {
+                return this.currentBlockId && !this.currentBlockId.startsWith('template-');
             }
         }));
     window.Alpine.data('alpineEditor', ()=>({
@@ -5504,6 +6427,38 @@ document.addEventListener('alpine:init', ()=>{
                 }
                 return serialized;
             },
+            // Export clean HTML content without editor UI
+            getCleanHTML () {
+                if (!this.editor) return '';
+                // Use the editor's getEditorContent method which calls renderBlocks
+                if (typeof this.editor.getEditorContent === 'function') return this.editor.getEditorContent();
+                // Fallback: manually render blocks
+                return this.editor.blocks.map((block)=>{
+                    if (typeof block.render === 'function') return block.render();
+                    return '';
+                }).join('');
+            },
+            // Export clean HTML for a specific block by ID
+            getBlockHTML (blockId) {
+                if (!this.editor) return '';
+                const block = this.editor.blocks.find((b)=>b.id === blockId);
+                if (!block || typeof block.render !== 'function') return '';
+                return block.render();
+            },
+            // Export HTML with data attributes for template/design tools
+            getTemplateHTML () {
+                if (!this.editor) return '';
+                return this.editor.blocks.map((block)=>{
+                    // Try to use renderTemplateElement if available
+                    if (typeof block.renderTemplateElement === 'function') return block.renderTemplateElement(block.id);
+                    // Fallback: add data attributes to regular render output
+                    let html = block.render();
+                    const className = block.class || block.constructor.name;
+                    // Add data attributes to the first element
+                    html = html.replace(/^<(\w+)/, `<$1 data-tool="${className}" data-tool-id="${block.id}"`);
+                    return html;
+                }).join('');
+            },
             handleDragOver (event, blockId) {
                 event.preventDefault();
                 // Handle drag over logic directly in Alpine component
@@ -5628,11 +6583,18 @@ document.addEventListener('alpine:init', ()=>{
                 {
                     id: 'page-1',
                     title: 'Home',
-                    blocks: []
+                    blocks: [],
+                    image: null
                 }
             ],
             currentPageId: 'page-1',
             switchingPages: false,
+            projectSettings: {
+                type: 'digital',
+                printMaxHeight: '297mm',
+                printOrientation: 'portrait',
+                exportFormat: 'html'
+            },
             init () {
                 // Load pages from localStorage if available
                 const savedPages = localStorage.getItem('alpineblocks-pages');
@@ -5641,6 +6603,13 @@ document.addEventListener('alpine:init', ()=>{
                     this.currentPageId = this.pages[0]?.id || 'page-1';
                 } catch (e) {
                     console.warn('Failed to load saved pages:', e);
+                }
+                // Load project settings
+                const savedSettings = localStorage.getItem('alpineblocks-project-settings');
+                if (savedSettings) try {
+                    this.projectSettings = JSON.parse(savedSettings);
+                } catch (e) {
+                    console.warn('Failed to load project settings:', e);
                 }
                 // Listen for editor changes to update current page blocks
                 document.addEventListener('editor-changed', ()=>{
@@ -5705,7 +6674,8 @@ document.addEventListener('alpine:init', ()=>{
                     const newPage = {
                         id: `page-${Date.now()}`,
                         title: pageName.trim(),
-                        blocks: []
+                        blocks: [],
+                        image: null
                     };
                     this.pages.push(newPage);
                     this.savePagesToStorage();
@@ -5863,6 +6833,30 @@ document.addEventListener('alpine:init', ()=>{
             },
             savePagesToStorage () {
                 localStorage.setItem('alpineblocks-pages', JSON.stringify(this.pages));
+            },
+            saveProjectSettings () {
+                localStorage.setItem('alpineblocks-project-settings', JSON.stringify(this.projectSettings));
+            },
+            setPageImage (pageId, imageUrl) {
+                const page = this.pages.find((p)=>p.id === pageId);
+                if (page) {
+                    page.image = imageUrl;
+                    this.savePagesToStorage();
+                }
+            },
+            getCurrentPageImage () {
+                const currentPage = this.pages.find((p)=>p.id === this.currentPageId);
+                return currentPage?.image || null;
+            },
+            updateProjectSetting (key, value) {
+                this.projectSettings[key] = value;
+                this.saveProjectSettings();
+                // Dispatch event for UI updates
+                document.dispatchEvent(new CustomEvent('project-settings-changed', {
+                    detail: {
+                        settings: this.projectSettings
+                    }
+                }));
             },
             updateCurrentPageBlocks () {
                 // Update the current page's blocks with the latest from the editor
@@ -6133,6 +7127,53 @@ document.addEventListener('alpine:init', ()=>{
             }
         }));
 });
+// Global image upload function
+window.uploadImage = async function(event, blockId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById(`upload-status-${blockId}`);
+    if (statusEl) {
+        statusEl.textContent = 'Uploading...';
+        statusEl.style.color = '#3b82f6';
+    }
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('blockId', blockId);
+    try {
+        // You can configure this endpoint in your server
+        const uploadEndpoint = window.ALPINEBLOCKS_CONFIG?.uploadEndpoint || '/api/upload-image';
+        const response = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+        if (result.success && result.url) {
+            // Update the image source
+            const editorInstance = window.alpineEditors?.editorjs;
+            if (editorInstance) {
+                const block = editorInstance.blocks.find((b)=>b.id === blockId);
+                if (block) {
+                    block.config.src = result.url;
+                    block.triggerRedraw();
+                }
+            }
+            if (statusEl) {
+                statusEl.textContent = "\u2705 Upload successful";
+                statusEl.style.color = '#10b981';
+                setTimeout(()=>{
+                    statusEl.textContent = '';
+                }, 3000);
+            }
+        } else throw new Error(result.message || 'Upload failed');
+    } catch (error) {
+        console.error('Upload error:', error);
+        if (statusEl) {
+            statusEl.textContent = "\u274C Upload failed: " + error.message;
+            statusEl.style.color = '#ef4444';
+        }
+    }
+};
 (0, ($parcel$interopDefault($gXNCa$alpinejs))).start();
 
 

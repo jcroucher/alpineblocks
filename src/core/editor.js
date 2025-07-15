@@ -5,7 +5,7 @@ import { HistoryManager } from "./HistoryManager";
 import { HeaderToolbar } from "./HeaderToolbar";
 import { Debug } from "./utils/Debug";
 
-const { v4: uuidv4 } = require('uuid');
+import { generateId } from '../utils/generateId.js';
 
 /**
  * Main editor class that coordinates all editor functionality
@@ -329,6 +329,10 @@ export class Editor {
      */
     getEditorContent() {
         return this.blockManager.renderBlocks();
+    }
+
+    getCleanContent() {
+        return this.blockManager.renderCleanBlocks();
     }
 
     /**
@@ -667,7 +671,7 @@ export class Editor {
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
         
         const newBlock = new BlockClass({
-            id: existingId || uuidv4(),
+            id: existingId || generateId(),
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
@@ -781,7 +785,7 @@ export class Editor {
                 
                 
                 const newBlock = new BlockClass({
-                    id: uuidv4(),
+                    id: generateId(),
                     updateFunction: this.updateFunction.bind(this),
                     config: mergedConfig
                 });
@@ -813,7 +817,7 @@ export class Editor {
                                         const nestedMergedConfig = Object.assign(nestedBaseConfig, nestedBlockData.data || {});
                                         
                                         const nestedBlock = new NestedBlockClass({
-                                            id: uuidv4(),
+                                            id: generateId(),
                                             updateFunction: this.updateFunction.bind(this),
                                             config: nestedMergedConfig
                                         });

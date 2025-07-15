@@ -9,7 +9,8 @@
           href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/monokai-sublime.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
 
-    <link rel="stylesheet" href="./styles.css" media="all" data-turbo-track="reload">
+    <link rel="stylesheet" href="../dist/frontend.css" media="all" data-turbo-track="reload">
+    <link rel="stylesheet" href="../dist/editor.css" media="all" data-turbo-track="reload">
     <title>AlpineBlocks - Block-Based Content Editor</title>
 
     <style>
@@ -69,6 +70,105 @@
 
         code {
             line-height: 1.5;
+        }
+        
+        /* Preview content styles */
+        .preview-content-wrapper {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #1f2937;
+            padding: 1rem;
+        }
+        
+        /* Ensure CSS variables are available in preview context */
+        .preview-content-wrapper {
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+            --space-20: 5rem;
+            
+            /* Border Radius */
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --radius-xl: 0.75rem;
+            --radius-2xl: 1rem;
+            
+            /* Font Sizes */
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 1.875rem;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Ensure frontend styles apply within preview wrapper */
+        .preview-content-wrapper .alert-block {
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: var(--space-3) !important;
+            padding: var(--space-4) !important;
+            margin: var(--space-4) 0 !important;
+            border-radius: var(--radius-lg) !important;
+            border-left: 4px solid !important;
+            position: relative !important;
+            font-size: var(--text-sm) !important;
+            line-height: 1.5 !important;
+            box-shadow: var(--shadow-sm) !important;
+        }
+        
+        .preview-content-wrapper .alert-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            border-left-color: #1e40af !important;
+            color: white !important;
+        }
+        
+        .preview-content-wrapper .alert-success {
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+            border-left-color: #065f46 !important;
+            color: white !important;
+        }
+        
+        .preview-content-wrapper .alert-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border-left-color: #b45309 !important;
+            color: white !important;
+        }
+        
+        .preview-content-wrapper .alert-error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            border-left-color: #b91c1c !important;
+            color: white !important;
+        }
+        
+        .preview-content-wrapper .alert-icon {
+            width: 20px !important;
+            height: 20px !important;
+            flex-shrink: 0 !important;
+            margin-top: 2px !important;
+        }
+        
+        .preview-content-wrapper .alert-content {
+            flex-grow: 1 !important;
+            margin: 0 !important;
+            min-height: 1.2em !important;
         }
     </style>
 </head>
@@ -448,6 +548,35 @@
                                                     </template>
                                                 </div>
                                             </template>
+                                            
+                                            <!-- Block Actions -->
+                                            <template x-if="currentBlockId">
+                                                <div class="settings-group">
+                                                    <div class="settings-field">
+                                                        <label class="settings-label">Block Actions</label>
+                                                        <div class="block-actions">
+                                                            <button class="btn-action btn-duplicate" 
+                                                                    @click="duplicateBlock()"
+                                                                    :disabled="!canDuplicate()"
+                                                                    :class="{ 'disabled': !canDuplicate() }"
+                                                                    title="Duplicate this block">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
+                                                                    <path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192.1 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V109.3C512 100.8 508.6 92.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H256c-8.836 0-16-7.164-16-16V64.02c0-8.838 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h48V320zM272 448c0 8.836-7.164 16-16 16H64c-8.836 0-16-7.164-16-16V192c0-8.836 7.164-16 16-16H96c8.836 0 16 7.164 16 16s-7.164 16-16 16H80v240h160V416c0-8.836 7.164-16 16-16s16 7.164 16 16V448z"/>
+                                                                </svg>
+                                                                Duplicate
+                                                            </button>
+                                                            <button class="btn-action btn-delete" 
+                                                                    @click="deleteBlock()"
+                                                                    title="Delete this block">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor">
+                                                                    <path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0H284.2c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32h96l7.2-14.3zM32 128H416V448c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/>
+                                                                </svg>
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
                                         </div>
                                         
                                         <!-- Pages Tab -->
@@ -471,15 +600,13 @@
                                                             </div>
                                                             <div class="page-actions">
                                                                 <button class="btn-icon" @click="renamePage(page.id)" title="Rename">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
+                                                                        <path d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160V416c0 53 43 96 96 96H352c53 0 96-43 96-96V320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H96z"/>
                                                                     </svg>
                                                                 </button>
                                                                 <button class="btn-icon" @click="deletePage(page.id)" title="Delete" x-show="pages.length > 1">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                                        <polyline points="3,6 5,6 21,6"/>
-                                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor">
+                                                                        <path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0H284.2c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32h96l7.2-14.3zM32 128H416V448c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/>
                                                                     </svg>
                                                                 </button>
                                                             </div>
@@ -627,10 +754,238 @@
     </footer>
 </div>
 
+<!-- Preview Modal -->
+<div x-data="previewModal()" x-show="show" 
+     class="fixed inset-0 z-50 overflow-hidden"
+     x-transition:enter="transition-opacity ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     style="display: none;">
+    
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black bg-opacity-90" @click="closePreview()"></div>
+    
+    <!-- Modal Container -->
+    <div class="relative w-full h-full flex flex-col">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 bg-black bg-opacity-75 backdrop-blur-sm">
+            <div class="flex items-center space-x-4">
+                <h2 class="text-white text-lg font-semibold">Preview Mode</h2>
+                <div class="flex items-center space-x-2">
+                    <!-- Mobile View -->
+                    <button @click="setViewport('mobile')" 
+                            :class="{ 'bg-blue-600': viewport === 'mobile', 'bg-gray-700': viewport !== 'mobile' }"
+                            class="px-3 py-2 rounded text-white text-sm hover:bg-blue-500 transition-colors">
+                        📱 Mobile
+                    </button>
+                    <!-- Tablet View -->
+                    <button @click="setViewport('tablet')" 
+                            :class="{ 'bg-blue-600': viewport === 'tablet', 'bg-gray-700': viewport !== 'tablet' }"
+                            class="px-3 py-2 rounded text-white text-sm hover:bg-blue-500 transition-colors">
+                        📋 Tablet
+                    </button>
+                    <!-- Desktop View -->
+                    <button @click="setViewport('desktop')" 
+                            :class="{ 'bg-blue-600': viewport === 'desktop', 'bg-gray-700': viewport !== 'desktop' }"
+                            class="px-3 py-2 rounded text-white text-sm hover:bg-blue-500 transition-colors">
+                        💻 Desktop
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <!-- Fullscreen Toggle -->
+                <button @click="toggleFullscreen()" 
+                        class="p-2 text-white hover:bg-gray-700 rounded transition-colors"
+                        title="Toggle Fullscreen">
+                    <svg x-show="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                    <svg x-show="isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                    </svg>
+                </button>
+                
+                <!-- Close Button -->
+                <button @click="closePreview()" 
+                        class="p-2 text-white hover:bg-gray-700 rounded transition-colors"
+                        title="Close Preview">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="flex-1 flex items-center justify-center p-4 overflow-auto">
+            <div class="preview-container transition-all duration-300"
+                 :class="{
+                     'w-full max-w-none': viewport === 'desktop',
+                     'w-96 max-w-sm': viewport === 'mobile',
+                     'w-192 max-w-3xl': viewport === 'tablet'
+                 }"
+                 :style="getViewportStyles()">
+                
+                <!-- Device Frame (for mobile/tablet) -->
+                <div x-show="viewport !== 'desktop'" 
+                     class="relative bg-gray-800 rounded-3xl p-2 shadow-2xl"
+                     :class="{
+                         'aspect-[9/19]': viewport === 'mobile',
+                         'aspect-[4/3]': viewport === 'tablet'
+                     }">
+                    <!-- Screen -->
+                    <div class="w-full h-full bg-white rounded-2xl overflow-auto">
+                        <div class="preview-content-wrapper" x-html="cleanContent"></div>
+                    </div>
+                </div>
+                
+                <!-- Desktop View -->
+                <div x-show="viewport === 'desktop'" 
+                     class="w-full bg-white rounded-lg shadow-2xl overflow-auto"
+                     style="min-height: 70vh;">
+                    <div class="preview-content-wrapper p-4" x-html="cleanContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../dist/index.esm.js" type="module"></script>
 <script src="../src/utils/TemplateInteractivity.js" type="module"></script>
 <script>
     hljs.highlightAll();
+    
+    // Preview Modal Alpine Component
+    function previewModal() {
+        return {
+            show: false,
+            content: '',
+            cleanContent: '',
+            viewport: 'desktop', // mobile, tablet, desktop
+            isFullscreen: false,
+            
+            init() {
+                // Listen for preview events
+                document.addEventListener('editor-preview', (e) => {
+                    this.openPreview(e.detail.content);
+                });
+                
+                // Listen for fullscreen changes
+                document.addEventListener('fullscreenchange', () => {
+                    this.isFullscreen = !!document.fullscreenElement;
+                });
+                
+                // ESC key to close preview
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.show) {
+                        this.closePreview();
+                    }
+                });
+            },
+            
+            async openPreview(htmlContent) {
+                this.content = htmlContent;
+                this.cleanContent = await this.cleanContentForPreview(htmlContent);
+                this.show = true;
+                document.body.style.overflow = 'hidden';
+            },
+            
+            async cleanContentForPreview(htmlContent) {
+                // Create a temporary div to manipulate the HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlContent;
+                
+                // Remove all editor-specific classes and attributes
+                const elementsToClean = tempDiv.querySelectorAll('*');
+                elementsToClean.forEach(el => {
+                    // Remove editor-specific classes
+                    const classesToRemove = [
+                        'ab-block', 'selected', 'block-content', 'block-remove-btn',
+                        'wysiwyg-editor', 'wysiwyg-toolbar', 'wysiwyg-toolbar-group',
+                        'wysiwyg-btn', 'wysiwyg-select', 'code-editor', 'code-header',
+                        'code-input', 'preview-section', 'preview-header', 'preview-content',
+                        'raw-preview-toolbar', 'toggle-btn', 'validation-error', 'validation-success',
+                        'block-actions', 'btn-action', 'btn-duplicate', 'btn-delete',
+                        'toolbar-btn', 'toolbar-select', 'toolbar-group', 'toolbar-separator',
+                        'drop-target', 'top-border', 'bottom-border', 'left-border'
+                    ];
+                    
+                    classesToRemove.forEach(className => {
+                        el.classList.remove(className);
+                    });
+                    
+                    // Remove editor-specific attributes
+                    const attributesToRemove = [
+                        'x-data', 'x-init', 'x-show', 'x-html', '@click', '@blur', '@input',
+                        '@dragover', '@drop', '@dragstart', '@dragend', 'contenteditable',
+                        'data-block-id', 'data-tool', 'data-tool-id', 'draggable'
+                    ];
+                    
+                    attributesToRemove.forEach(attr => {
+                        el.removeAttribute(attr);
+                    });
+                    
+                    // Remove style attributes that are editor-specific
+                    if (el.style) {
+                        el.style.removeProperty('cursor');
+                        el.style.removeProperty('outline');
+                        el.style.removeProperty('user-select');
+                        el.style.removeProperty('pointer-events');
+                    }
+                });
+                
+                // Remove all buttons and editor controls
+                const buttonsToRemove = tempDiv.querySelectorAll('button, .block-remove-btn, .toolbar-btn, .btn-action');
+                buttonsToRemove.forEach(btn => btn.remove());
+                
+                // Remove toolbars and editor UI
+                const editorsToRemove = tempDiv.querySelectorAll('.wysiwyg-toolbar, .code-header, .preview-header, .block-actions, .raw-preview-toolbar');
+                editorsToRemove.forEach(editor => editor.remove());
+                
+                // Return just the cleaned content - frontend CSS is already loaded on the page
+                return tempDiv.innerHTML;
+            },
+            
+            closePreview() {
+                this.show = false;
+                document.body.style.overflow = '';
+                
+                // Exit fullscreen if active
+                if (this.isFullscreen) {
+                    document.exitFullscreen();
+                }
+            },
+            
+            setViewport(type) {
+                this.viewport = type;
+            },
+            
+            toggleFullscreen() {
+                if (!this.isFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            },
+            
+            getViewportStyles() {
+                switch (this.viewport) {
+                    case 'mobile':
+                        return 'width: 375px; max-width: 375px;';
+                    case 'tablet':
+                        return 'width: 768px; max-width: 768px;';
+                    case 'desktop':
+                    default:
+                        return 'width: 100%; max-width: none;';
+                }
+            }
+        };
+    }
 </script>
 
 </body>

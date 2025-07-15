@@ -1,4 +1,5 @@
 import Tool from '../core/Tool';
+import { escapeHtml } from '../utils/HtmlEscape';
 
 /**
  * Paragraph tool for creating editable text blocks
@@ -72,14 +73,14 @@ class Paragraph extends Tool {
                 label: 'Text Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'textColor', $event.target.value)"
-                    value="${this.config.textColor}">`
+                    value="${escapeHtml(this.config.textColor)}">`
             },
             {
                 name: 'backgroundColor',
                 label: 'Background Color',
                 html: `<input type="color" class="settings-color-input" 
                     @change="trigger('${this.id}', 'backgroundColor', $event.target.value)"
-                    value="${this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor}">`
+                    value="${escapeHtml(this.config.backgroundColor === 'transparent' ? '#ffffff' : this.config.backgroundColor)}">`
             },
             {
                 name: 'padding',
@@ -108,7 +109,8 @@ class Paragraph extends Tool {
         return {
             name: 'Paragraph',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M192 32h64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H384l0 352c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-352H288l0 352c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-96H192c-88.4 0-160-71.6-160-160s71.6-160 160-160z"/></svg>',
-            category: 'Basic'
+            category: 'Basic',
+            allowRawPreview: true
         };
     }
 
