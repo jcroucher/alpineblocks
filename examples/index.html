@@ -336,7 +336,9 @@
                                 </div>
                             </div>
                             <!-- Editor Area -->
-                            <div class="panel editor-area">
+                            <div class="panel editor-area" 
+                                 :class="{ 'print-mode': projectSettings.type === 'print' }"
+                                 :style="projectSettings.type === 'print' ? `--print-width: ${projectSettings.printWidth || '210mm'}; --print-height: ${projectSettings.printMaxHeight || '297mm'};` : ''">
                                 <div class="editor-content" id="editorjs"
                                              x-data="alpineEditor({
                                                   tools: [
@@ -594,21 +596,45 @@
                                                 <div class="pages-list">
                                                     <template x-for="(page, index) in pages" :key="page.id">
                                                         <div class="page-item" :class="{ 'active': page.id === currentPageId }">
-                                                            <div class="page-info" @click="switchToPage(page.id)">
-                                                                <div class="page-title" x-text="page.title"></div>
-                                                                <div class="page-meta" x-text="`${page.blocks?.length || 0} blocks`"></div>
-                                                            </div>
-                                                            <div class="page-actions">
-                                                                <button class="btn-icon" @click="renamePage(page.id)" title="Rename">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
-                                                                        <path d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160V416c0 53 43 96 96 96H352c53 0 96-43 96-96V320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H96z"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button class="btn-icon" @click="deletePage(page.id)" title="Delete" x-show="pages.length > 1">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor">
-                                                                        <path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0H284.2c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32h96l7.2-14.3zM32 128H416V448c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/>
-                                                                    </svg>
-                                                                </button>
+                                                            <div class="page-content">
+                                                                <!-- Page Image Thumbnail -->
+                                                                <div class="page-thumbnail" @click="switchToPage(page.id)">
+                                                                    <div x-show="page.image" class="page-image-preview">
+                                                                        <img :src="page.image" :alt="page.title + ' thumbnail'" />
+                                                                    </div>
+                                                                    <div x-show="!page.image" class="page-image-placeholder">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                                            <circle cx="9" cy="9" r="2"/>
+                                                                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <!-- Page Info -->
+                                                                <div class="page-info" @click="switchToPage(page.id)">
+                                                                    <div class="page-title" x-text="page.title"></div>
+                                                                    <div class="page-meta" x-text="`${page.blocks?.length || 0} blocks`"></div>
+                                                                </div>
+                                                                
+                                                                <!-- Page Actions -->
+                                                                <div class="page-actions">
+                                                                    <button class="btn-icon" @click="setPageImage(page.id)" title="Set Page Image">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
+                                                                            <path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button class="btn-icon" @click="renamePage(page.id)" title="Rename">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
+                                                                            <path d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160V416c0 53 43 96 96 96H352c53 0 96-43 96-96V320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H96z"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button class="btn-icon" @click="deletePage(page.id)" title="Delete" x-show="pages.length > 1">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor">
+                                                                            <path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0H284.2c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32h96l7.2-14.3zM32 128H416V448c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V432c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </template>
@@ -653,6 +679,53 @@
                                                         <div x-show="getCurrentPageBlocks().length === 0" class="page-blocks-empty">
                                                             <p>No blocks in this page yet.</p>
                                                             <p class="text-small">Add blocks from the Tools or Templates tabs.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Project Settings Section -->
+                                                <div class="project-settings-section">
+                                                    <div class="project-settings-header">
+                                                        <h4>Project Settings</h4>
+                                                    </div>
+                                                    
+                                                    <!-- Project Type -->
+                                                    <div class="setting-group">
+                                                        <label class="setting-label">Project Type</label>
+                                                        <select class="setting-select" 
+                                                                x-model="projectSettings.type" 
+                                                                @change="updateProjectSetting('type', $event.target.value)">
+                                                            <option value="digital">Digital</option>
+                                                            <option value="print">Print</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <!-- Print Settings (shown only when print is selected) -->
+                                                    <div x-show="projectSettings.type === 'print'" class="print-settings">
+                                                        <div class="setting-group">
+                                                            <label class="setting-label">Print Format</label>
+                                                            <select class="setting-select" @change="selectPrintDefault(printDefaults[$event.target.value])">
+                                                                <option value="">Select format...</option>
+                                                                <template x-for="(format, index) in printDefaults" :key="index">
+                                                                    <option :value="index" x-text="format.name"></option>
+                                                                </template>
+                                                            </select>
+                                                        </div>
+                                                        
+                                                        <!-- Current Print Settings Display -->
+                                                        <div class="current-print-settings">
+                                                            <div class="print-setting-item">
+                                                                <span class="print-setting-label">Max Height:</span>
+                                                                <span class="print-setting-value" x-text="projectSettings.printMaxHeight"></span>
+                                                            </div>
+                                                            <div class="print-setting-item" x-show="projectSettings.printWidth">
+                                                                <span class="print-setting-label">Width:</span>
+                                                                <span class="print-setting-value" x-text="projectSettings.printWidth"></span>
+                                                            </div>
+                                                            <div class="print-setting-item">
+                                                                <span class="print-setting-label">Orientation:</span>
+                                                                <span class="print-setting-value" x-text="projectSettings.printOrientation"></span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

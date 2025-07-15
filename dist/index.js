@@ -6775,10 +6775,73 @@ document.addEventListener('alpine:init', ()=>{
             switchingPages: false,
             projectSettings: {
                 type: 'digital',
+                // 'digital' or 'print'
                 printMaxHeight: '297mm',
                 printOrientation: 'portrait',
                 exportFormat: 'html'
             },
+            printDefaults: [
+                {
+                    name: 'A4 Portrait (210 x 297mm)',
+                    width: '210mm',
+                    height: '297mm',
+                    orientation: 'portrait'
+                },
+                {
+                    name: 'A4 Landscape (297 x 210mm)',
+                    width: '297mm',
+                    height: '210mm',
+                    orientation: 'landscape'
+                },
+                {
+                    name: 'A3 Portrait (297 x 420mm)',
+                    width: '297mm',
+                    height: '420mm',
+                    orientation: 'portrait'
+                },
+                {
+                    name: 'A3 Landscape (420 x 297mm)',
+                    width: '420mm',
+                    height: '297mm',
+                    orientation: 'landscape'
+                },
+                {
+                    name: 'Letter Portrait (8.5 x 11in)',
+                    width: '8.5in',
+                    height: '11in',
+                    orientation: 'portrait'
+                },
+                {
+                    name: 'Letter Landscape (11 x 8.5in)',
+                    width: '11in',
+                    height: '8.5in',
+                    orientation: 'landscape'
+                },
+                {
+                    name: 'Tabloid Portrait (11 x 17in)',
+                    width: '11in',
+                    height: '17in',
+                    orientation: 'portrait'
+                },
+                {
+                    name: 'Tabloid Landscape (17 x 11in)',
+                    width: '17in',
+                    height: '11in',
+                    orientation: 'landscape'
+                },
+                {
+                    name: 'Magazine Page (8.5 x 11in)',
+                    width: '8.5in',
+                    height: '11in',
+                    orientation: 'portrait'
+                },
+                {
+                    name: 'Half Page Ad (8.5 x 5.5in)',
+                    width: '8.5in',
+                    height: '5.5in',
+                    orientation: 'landscape'
+                }
+            ],
             init () {
                 // Load pages from localStorage if available
                 const savedPages = localStorage.getItem('alpineblocks-pages');
@@ -7021,11 +7084,14 @@ document.addEventListener('alpine:init', ()=>{
             saveProjectSettings () {
                 localStorage.setItem('alpineblocks-project-settings', JSON.stringify(this.projectSettings));
             },
-            setPageImage (pageId, imageUrl) {
-                const page = this.pages.find((p)=>p.id === pageId);
-                if (page) {
-                    page.image = imageUrl;
-                    this.savePagesToStorage();
+            setPageImage (pageId) {
+                const imageUrl = prompt('Enter image URL for this page:');
+                if (imageUrl && imageUrl.trim()) {
+                    const page = this.pages.find((p)=>p.id === pageId);
+                    if (page) {
+                        page.image = imageUrl.trim();
+                        this.savePagesToStorage();
+                    }
                 }
             },
             getCurrentPageImage () {
@@ -7041,6 +7107,39 @@ document.addEventListener('alpine:init', ()=>{
                         settings: this.projectSettings
                     }
                 }));
+            },
+            selectPrintDefault (printDefault) {
+                this.projectSettings.printMaxHeight = printDefault.height;
+                this.projectSettings.printOrientation = printDefault.orientation;
+                this.projectSettings.printWidth = printDefault.width;
+                this.saveProjectSettings();
+                // Dispatch event for UI updates
+                document.dispatchEvent(new CustomEvent('project-settings-changed', {
+                    detail: {
+                        settings: this.projectSettings
+                    }
+                }));
+                // Check for overflow after print settings change
+                this.$nextTick(()=>{
+                    this.checkPrintOverflow();
+                });
+            },
+            checkPrintOverflow () {
+                if (this.projectSettings.type === 'print') {
+                    const editorContent = document.querySelector('.editor-content');
+                    if (editorContent) {
+                        const maxHeight = parseFloat(this.projectSettings.printMaxHeight.replace(/mm|in|px/, ''));
+                        const unit = this.projectSettings.printMaxHeight.replace(/[0-9.]/g, '');
+                        const actualHeight = editorContent.scrollHeight;
+                        // Convert max height to pixels for comparison
+                        let maxHeightPx;
+                        if (unit === 'mm') maxHeightPx = maxHeight * 3.78; // 1mm ≈ 3.78px at 96dpi
+                        else if (unit === 'in') maxHeightPx = maxHeight * 96; // 1in = 96px at 96dpi
+                        else maxHeightPx = maxHeight;
+                        if (actualHeight > maxHeightPx) editorContent.classList.add('overflow');
+                        else editorContent.classList.remove('overflow');
+                    }
+                }
             },
             updateCurrentPageBlocks () {
                 // Update the current page's blocks with the latest from the editor
