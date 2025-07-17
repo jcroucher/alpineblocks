@@ -1,0 +1,131 @@
+{
+  "id": "feature-grid",
+  "name": "Feature Grid",
+  "description": "Three feature cards with images, headings, and descriptions in a responsive grid",
+  "version": "1.0",
+  "blocks": [
+    {
+      "class": "Columns",
+      "config": {
+        "columns": [
+          {
+            "blocks": [
+              {
+                "class": "Image",
+                "config": {
+                  "src": "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
+                  "alt": "Fast Performance",
+                  "width": "100%",
+                  "alignment": "center"
+                }
+              },
+              {
+                "class": "Header",
+                "config": {
+                  "level": "h3",
+                  "content": "Lightning Fast",
+                  "fontSize": "24px",
+                  "alignment": "center",
+                  "fontWeight": "bold"
+                }
+              },
+              {
+                "class": "Paragraph",
+                "config": {
+                  "content": "Experience blazing fast performance with our optimized platform built for speed and efficiency.",
+                  "alignment": "center",
+                  "fontSize": "16px",
+                  "textColor": "#64748b"
+                }
+              }
+            ],
+            "width": "1fr",
+            "padding": "2rem",
+            "background": "#ffffff",
+            "borderRadius": "1rem",
+            "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            "textAlign": "center"
+          },
+          {
+            "blocks": [
+              {
+                "class": "Image",
+                "config": {
+                  "src": "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=300&fit=crop",
+                  "alt": "Secure Platform",
+                  "width": "100%",
+                  "alignment": "center"
+                }
+              },
+              {
+                "class": "Header",
+                "config": {
+                  "level": "h3",
+                  "content": "Bank-Level Security",
+                  "fontSize": "24px",
+                  "alignment": "center",
+                  "fontWeight": "bold"
+                }
+              },
+              {
+                "class": "Paragraph",
+                "config": {
+                  "content": "Your data is protected with enterprise-grade security measures and industry-leading encryption.",
+                  "alignment": "center",
+                  "fontSize": "16px",
+                  "textColor": "#64748b"
+                }
+              }
+            ],
+            "width": "1fr",
+            "padding": "2rem",
+            "background": "#ffffff",
+            "borderRadius": "1rem",
+            "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            "textAlign": "center"
+          },
+          {
+            "blocks": [
+              {
+                "class": "Image",
+                "config": {
+                  "src": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=300&fit=crop",
+                  "alt": "Team Collaboration",
+                  "width": "100%",
+                  "alignment": "center"
+                }
+              },
+              {
+                "class": "Header",
+                "config": {
+                  "level": "h3",
+                  "content": "Team Collaboration",
+                  "fontSize": "24px",
+                  "alignment": "center",
+                  "fontWeight": "bold"
+                }
+              },
+              {
+                "class": "Paragraph",
+                "config": {
+                  "content": "Work seamlessly with your team using our collaborative tools and real-time synchronization.",
+                  "alignment": "center",
+                  "fontSize": "16px",
+                  "textColor": "#64748b"
+                }
+              }
+            ],
+            "width": "1fr",
+            "padding": "2rem",
+            "background": "#ffffff",
+            "borderRadius": "1rem",
+            "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            "textAlign": "center"
+          }
+        ],
+        "gap": "2rem",
+        "responsive": true
+      }
+    }
+  ]
+}

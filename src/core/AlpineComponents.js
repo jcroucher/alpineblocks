@@ -1187,9 +1187,23 @@ export function registerAlpineComponents() {
     // Register editorTemplates component
     Alpine.data('editorTemplates', () => ({
         templates: [],
+        loading: false,
         
-        init() {
-            this.templates = Layout.getAll();
+        async init() {
+            this.loading = true;
+            try {
+                const layouts = Layout.getAll();
+                if (layouts instanceof Promise) {
+                    this.templates = await layouts;
+                } else {
+                    this.templates = layouts;
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                this.templates = [];
+            } finally {
+                this.loading = false;
+            }
         },
         
         handleTemplateClick(event, template) {

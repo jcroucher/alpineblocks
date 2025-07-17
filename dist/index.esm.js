@@ -2406,6 +2406,220 @@ class $a97b0c1be92da308$export$3962e98abd6ec965 {
 var $a97b0c1be92da308$export$2e2bcd8739ae039 = $a97b0c1be92da308$export$3962e98abd6ec965;
 
 
+/**
+ * RemoteLayoutManager - Handles loading layouts from remote sources
+ * Supports both JSON block structures and HTML with automatic detection
+ */ class $1855c2b3cbb57120$export$ba0ed91b17c621ec {
+    constructor(config = {}){
+        this.config = {
+            source: config.source || 'static',
+            // 'remote' | 'local' | 'static'
+            url: config.url || null,
+            index: config.index || 'index.json',
+            cache: config.cache !== false,
+            lazy: config.lazy !== false,
+            fallbackLayouts: config.fallbackLayouts || [],
+            data: config.data || null // For local data source
+        };
+        this.layoutIndex = null;
+        this.layoutCache = new Map();
+        this.loading = false;
+        this.loadPromise = null;
+    }
+    /**
+   * Initialize the layout manager and load the index
+   */ async init() {
+        if (this.loading) return this.loadPromise;
+        this.loading = true;
+        this.loadPromise = this._loadIndex();
+        try {
+            await this.loadPromise;
+        } finally{
+            this.loading = false;
+        }
+        return this.layoutIndex;
+    }
+    /**
+   * Load the layout index from remote or local source
+   */ async _loadIndex() {
+        try {
+            if (this.config.source === 'static') {
+                // Use static fallback layouts
+                this.layoutIndex = this._createStaticIndex();
+                return this.layoutIndex;
+            } else if (this.config.source === 'local' && this.config.data) {
+                // Use locally provided data
+                this.layoutIndex = this.config.data;
+                return this.layoutIndex;
+            }
+            const indexUrl = this._buildUrl(this.config.index);
+            console.log(`[RemoteLayoutManager] Loading layout index from: ${indexUrl}`);
+            const response = await fetch(indexUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            this.layoutIndex = await response.json();
+            console.log(`[RemoteLayoutManager] Loaded ${this.layoutIndex.categories?.length || 0} layout categories`);
+            return this.layoutIndex;
+        } catch (error) {
+            console.warn(`[RemoteLayoutManager] Failed to load remote layouts: ${error.message}`);
+            console.log('[RemoteLayoutManager] Falling back to static layouts');
+            // Fallback to static layouts
+            this.layoutIndex = this._createStaticIndex();
+            return this.layoutIndex;
+        }
+    }
+    /**
+   * Create a static index from fallback layouts
+   */ _createStaticIndex() {
+        return {
+            version: "1.0",
+            source: "static",
+            categories: [
+                {
+                    id: "templates",
+                    name: "Templates",
+                    description: "Pre-built layout templates",
+                    layouts: this.config.fallbackLayouts.map((layout)=>({
+                            id: layout.id,
+                            name: layout.name,
+                            description: layout.description,
+                            icon: layout.icon,
+                            content: layout.content || layout.html,
+                            contentType: this._detectContentType(layout.content || layout.html),
+                            tags: layout.tags || [],
+                            cached: true
+                        }))
+                }
+            ]
+        };
+    }
+    /**
+   * Get all available layouts organized by category
+   */ async getLayouts() {
+        if (!this.layoutIndex) await this.init();
+        return this.layoutIndex.categories || [];
+    }
+    /**
+   * Get a specific layout by ID
+   */ async getLayout(layoutId) {
+        if (!this.layoutIndex) await this.init();
+        // Check cache first
+        if (this.layoutCache.has(layoutId)) return this.layoutCache.get(layoutId);
+        // Find layout in index
+        let layoutInfo = null;
+        for (const category of this.layoutIndex.categories || []){
+            layoutInfo = category.layouts.find((l)=>l.id === layoutId);
+            if (layoutInfo) break;
+        }
+        if (!layoutInfo) throw new Error(`Layout '${layoutId}' not found`);
+        // If content is already loaded (static layouts), return it
+        if (layoutInfo.content) {
+            const layout = this._createLayoutObject(layoutInfo);
+            if (this.config.cache) this.layoutCache.set(layoutId, layout);
+            return layout;
+        }
+        // Load content from remote file or local import
+        try {
+            let layoutData;
+            if (this.config.source === 'local' && this.config.data) {
+                // For local data source, import the JSON file directly
+                const layoutModule = await import(`/layouts/layouts/${layoutId}.json`);
+                layoutData = layoutModule.default;
+            } else {
+                // For remote source, fetch from URL
+                const contentUrl = this._buildUrl(layoutInfo.file);
+                console.log(`[RemoteLayoutManager] Loading layout content: ${contentUrl}`);
+                const response = await fetch(contentUrl);
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                layoutData = await response.json();
+            }
+            const layout = this._createLayoutObject({
+                ...layoutInfo,
+                ...layoutData
+            });
+            if (this.config.cache) this.layoutCache.set(layoutId, layout);
+            return layout;
+        } catch (error) {
+            console.error(`[RemoteLayoutManager] Failed to load layout '${layoutId}': ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+   * Create a layout object with proper structure
+   */ _createLayoutObject(layoutInfo) {
+        const contentType = layoutInfo.contentType || this._detectContentType(layoutInfo.content || layoutInfo.html);
+        return {
+            id: layoutInfo.id,
+            name: layoutInfo.name,
+            description: layoutInfo.description,
+            icon: layoutInfo.icon,
+            content: layoutInfo.content || layoutInfo.html,
+            contentType: contentType,
+            blocks: contentType === 'html' ? null : layoutInfo.blocks,
+            tags: layoutInfo.tags || [],
+            version: layoutInfo.version || '1.0',
+            extractBlocks: ()=>{
+                if (contentType === 'html') return this._convertHtmlToBlocks(layoutInfo.content || layoutInfo.html);
+                return layoutInfo.blocks || [];
+            }
+        };
+    }
+    /**
+   * Detect whether content is HTML or block structure
+   */ _detectContentType(content) {
+        if (!content) return 'blocks';
+        if (typeof content === 'string') {
+            // Check if it looks like HTML
+            const trimmed = content.trim();
+            if (trimmed.startsWith('<') && trimmed.endsWith('>')) return 'html';
+        }
+        if (Array.isArray(content)) return 'blocks';
+        return 'html'; // Default to HTML for string content
+    }
+    /**
+   * Convert HTML content to block structure for compatibility
+   */ _convertHtmlToBlocks(htmlContent) {
+        // Create a temporary Raw block that contains the HTML
+        return [
+            {
+                type: 'raw',
+                data: {
+                    content: htmlContent,
+                    mode: 'html',
+                    showPreview: true,
+                    validateHtml: false
+                }
+            }
+        ];
+    }
+    /**
+   * Build full URL for remote resources
+   */ _buildUrl(path) {
+        if (!path) return null;
+        // If path is already a full URL, return as-is
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        // If no base URL configured, treat as local path
+        if (!this.config.url) return path;
+        // Combine base URL with path
+        const baseUrl = this.config.url.endsWith('/') ? this.config.url : `${this.config.url}/`;
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+        return `${baseUrl}${cleanPath}`;
+    }
+    /**
+   * Clear cache
+   */ clearCache() {
+        this.layoutCache.clear();
+    }
+    /**
+   * Get cache stats
+   */ getCacheStats() {
+        return {
+            size: this.layoutCache.size,
+            keys: Array.from(this.layoutCache.keys())
+        };
+    }
+}
+
+
 class $aed4abc04f366b75$var$Layout {
     constructor(id, name, icon, html, description = ''){
         this.id = id;
@@ -2441,349 +2655,86 @@ class $aed4abc04f366b75$var$Layout {
                     } catch (e) {
                     // Keep as string if JSON parsing fails
                     }
-                    else if (value === 'true') value = true;
-                    else if (value === 'false') value = false;
-                    // Decode HTML entities for content attribute
-                    if (configKey === 'content' && typeof value === 'string') {
-                        const textarea = document.createElement('textarea');
-                        textarea.innerHTML = value;
-                        value = textarea.value;
-                    }
+                    else if (value === 'true' || value === 'false') value = value === 'true';
                     config[configKey] = value;
                 }
             });
-            // Special handling for different block types
-            switch(blockType){
-                case 'paragraph':
-                    if (!config.content) config.content = element.innerHTML;
-                    break;
-                case 'header':
-                    if (!config.content) config.content = element.textContent;
-                    if (!config.level) config.level = element.tagName.toLowerCase();
-                    break;
-                case 'image':
-                    const img = element.querySelector('img');
-                    if (img && !config.src) {
-                        config.src = img.src;
-                        config.alt = img.alt;
-                    }
-                    const caption = element.querySelector('figcaption');
-                    if (caption && !config.caption) config.caption = caption.textContent;
-                    break;
-                case 'quote':
-                    const quoteContent = element.querySelector('.quote-content');
-                    const quoteAttribution = element.querySelector('.quote-attribution');
-                    if (quoteContent && !config.content) config.content = quoteContent.textContent;
-                    if (quoteAttribution && !config.attribution) config.attribution = quoteAttribution.textContent;
-                    break;
-                case 'raw':
-                    break;
-                case 'columns':
-                    break;
-            }
-            blocks.push({
+            // Create block structure
+            const block = {
+                id: `${blockType}-${index}`,
                 type: blockType,
-                data: config
-            });
+                config: config
+            };
+            // Add any nested content
+            if (element.innerHTML && !element.innerHTML.includes('data-block')) block.content = element.innerHTML;
+            blocks.push(block);
         });
         return blocks;
     }
-    // Helper method to create a template using tool instances
-    static createTemplateWithTools(toolConfig, elements, wrapperConfig = {}) {
-        if (!toolConfig) {
-            console.warn('No tool configuration provided for template generation');
-            return '';
-        }
+    // Create a template using the tool configuration system
+    static createTemplateWithTools(toolConfig, toolSpecs, wrapperConfig = {}) {
+        if (!toolConfig || !toolConfig.tools) throw new Error('Tool configuration is required for template creation');
         const generator = new (0, $a97b0c1be92da308$export$3962e98abd6ec965)(toolConfig);
+        const elements = toolSpecs.map((spec)=>{
+            const tool = toolConfig.tools[spec.toolName];
+            if (!tool) throw new Error(`Tool "${spec.toolName}" not found in configuration`);
+            return {
+                tool: spec.toolName,
+                id: spec.toolId,
+                config: spec.config
+            };
+        });
         return generator.generateRawTemplate(elements, wrapperConfig);
     }
-    // Static method to get all predefined layouts
-    static getAll(toolConfig = null) {
-        return [
-            // Test Template
-            new $aed4abc04f366b75$var$Layout('test-template', 'Test Template', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='padding: 2rem; text-align: center;'&gt;&lt;h1 data-tool='Header' data-tool-id='header-1' style='font-size: 2rem; margin-bottom: 1rem; cursor: pointer; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Interactive Template&lt;/h1&gt;&lt;img data-tool='Image' data-tool-id='image-1' src='https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&amp;fit=crop' alt='Sample image' style='width: 100%; max-width: 400px; border-radius: 0.5rem; margin: 1rem 0; cursor: pointer; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;' /&gt;&lt;p data-tool='Paragraph' data-tool-id='paragraph-1' style='margin: 1rem 0; cursor: pointer; border: 2px dashed transparent; padding: 0.5rem;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Click any element to edit its properties. This creates reusable, interactive templates!&lt;/p&gt;&lt;button data-tool='Button' data-tool-id='button-1' style='background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; border: 2px dashed transparent;' onmouseover='this.style.border=&quot;2px dashed #3b82f6&quot;' onmouseout='this.style.border=&quot;2px dashed transparent&quot;'&gt;Edit Me&lt;/button&gt;&lt;/div&gt;">
-                </div>`, 'Interactive template with clickable elements that show tool properties'),
-            // 1. Modern Hero Section
-            new $aed4abc04f366b75$var$Layout('modern-hero', 'Modern Hero', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', toolConfig ? $aed4abc04f366b75$var$Layout.createTemplateWithTools(toolConfig, [
-                {
-                    toolName: 'Header',
-                    toolId: 'hero-title',
-                    config: {
-                        content: 'Transform Your Business Today',
-                        level: 'h1',
-                        fontSize: 'xlarge',
-                        fontWeight: 'bold',
-                        textColor: '#ffffff',
-                        alignment: 'center'
-                    }
-                },
-                {
-                    toolName: 'Paragraph',
-                    toolId: 'hero-subtitle',
-                    config: {
-                        content: 'Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.',
-                        fontSize: 'large',
-                        textColor: 'rgba(255,255,255,0.9)',
-                        alignment: 'center',
-                        margin: 'large'
-                    }
-                },
-                {
-                    toolName: 'Button',
-                    toolId: 'hero-cta',
-                    config: {
-                        text: 'Get Started Free',
-                        type: 'primary',
-                        size: 'large',
-                        customStyles: {
-                            backgroundColor: '#3b82f6',
-                            textColor: 'white',
-                            padding: '1rem 2rem',
-                            borderRadius: '0.5rem'
-                        }
-                    }
+    // Static method to get all predefined layouts (now with remote support)
+    static getAll(toolConfig = null, layoutConfig = null) {
+        // Check global configuration first
+        const globalConfig = window.AlpineBlocksConfig?.layouts;
+        const finalLayoutConfig = layoutConfig || globalConfig;
+        // If layout configuration is provided or configured globally, use RemoteLayoutManager
+        if (finalLayoutConfig) return $aed4abc04f366b75$var$Layout.getRemoteLayouts(finalLayoutConfig);
+        // Fallback to static layouts
+        return $aed4abc04f366b75$var$Layout.getStaticLayouts(toolConfig);
+    }
+    // Get layouts from remote source
+    static async getRemoteLayouts(layoutConfig) {
+        const fallbackLayouts = $aed4abc04f366b75$var$Layout.getStaticLayouts();
+        const manager = new (0, $1855c2b3cbb57120$export$ba0ed91b17c621ec)({
+            ...layoutConfig,
+            fallbackLayouts: fallbackLayouts.map((layout)=>({
+                    id: layout.id,
+                    name: layout.name,
+                    description: layout.description,
+                    icon: layout.icon,
+                    content: layout.html,
+                    tags: layout.tags || []
+                }))
+        });
+        try {
+            const categories = await manager.getLayouts();
+            const layouts = [];
+            for (const category of categories){
+                for (const layoutInfo of category.layouts)try {
+                    const layoutData = await manager.getLayout(layoutInfo.id);
+                    if (layoutData) layouts.push(layoutData);
+                } catch (error) {
+                    console.warn(`Failed to load layout ${layoutInfo.id}:`, error.message);
                 }
-            ], {
-                wrapperStyles: {
-                    'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    'padding': '5rem 2rem',
-                    'text-align': 'center',
-                    'color': 'white'
-                }
-            }) : `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5rem 2rem; text-align: center; color: white;'&gt;&lt;h1 style='font-size: 48px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Transform Your Business Today&lt;/h1&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 2rem;'&gt;Discover the power of innovation with our cutting-edge platform designed to accelerate your growth and streamline your operations.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer;'&gt;Get Started Free&lt;/button&gt;&lt;/div&gt;"></div>`, 'Professional hero section with gradient background, compelling copy, and CTA'),
-            // 2. Three Column Feature Grid
-            new $aed4abc04f366b75$var$Layout('feature-grid', 'Feature Grid', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/></svg>', `<div data-block="columns" data-config-columns='[
-                    {
-                        "blocks": [
-                            {
-                                "type": "image",
-                                "data": {
-                                    "src": "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
-                                    "alt": "Fast Performance",
-                                    "width": "100%",
-                                    "alignment": "center"
-                                }
-                            },
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h3",
-                                    "content": "Lightning Fast",
-                                    "fontSize": "24px",
-                                    "alignment": "center",
-                                    "fontWeight": "bold"
-                                }
-                            },
-                            {
-                                "type": "paragraph",
-                                "data": {
-                                    "content": "Experience blazing fast performance with our optimized platform built for speed and efficiency.",
-                                    "alignment": "center",
-                                    "fontSize": "16px",
-                                    "textColor": "#64748b"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2rem",
-                        "background": "#ffffff",
-                        "borderRadius": "1rem",
-                        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        "textAlign": "center"
-                    },
-                    {
-                        "blocks": [
-                            {
-                                "type": "image",
-                                "data": {
-                                    "src": "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=300&fit=crop",
-                                    "alt": "Secure Platform",
-                                    "width": "100%",
-                                    "alignment": "center"
-                                }
-                            },
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h3",
-                                    "content": "Bank-Level Security",
-                                    "fontSize": "24px",
-                                    "alignment": "center",
-                                    "fontWeight": "bold"
-                                }
-                            },
-                            {
-                                "type": "paragraph",
-                                "data": {
-                                    "content": "Your data is protected with enterprise-grade security measures and industry-leading encryption.",
-                                    "alignment": "center",
-                                    "fontSize": "16px",
-                                    "textColor": "#64748b"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2rem",
-                        "background": "#ffffff",
-                        "borderRadius": "1rem",
-                        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        "textAlign": "center"
-                    },
-                    {
-                        "blocks": [
-                            {
-                                "type": "image",
-                                "data": {
-                                    "src": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=300&fit=crop",
-                                    "alt": "Team Collaboration",
-                                    "width": "100%",
-                                    "alignment": "center"
-                                }
-                            },
-                            {
-                                "type": "header",
-                                "data": {
-                                    "level": "h3",
-                                    "content": "Team Collaboration",
-                                    "fontSize": "24px",
-                                    "alignment": "center",
-                                    "fontWeight": "bold"
-                                }
-                            },
-                            {
-                                "type": "paragraph",
-                                "data": {
-                                    "content": "Work seamlessly with your team using our collaborative tools and real-time synchronization.",
-                                    "alignment": "center",
-                                    "fontSize": "16px",
-                                    "textColor": "#64748b"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2rem",
-                        "background": "#ffffff",
-                        "borderRadius": "1rem",
-                        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        "textAlign": "center"
-                    }
-                ]' data-config-gap="2rem" data-config-responsive="true">
-                </div>`, 'Three feature cards with images, headings, and descriptions in a responsive grid'),
-            // 3. Two Column Testimonial
-            new $aed4abc04f366b75$var$Layout('testimonials', 'Testimonials', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', `<div data-block="columns" data-config-columns='[
-                    {
-                        "blocks": [
-                            {
-                                "type": "quote",
-                                "data": {
-                                    "content": "This platform has completely transformed how we work. The tools are intuitive and powerful, making our team more productive than ever.",
-                                    "attribution": "Sarah Johnson, CEO at TechCorp",
-                                    "style": "modern",
-                                    "fontSize": "18px",
-                                    "textColor": "#1f2937"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2.5rem",
-                        "background": "#ffffff",
-                        "borderRadius": "1.5rem",
-                        "boxShadow": "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-                        "border": "1px solid #e5e7eb"
-                    },
-                    {
-                        "blocks": [
-                            {
-                                "type": "quote",
-                                "data": {
-                                    "content": "Incredible user experience and fantastic support team. The onboarding was smooth and we saw results immediately. Highly recommended!",
-                                    "attribution": "Mike Chen, Product Designer",
-                                    "style": "modern",
-                                    "fontSize": "18px",
-                                    "textColor": "#1f2937"
-                                }
-                            }
-                        ],
-                        "width": "1fr",
-                        "padding": "2.5rem",
-                        "background": "#ffffff",
-                        "borderRadius": "1.5rem",
-                        "boxShadow": "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-                        "border": "1px solid #e5e7eb"
-                    }
-                ]' data-config-gap="2rem" data-config-responsive="true">
-                </div>`, 'Two testimonial cards with quotes and attribution in elegant card design'),
-            // 4. Article with Sidebar
-            (()=>{
-                const articleContent = `<div style='display: grid; grid-template-columns: 2fr 1fr; gap: 3rem; padding: 2rem;'>
-                    <div style='padding-right: 2rem;'>
-                        <h1 style='font-size: 36px; font-weight: bold; color: #111827; margin-bottom: 1rem;'>Understanding Modern Web Development</h1>
-                        <p style='font-size: 18px; color: #374151; line-height: 1.7; margin-bottom: 2rem;'>The landscape of web development has evolved dramatically over the past decade. Modern frameworks and tools have made it possible to create sophisticated applications with improved performance and user experience.</p>
-                        <img src='https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=400&fit=crop' alt='Modern web development' style='width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;' />
-                        <p style='font-size: 14px; color: #6b7280; text-align: center; margin-bottom: 2rem;'>Modern development tools and practices</p>
-                        <p style='font-size: 18px; color: #374151; line-height: 1.7;'>Today's developers have access to an unprecedented array of tools and frameworks that streamline the development process and enable rapid prototyping and deployment.</p>
-                    </div>
-                    <div style='padding: 2rem; background: #f9fafb; border-radius: 1rem; border: 1px solid #e5e7eb; height: fit-content;'>
-                        <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 1rem;'>Related Topics</h3>
-                        <ul style='list-style-type: disc; padding-left: 1.5rem; margin-bottom: 2rem;'>
-                            <li style='margin-bottom: 0.5rem;'>JavaScript Frameworks</li>
-                            <li style='margin-bottom: 0.5rem;'>CSS Preprocessors</li>
-                            <li style='margin-bottom: 0.5rem;'>Build Tools</li>
-                            <li style='margin-bottom: 0.5rem;'>Testing Strategies</li>
-                            <li style='margin-bottom: 0.5rem;'>Deployment Automation</li>
-                        </ul>
-                        <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 1rem;'>Quick Links</h3>
-                        <button style='background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600;'>Learn More</button>
-                    </div>
-                </div>`;
-                return new $aed4abc04f366b75$var$Layout('article-sidebar', 'Article + Sidebar', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h6"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="${$aed4abc04f366b75$var$Layout.htmlEncode(articleContent)}">
-                    </div>`, 'Article layout with main content area and styled sidebar with links');
-            })(),
-            // 5. Premium Pricing Table
-            (()=>{
-                const pricingContent = `<div style='padding: 4rem 2rem; background: linear-gradient(to bottom, #f8fafc, #ffffff);'>
-                    <div style='text-align: center; margin-bottom: 3rem;'>
-                        <h2 style='font-size: 36px; font-weight: bold; color: #111827; margin-bottom: 1rem;'>Choose the right plan for you</h2>
-                        <p style='font-size: 20px; color: #6b7280;'>Start building for free, then add a site plan to go live. Account plans unlock additional features.</p>
-                    </div>
-                    <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; align-items: stretch;'>
-                        <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e5e7eb; height: 100%; display: flex; flex-direction: column;'>
-                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem;'>Starter</h3>
-                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>Perfect for side projects and experimentation.</p>
-                            <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$9</span>
-                                <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
-                            </div>
-                            <a href='#' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Get started</a>
-                        </div>
-                        <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 2px solid #3b82f6; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); height: 100%; display: flex; flex-direction: column; transform: scale(1.05);'>
-                            <div style='position: absolute; top: -1rem; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 0.5rem 1.5rem; border-radius: 9999px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>Most popular</div>
-                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin: 1rem 0 0.5rem 0;'>Pro</h3>
-                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>A plan that scales with your rapidly growing business.</p>
-                            <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$29</span>
-                                <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
-                            </div>
-                            <a href='#' style='display: inline-block; background: #3b82f6; color: white; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Get started</a>
-                        </div>
-                        <div style='position: relative; padding: 2rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e5e7eb; height: 100%; display: flex; flex-direction: column;'>
-                            <h3 style='font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 0.5rem;'>Enterprise</h3>
-                            <p style='font-size: 16px; color: #6b7280; margin-bottom: 2rem;'>Dedicated support and infrastructure for your company.</p>
-                            <div style='display: flex; align-items: baseline; margin-bottom: 2rem;'>
-                                <span style='font-size: 48px; font-weight: 800; color: #111827;'>$99</span>
-                                <span style='font-size: 16px; color: #6b7280; margin-left: 0.25rem;'>/month</span>
-                            </div>
-                            <a href='#' style='display: inline-block; background: #f3f4f6; color: #374151; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; text-align: center; margin-bottom: 2rem; transition: all 0.2s;'>Contact sales</a>
-                        </div>
-                    </div>
-                </div>`;
-                return new $aed4abc04f366b75$var$Layout('pricing-table', 'Premium Pricing', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="14" rx="1"/><rect x="9" y="3" width="6" height="18" rx="1"/><rect x="15" y="7" width="6" height="10" rx="1"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="${$aed4abc04f366b75$var$Layout.htmlEncode(pricingContent)}">
-                    </div>`, 'Professional three-tier pricing table with TailwindUI-inspired design as a single cohesive block');
-            })(),
-            // 6. CTA Section
-            new $aed4abc04f366b75$var$Layout('cta-section', 'Call to Action', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>', `<div data-block="raw" data-config-show-preview="true" data-config-mode="html" data-config-content="&lt;div style='background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 4rem 2rem; border-radius: 2rem; text-align: center; color: white;'&gt;&lt;h2 style='font-size: 42px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 1rem;'&gt;Ready to Get Started?&lt;/h2&gt;&lt;p style='font-size: 20px; color: rgba(255,255,255,0.8); text-align: center; margin-bottom: 2rem;'&gt;Join over 10,000 companies that have accelerated their growth with our platform. Start your free trial today.&lt;/p&gt;&lt;button style='background: #3b82f6; color: white; padding: 1rem 2rem; border-radius: 0.5rem; font-size: 18px; font-weight: 600; border: none; cursor: pointer; margin-bottom: 2rem;'&gt;Start Free Trial&lt;/button&gt;&lt;p style='margin-top: 2rem; font-size: 14px; color: rgba(255,255,255,0.6);'&gt;No credit card required \u{2022} 14-day free trial \u{2022} Cancel anytime&lt;/p&gt;&lt;/div&gt;">
-                </div>`, 'High-converting call-to-action section with trust indicators')
-        ];
+            }
+            return layouts;
+        } catch (error) {
+            console.warn('Failed to load remote layouts, using static fallback:', error.message);
+            return fallbackLayouts;
+        }
+    }
+    // Get static layouts (now empty - moved to JSON files)
+    static getStaticLayouts(toolConfig = null) {
+        // All layouts moved to individual JSON files in examples/layouts/layouts/
+        return [];
+    }
+    // Create layout manager instance for external use
+    static createManager(config) {
+        return new (0, $1855c2b3cbb57120$export$ba0ed91b17c621ec)(config);
     }
 }
 var $aed4abc04f366b75$export$2e2bcd8739ae039 = $aed4abc04f366b75$var$Layout;
@@ -7685,13 +7636,242 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
                         ...block,
                         type: block.class ? block.class.toLowerCase() : 'unknown'
                     }));
+            },
+            getBlockIcon (type) {
+                const icons = {
+                    'paragraph': "\xb6",
+                    'header': 'H',
+                    'list': "\u2022",
+                    'image': "\uD83D\uDDBC",
+                    'quote': '"',
+                    'code': '</>',
+                    'wysiwyg': "\uD83D\uDCDD",
+                    'alert': "\u26A0",
+                    'video': "\u25B6",
+                    'audio': "\uD83D\uDD0A",
+                    'carousel': "\uD83C\uDFA0",
+                    'columns': "\u2AFC",
+                    'raw': '{}',
+                    'delimiter': '---',
+                    'button': "\uD83D\uDD18"
+                };
+                return icons[type] || "\uD83D\uDCC4";
+            },
+            getBlockDisplayName (type) {
+                if (!type || typeof type !== 'string') return 'Unknown Block';
+                const names = {
+                    'paragraph': 'Paragraph',
+                    'header': 'Header',
+                    'list': 'List',
+                    'image': 'Image',
+                    'quote': 'Quote',
+                    'code': 'Code',
+                    'wysiwyg': 'Rich Text',
+                    'alert': 'Alert',
+                    'video': 'Video',
+                    'audio': 'Audio',
+                    'carousel': 'Carousel',
+                    'columns': 'Columns',
+                    'raw': 'Raw HTML',
+                    'delimiter': 'Delimiter',
+                    'button': 'Button'
+                };
+                return names[type] || type.charAt(0).toUpperCase() + type.slice(1);
+            },
+            getBlockPreview (block) {
+                const data = block.data || {};
+                switch(block.type){
+                    case 'paragraph':
+                        return this.stripHtml(data.content || '').substring(0, 50) + '...';
+                    case 'header':
+                        return this.stripHtml(data.content || '').substring(0, 30) + '...';
+                    case 'list':
+                        return data.items?.length ? `${data.items.length} items` : 'Empty list';
+                    case 'image':
+                        return data.caption || data.alt || 'Image';
+                    case 'quote':
+                        return this.stripHtml(data.content || '').substring(0, 40) + '...';
+                    case 'code':
+                        return data.language || 'Code block';
+                    case 'wysiwyg':
+                        return this.stripHtml(data.content || '').substring(0, 50) + '...';
+                    case 'alert':
+                        return data.message || 'Alert message';
+                    case 'video':
+                        return data.caption || 'Video player';
+                    case 'audio':
+                        return data.caption || 'Audio player';
+                    case 'carousel':
+                        return `${data.slides?.length || 0} slides`;
+                    case 'columns':
+                        return `${data.columns?.length || 0} columns`;
+                    case 'raw':
+                        return 'HTML content';
+                    case 'delimiter':
+                        return 'Section break';
+                    case 'button':
+                        return data.text || 'Button';
+                    default:
+                        return 'Block content';
+                }
+            },
+            stripHtml (html) {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                return doc.body.textContent || '';
+            },
+            selectBlock (blockIndex) {
+                // Don't select blocks during page switching
+                if (this.switchingPages) return;
+                // Focus on the block in the editor
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
+                    try {
+                        const block = editor.blockManager.blocks[blockIndex];
+                        if (block) {
+                            editor.selectedBlock = block.id;
+                            // Trigger editor change to update UI
+                            document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                                detail: {
+                                    block_id: block.id
+                                }
+                            }));
+                        }
+                    } catch (e) {
+                        console.warn('Could not select block:', e);
+                    }
+                }
+            },
+            moveBlockUp (blockIndex) {
+                if (blockIndex <= 0) return;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
+                    try {
+                        const blocks = editor.blockManager.blocks;
+                        if (blocks[blockIndex] && blocks[blockIndex - 1]) {
+                            // Swap the blocks
+                            [blocks[blockIndex], blocks[blockIndex - 1]] = [
+                                blocks[blockIndex - 1],
+                                blocks[blockIndex]
+                            ];
+                            // Update immediately and refresh UI
+                            setTimeout(()=>{
+                                this.updateCurrentPageBlocks();
+                                document.dispatchEvent(new CustomEvent('editor-changed'));
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.warn('Could not move block up:', e);
+                    }
+                }
+            },
+            moveBlockDown (blockIndex) {
+                const blocks = this.getCurrentPageBlocks();
+                if (blockIndex >= blocks.length - 1) return;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
+                    try {
+                        const editorBlocks = editor.blockManager.blocks;
+                        if (editorBlocks[blockIndex] && editorBlocks[blockIndex + 1]) {
+                            // Swap the blocks
+                            [editorBlocks[blockIndex], editorBlocks[blockIndex + 1]] = [
+                                editorBlocks[blockIndex + 1],
+                                editorBlocks[blockIndex]
+                            ];
+                            // Update immediately and refresh UI
+                            setTimeout(()=>{
+                                this.updateCurrentPageBlocks();
+                                document.dispatchEvent(new CustomEvent('editor-changed'));
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.warn('Could not move block down:', e);
+                    }
+                }
+            },
+            deleteBlock (blockIndex) {
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
+                    const blocks = editor.blockManager.blocks;
+                    if (blocks[blockIndex]) // Use the modal system for block deletion from page manager
+                    window.dispatchEvent(new CustomEvent('show-delete-confirmation', {
+                        detail: {
+                            blockId: `block-${blockIndex}`,
+                            type: 'block-from-page',
+                            title: 'Remove Block',
+                            description: 'Are you sure you want to remove this block? This action cannot be undone.'
+                        }
+                    }));
+                }
+            },
+            confirmDeleteBlockFromPage (blockIndex) {
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
+                    try {
+                        const blocks = editor.blockManager.blocks;
+                        if (blocks[blockIndex]) {
+                            // Remove the block
+                            blocks.splice(blockIndex, 1);
+                            // If no blocks left, add a default paragraph
+                            if (blocks.length === 0 && editor.toolConfig['Paragraph']) editor.initBlock('Paragraph', true);
+                            // Update immediately and refresh UI
+                            setTimeout(()=>{
+                                this.updateCurrentPageBlocks();
+                                document.dispatchEvent(new CustomEvent('editor-changed'));
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.warn('Could not delete block:', e);
+                    }
+                }
+            },
+            setPageImage (pageId) {
+                const imageUrl = prompt('Enter image URL for this page:');
+                if (imageUrl && imageUrl.trim()) {
+                    const page = this.pages.find((p)=>p.id === pageId);
+                    if (page) {
+                        page.image = imageUrl.trim();
+                        this.savePagesToStorage();
+                    }
+                }
+            },
+            getCurrentPageImage () {
+                const currentPage = this.pages.find((p)=>p.id === this.currentPageId);
+                return currentPage?.image || null;
+            },
+            checkPrintOverflow () {
+                if (this.projectSettings.type === 'print') {
+                    const editorContent = document.querySelector('.editor-content');
+                    if (editorContent) {
+                        const maxHeight = parseFloat(this.projectSettings.printMaxHeight.replace(/mm|in|px/, ''));
+                        const unit = this.projectSettings.printMaxHeight.replace(/[0-9.]/g, '');
+                        const actualHeight = editorContent.scrollHeight;
+                        // Convert max height to pixels for comparison
+                        let maxHeightPx;
+                        if (unit === 'mm') maxHeightPx = maxHeight * 3.78; // 1mm ≈ 3.78px at 96dpi
+                        else if (unit === 'in') maxHeightPx = maxHeight * 96; // 1in = 96px at 96dpi
+                        else maxHeightPx = maxHeight;
+                        if (actualHeight > maxHeightPx) editorContent.classList.add('overflow');
+                        else editorContent.classList.remove('overflow');
+                    }
+                }
             }
         }));
     // Register editorTemplates component
     Alpine.data('editorTemplates', ()=>({
             templates: [],
-            init () {
-                this.templates = (0, $aed4abc04f366b75$export$2e2bcd8739ae039).getAll();
+            loading: false,
+            async init () {
+                this.loading = true;
+                try {
+                    const layouts = (0, $aed4abc04f366b75$export$2e2bcd8739ae039).getAll();
+                    if (layouts instanceof Promise) this.templates = await layouts;
+                    else this.templates = layouts;
+                } catch (error) {
+                    console.error('Error loading templates:', error);
+                    this.templates = [];
+                } finally{
+                    this.loading = false;
+                }
             },
             handleTemplateClick (event, template) {
                 event.preventDefault();
@@ -7815,6 +7995,13 @@ window.uploadImage = async function(event, blockId) {
 function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
     // Initialize global namespace
     window.AlpineBlocks = window.AlpineBlocks || {};
+    /**
+   * Global configuration for AlpineBlocks
+   * @param {object} config - Configuration object
+   */ window.AlpineBlocks.configure = function(config) {
+        if (!window.AlpineBlocksConfig) window.AlpineBlocksConfig = {};
+        Object.assign(window.AlpineBlocksConfig, config);
+    };
     /**
    * Toggle collapse state for a specific editor or all editors
    * @param {string} editorId - Editor ID or 'all' for all editors
@@ -8027,6 +8214,11 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
         };
         this.instance = null;
         this.holder = this.config.holder;
+    }
+    // Static method for global configuration
+    static configure(config) {
+        if (!window.AlpineBlocksConfig) window.AlpineBlocksConfig = {};
+        Object.assign(window.AlpineBlocksConfig, config);
     }
     async init() {
         if (!this.holder) throw new Error('AlpineBlocks: holder element is required');

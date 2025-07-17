@@ -14,6 +14,14 @@ export default class AlpineBlocks {
         this.holder = this.config.holder;
     }
 
+    // Static method for global configuration
+    static configure(config) {
+        if (!window.AlpineBlocksConfig) {
+            window.AlpineBlocksConfig = {};
+        }
+        Object.assign(window.AlpineBlocksConfig, config);
+    }
+
     async init() {
         if (!this.holder) {
             throw new Error('AlpineBlocks: holder element is required');

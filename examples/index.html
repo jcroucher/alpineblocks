@@ -239,11 +239,23 @@
                                     <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                                 </div>
                                 <div class="text-green-400 font-mono text-sm">
-                                    <div class="mb-2">// AlpineBlocks Editor</div>
-                                    <div class="mb-2">&lt;div x-data="alpineEditor()"&gt;</div>
-                                    <div class="mb-2">&nbsp;&nbsp;&lt;div class="tools-panel"&gt;...&lt;/div&gt;</div>
-                                    <div class="mb-2">&nbsp;&nbsp;&lt;div class="editor-area"&gt;...&lt;/div&gt;</div>
-                                    <div class="mb-2">&nbsp;&nbsp;&lt;div class="settings-panel"&gt;...&lt;/div&gt;</div>
+                                    <div class="mb-1">// AlpineBlocks Editor</div>
+                                    <div class="mb-1">&lt;div class="editor-layout" x-data="alpineEditor()"&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;!-- Tools Panel --&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;div x-data="editorToolbar()"&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&nbsp;&nbsp;&lt;div class="tool-item" draggable="true"&gt;📝 Paragraph&lt;/div&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&nbsp;&nbsp;&lt;div class="tool-item" draggable="true"&gt;🏷️ Header&lt;/div&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;/div&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;!-- Content Area --&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;div class="editor-content"&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&nbsp;&nbsp;&lt;template x-for="block in blocks"&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;div class="ab-block" x-html="block.render()"&gt;&lt;/div&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&nbsp;&nbsp;&lt;/template&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;/div&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;!-- Settings Panel --&gt;</div>
+                                    <div class="mb-1">&nbsp;&nbsp;&lt;div x-data="editorSettings()"&gt;...&lt;/div&gt;</div>
                                     <div>&lt;/div&gt;</div>
                                 </div>
                             </div>
@@ -315,6 +327,10 @@
                                             <div class="templates-header">
                                             </div>
                                             <div class="templates-grid">
+                                                <div x-show="loading" class="template-loading">
+                                                    <div class="loading-spinner"></div>
+                                                    <span>Loading templates...</span>
+                                                </div>
                                                 <template x-for="template in templates" :key="template.id">
                                                     <div class="template-item" 
                                                          draggable="true"
@@ -943,6 +959,17 @@
     async function initializeAlpineBlocks() {
         // Import AlpineBlocks to register all components
         await import('../src/index.js');
+        
+        // Configure remote layout loading for testing
+        console.log('AlpineBlocks configuration ready for remote layouts');
+        
+        window.AlpineBlocks.configure({
+            layouts: {
+                source: 'remote',
+                url: '/layouts/',
+                index: 'index.json'
+            }
+        });
         
         // Register preview modal component
     Alpine.data('previewModal', () => ({

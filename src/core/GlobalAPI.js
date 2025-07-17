@@ -110,6 +110,17 @@ export function setupGlobalAPI() {
     window.AlpineBlocks = window.AlpineBlocks || {};
 
     /**
+     * Global configuration for AlpineBlocks
+     * @param {object} config - Configuration object
+     */
+    window.AlpineBlocks.configure = function(config) {
+        if (!window.AlpineBlocksConfig) {
+            window.AlpineBlocksConfig = {};
+        }
+        Object.assign(window.AlpineBlocksConfig, config);
+    };
+
+    /**
      * Toggle collapse state for a specific editor or all editors
      * @param {string} editorId - Editor ID or 'all' for all editors
      */
