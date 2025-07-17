@@ -1,6 +1,4 @@
-import $5OpyM$alpinejs from "alpinejs";
-
-
+// Use globally available Alpine.js
 /**
  * Debug configuration for AlpineBlocks
  * Centralized place to control all debugging settings
@@ -375,6 +373,7 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
         this.editorId = editorId;
         this.canUndo = false;
         this.canRedo = false;
+        this.isCollapsed = false;
     }
     /**
    * Initialize the header toolbar
@@ -391,6 +390,59 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
                     canRedo: this.canRedo
                 }
             }));
+        });
+        // Register this instance globally for external access
+        this.registerGlobalAPI();
+        // Listen for external command events
+        this.setupEventListeners();
+    }
+    /**
+   * Register global API methods for external access
+   */ registerGlobalAPI() {
+        // Create namespace if it doesn't exist
+        if (!window.AlpineBlocks) window.AlpineBlocks = {};
+        if (!window.AlpineBlocks.headerToolbar) window.AlpineBlocks.headerToolbar = {};
+        // Register this instance
+        window.AlpineBlocks.headerToolbar[this.editorId] = {
+            toggleCollapse: ()=>this.toggleCollapse(),
+            undo: ()=>this.handleUndo(),
+            redo: ()=>this.handleRedo(),
+            preview: ()=>this.handlePreview(),
+            settings: ()=>this.handleSettings(),
+            getState: ()=>({
+                    canUndo: this.canUndo,
+                    canRedo: this.canRedo,
+                    isCollapsed: this.isCollapsed
+                })
+        };
+    }
+    /**
+   * Setup event listeners for external commands
+   */ setupEventListeners() {
+        // Listen for external header toolbar commands
+        document.addEventListener('alpineblocks-header-command', (e)=>{
+            const { editorId: editorId, command: command, data: data } = e.detail;
+            // Only respond to commands for this editor
+            if (editorId !== this.editorId && editorId !== 'all') return;
+            switch(command){
+                case 'toggleCollapse':
+                    this.toggleCollapse();
+                    break;
+                case 'undo':
+                    this.handleUndo();
+                    break;
+                case 'redo':
+                    this.handleRedo();
+                    break;
+                case 'preview':
+                    this.handlePreview();
+                    break;
+                case 'settings':
+                    this.handleSettings();
+                    break;
+                default:
+                    console.warn(`Unknown header toolbar command: ${command}`);
+            }
         });
     }
     /**
@@ -433,6 +485,26 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
         }));
     }
     /**
+   * Toggle collapsed state - removes/adds editor padding and borders
+   */ toggleCollapse() {
+        this.isCollapsed = !this.isCollapsed;
+        // Find the editor container and toggle the collapsed class
+        const editorContainer = document.querySelector(`[x-data*="alpineEditor"][x-data*="${this.editorId}"]`) || document.getElementById(this.editorId) || document.querySelector('.editor-content');
+        if (editorContainer) {
+            if (this.isCollapsed) editorContainer.classList.add('editor-collapsed');
+            else editorContainer.classList.remove('editor-collapsed');
+        }
+        // Update the toolbar state
+        document.dispatchEvent(new CustomEvent('header-toolbar-updated', {
+            detail: {
+                editorId: this.editorId,
+                canUndo: this.canUndo,
+                canRedo: this.canRedo,
+                isCollapsed: this.isCollapsed
+            }
+        }));
+    }
+    /**
    * Get the toolbar HTML
    * @returns {string} HTML string for the toolbar
    */ render() {
@@ -464,6 +536,17 @@ class $fce9a75a0fedf01f$export$a268db361d674bec {
                         title="Preview">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor">
                         <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-92.7-69.4z"/>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" 
+                        @click="toggleCollapse()"
+                        :class="{ 'toolbar-btn-active': isCollapsed }"
+                        :title="isCollapsed ? 'Expand editor (show padding/borders)' : 'Collapse editor (hide padding/borders)'">
+                    <svg x-show="!isCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 11H5a1 1 0 0 0 0 2h14a1 1 0 0 0 0-2zM19 7H5a1 1 0 0 0 0 2h14a1 1 0 0 0 0-2zM19 15H5a1 1 0 0 0 0 2h14a1 1 0 0 0 0-2z"/>
+                    </svg>
+                    <svg x-show="isCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 7V3a1 1 0 0 0-2 0v4H2a1 1 0 0 0 0 2h4v4a1 1 0 0 0 2 0V9h4a1 1 0 0 0 0-2H8zM23 7h-6a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2zM23 15h-6a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2z"/>
                     </svg>
                 </button>
             </div>
@@ -527,13 +610,26 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         // Set up keyboard shortcuts
         this.setupKeyboardShortcuts();
         this.$nextTick(()=>{
+            // Log build info for debugging
+            const buildId = 'AB-2025-01-17-002';
+            console.log(`AlpineBlocks Editor initialized - Build: ${buildId}, Editor ID: ${this.id}`);
+            console.log('Available methods:', {
+                undo: typeof this.undo,
+                redo: typeof this.redo,
+                toggleCollapse: typeof this.toggleCollapse,
+                preview: typeof this.preview,
+                canUndo: typeof this.canUndo,
+                canRedo: typeof this.canRedo
+            });
             this.$dispatch('editor-ready', {
-                id: this.id
+                id: this.id,
+                buildId: buildId
             });
             // Also dispatch globally
             document.dispatchEvent(new CustomEvent('editor-ready', {
                 detail: {
-                    id: this.id
+                    id: this.id,
+                    buildId: buildId
                 }
             }));
         });
@@ -589,6 +685,29 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    * @returns {Object} History status
    */ getHistoryStatus() {
         return this.historyManager.getStatus();
+    }
+    /**
+   * Toggle collapsed state - removes/adds editor padding and borders
+   * @returns {boolean} New collapsed state
+   */ toggleCollapse() {
+        if (this.headerToolbar) {
+            this.headerToolbar.toggleCollapse();
+            return this.headerToolbar.isCollapsed;
+        }
+        return false;
+    }
+    /**
+   * Trigger preview mode
+   * @returns {Object} Preview data with content and JSON
+   */ preview() {
+        if (this.headerToolbar) {
+            this.headerToolbar.handlePreview();
+            return {
+                content: this.getCleanContent ? this.getCleanContent() : this.getEditorContent(),
+                json: this.blocksJSON()
+            };
+        }
+        return null;
     }
     /**
    * Debounce utility function
@@ -1472,7 +1591,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         // Prevent click if we just finished dragging
         if (this.isDragging || this.dragStartTime && Date.now() - this.dragStartTime < 200) return;
         // Find the editor instance
-        const editorElement = document.getElementById('editorjs');
+        const editorElement = document.getElementById('alpineblocks-editor');
         if (editorElement && editorElement._x_dataStack && editorElement._x_dataStack[0]) {
             const editorData = editorElement._x_dataStack[0];
             if (editorData.editor) {
@@ -2980,10 +3099,11 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
         document.body.appendChild(modalContainer.firstElementChild);
     }
     /**
-   * Bind Alpine.js data and events
-   */ bindEvents() {
-        document.addEventListener('alpine:init', ()=>{
-            Alpine.data('mediaPicker', ()=>({
+   * Register Alpine.js component globally
+   */ static registerAlpineComponent() {
+        if (window.Alpine && window.Alpine.data && !$b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9._registered) {
+            $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9._registered = true;
+            window.Alpine.data('mediaPicker', ()=>({
                     isOpen: false,
                     isLoading: false,
                     items: [],
@@ -2991,7 +3111,9 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
                     currentPath: '/',
                     currentFilter: 'all',
                     selectedItem: null,
-                    config: this.config,
+                    config: {
+                        allowUpload: true
+                    },
                     showUploadPanel: false,
                     uploadProgress: 0,
                     dragOver: false,
@@ -3017,15 +3139,15 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
                         this.showUploadPanel = false;
                     },
                     async loadItems (path) {
-                        if (!this.config.apiUrl) {
-                            console.error('No API URL configured for media picker');
+                        if (!this.config.browse) {
+                            console.error('No browse URL configured for media picker');
                             return;
                         }
                         this.isLoading = true;
                         this.currentPath = path;
                         this.updateBreadcrumbs(path);
                         try {
-                            const response = await fetch(`${this.config.apiUrl}/browse`, {
+                            const response = await fetch(this.config.browse, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json'
@@ -3056,29 +3178,30 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
                                 path: '/' + parts.slice(0, index + 1).join('/')
                             }));
                     },
-                    async navigateToPath (path) {
-                        await this.loadItems(path);
+                    navigateToPath (path) {
+                        this.loadItems(path);
                     },
-                    async navigateToBreadcrumb (index) {
-                        const crumb = this.breadcrumbs[index];
-                        if (crumb) await this.loadItems(crumb.path);
+                    navigateToBreadcrumb (index) {
+                        const path = this.breadcrumbs[index].path;
+                        this.loadItems(path);
                     },
-                    async filterByType (type) {
+                    filterByType (type) {
                         this.currentFilter = type;
-                        await this.loadItems(this.currentPath);
+                        this.loadItems(this.currentPath);
                     },
                     selectItem (item) {
-                        if (item.type === 'folder') this.navigateToPath(item.path);
+                        if (item.type === 'folder') this.loadItems(item.path);
                         else this.selectedItem = item;
                     },
                     confirmSelection () {
-                        if (this.selectedItem && this.config.onSelect) {
-                            this.config.onSelect(this.selectedItem);
-                            this.close();
-                        }
+                        if (this.selectedItem && this.config.onSelect) this.config.onSelect(this.selectedItem);
+                        this.close();
                     },
                     showUpload () {
-                        this.showUploadPanel = !this.showUploadPanel;
+                        this.showUploadPanel = true;
+                    },
+                    hideUpload () {
+                        this.showUploadPanel = false;
                     },
                     handleDrop (event) {
                         this.dragOver = false;
@@ -3090,31 +3213,27 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
                         this.uploadFiles(files);
                     },
                     async uploadFiles (files) {
-                        if (!this.config.apiUrl || files.length === 0) return;
-                        const formData = new FormData();
-                        files.forEach((file)=>{
-                            formData.append('files', file);
-                        });
-                        formData.append('path', this.currentPath);
-                        try {
+                        if (!this.config.upload) {
+                            console.error('No upload URL configured');
+                            return;
+                        }
+                        for (const file of files)try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('path', this.currentPath);
+                            this.uploadProgress = 0;
                             const xhr = new XMLHttpRequest();
-                            xhr.upload.addEventListener('progress', (e)=>{
-                                if (e.lengthComputable) this.uploadProgress = Math.round(e.loaded / e.total * 100);
+                            xhr.upload.addEventListener('progress', (event)=>{
+                                if (event.lengthComputable) this.uploadProgress = Math.round(event.loaded / event.total * 100);
                             });
                             xhr.addEventListener('load', ()=>{
                                 if (xhr.status === 200) {
-                                    const response = JSON.parse(xhr.responseText);
-                                    if (this.config.onUpload) this.config.onUpload(response);
                                     this.uploadProgress = 0;
-                                    this.showUploadPanel = false;
-                                    this.loadItems(this.currentPath);
+                                    this.loadItems(this.currentPath); // Refresh the list
+                                    if (this.config.onUpload) this.config.onUpload(JSON.parse(xhr.responseText));
                                 }
                             });
-                            xhr.addEventListener('error', ()=>{
-                                console.error('Upload failed');
-                                this.uploadProgress = 0;
-                            });
-                            xhr.open('POST', `${this.config.apiUrl}/upload`);
+                            xhr.open('POST', this.config.upload);
                             xhr.send(formData);
                         } catch (error) {
                             console.error('Error uploading files:', error);
@@ -3122,7 +3241,13 @@ var $c77c197c3817ff58$export$2e2bcd8739ae039 = $c77c197c3817ff58$var$LayoutManag
                         }
                     }
                 }));
-        });
+        }
+    }
+    /**
+   * Bind Alpine.js data and events
+   */ bindEvents() {
+        // Register the component if not already registered
+        if (!$b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9._registered) $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9.registerAlpineComponent();
     }
     /**
    * Open the media picker
@@ -5368,7 +5493,7 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
         //const classId = classMatch ? classMatch[1] : null;
         //const className = classMatch ? classMatch[2] : null;
         // Get the tool class from the editor's tool registry
-        const editorInstance = window.alpineEditors?.editorjs;
+        const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
         const className = block.class;
         if (!editorInstance || !editorInstance.toolConfig[className]) {
             (0, $4c0d28162c26105d$export$153e5dc2c098b35c).error(`Tool class ${block.class} not found in editor registry`);
@@ -5574,7 +5699,7 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                                      };
                                  }
                                  
-                                 const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
+                                 const columnsBlock = window.alpineEditors['alpineblocks-editor'].blocks.find(b => b.id === '${this.id}');
                                  if (columnsBlock) {
                                      columnsBlock.handleColumnDrop(columnIndex, blockData);
                                  }
@@ -5585,7 +5710,7 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                              }
                          },
                          removeNestedBlock(columnIndex, blockId) {
-                             const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
+                             const columnsBlock = window.alpineEditors['alpineblocks-editor'].blocks.find(b => b.id === '${this.id}');
                              if (columnsBlock) {
                                  columnsBlock.removeNestedBlock(columnIndex, blockId);
                              }
@@ -5594,7 +5719,7 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                              // Set nested block as active using composite ID
                              const compositeId = '${this.id}::' + blockId;
                              
-                             const editorInstance = window.alpineEditors?.editorjs;
+                             const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
                              
                              if (editorInstance) {
                                  editorInstance.setActive(null, compositeId);
@@ -5610,7 +5735,7 @@ var $5158dfa5f71afbd5$export$2e2bcd8739ae039 = $5158dfa5f71afbd5$var$Carousel;
                          handleNestedUpdate(event) {
                              // Handle nested block updates from child components
                              const { blockId, property, value } = event.detail;
-                             const editorInstance = window.alpineEditors?.editorjs;
+                             const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
                              if (editorInstance) {
                                  const settingsElement = document.querySelector('#settings');
                                  if (settingsElement && settingsElement._x_dataStack && settingsElement._x_dataStack[0]) {
@@ -6689,7 +6814,21 @@ class $ff02aedcfec75f6b$var$Button extends (0, $7a9b6788f4274d37$export$2e2bcd87
 var $ff02aedcfec75f6b$export$2e2bcd8739ae039 = $ff02aedcfec75f6b$var$Button;
 
 
-window.Alpine = (0, $5OpyM$alpinejs);
+if (!window.Alpine) throw new Error('AlpineBlocks requires Alpine.js to be loaded first. Please include Alpine.js before AlpineBlocks.');
+const $cf838c15c8b009ba$var$Alpine = window.Alpine;
+// Register MediaPicker component immediately
+(0, $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9).registerAlpineComponent();
+/**
+ * AlpineBlocks - A lightweight block-based content editor built with Alpine.js
+ * 
+ * This is the main entry point that sets up the editor, toolbar, and settings
+ * components, and dynamically imports all available tools.
+ */ // Build information for debugging
+const $cf838c15c8b009ba$var$BUILD_ID = 'AB-2025-01-17-002';
+window.AlpineBlocks = window.AlpineBlocks || {};
+window.AlpineBlocks.buildId = $cf838c15c8b009ba$var$BUILD_ID;
+window.AlpineBlocks.version = '1.0.0';
+console.log(`AlpineBlocks loaded - Build: ${$cf838c15c8b009ba$var$BUILD_ID}`);
 // Tool modules registry
 const $cf838c15c8b009ba$var$toolModules = {
     Paragraph: $4672dcc6140b9c43$export$2e2bcd8739ae039,
@@ -6789,13 +6928,16 @@ const $cf838c15c8b009ba$var$toolModules = {
         };
     }
 }
-// Initialize Alpine with tool loading
-document.addEventListener('alpine:init', ()=>{
+// Initialize Alpine with tool loading (moved to registerAlpineComponents function)
+function $cf838c15c8b009ba$var$registerAllAlpineComponents() {
+    // Register MediaPicker component first
+    (0, $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9).registerAlpineComponent();
     window.Alpine.data('editorToolbar', ()=>new (0, $ae1a22f2bd2eaeed$export$4c260019440d418f)());
     window.Alpine.data('headerToolbar', (editorId)=>({
             toolbarInstance: null,
             canUndo: false,
             canRedo: false,
+            isCollapsed: false,
             init () {
                 this.toolbarInstance = new (0, $8a83916c83abff24$export$3c11ee1da7b7384)(editorId);
                 this.toolbarInstance.init();
@@ -6804,6 +6946,7 @@ document.addEventListener('alpine:init', ()=>{
                     if (event.detail.editorId === editorId) {
                         this.canUndo = event.detail.canUndo;
                         this.canRedo = event.detail.canRedo;
+                        if (event.detail.hasOwnProperty('isCollapsed')) this.isCollapsed = event.detail.isCollapsed;
                     }
                 });
             },
@@ -6818,6 +6961,9 @@ document.addEventListener('alpine:init', ()=>{
             },
             handleSettings () {
                 if (this.toolbarInstance) this.toolbarInstance.handleSettings();
+            },
+            toggleCollapse () {
+                if (this.toolbarInstance) this.toolbarInstance.toggleCollapse();
             }
         }));
     window.Alpine.data('editorSettings', (editorId, initialSettings)=>({
@@ -7464,8 +7610,8 @@ document.addEventListener('alpine:init', ()=>{
             saveCurrentPageContent () {
                 return new Promise((resolve)=>{
                     const currentPage = this.pages.find((p)=>p.id === this.currentPageId);
-                    if (currentPage && window.alpineEditors?.editorjs) {
-                        const editor = window.alpineEditors.editorjs;
+                    if (currentPage && window.alpineEditors?.['alpineblocks-editor']) {
+                        const editor = window.alpineEditors['alpineblocks-editor'];
                         try {
                             // Use the blocksJSON method to get current blocks
                             const blocksData = JSON.parse(editor.blocksJSON());
@@ -7481,8 +7627,8 @@ document.addEventListener('alpine:init', ()=>{
             },
             loadPageContent (pageId) {
                 const page = this.pages.find((p)=>p.id === pageId);
-                if (page && window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (page && window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         // Clear existing blocks
                         editor.blockManager.blocks = [];
@@ -7523,7 +7669,7 @@ document.addEventListener('alpine:init', ()=>{
                             // Force settings panel to clear directly
                             document.dispatchEvent(new CustomEvent('settings-updated', {
                                 detail: {
-                                    editorId: 'editorjs',
+                                    editorId: 'alpineblocks-editor',
                                     settings: [],
                                     blockId: null
                                 }
@@ -7601,8 +7747,8 @@ document.addEventListener('alpine:init', ()=>{
             },
             updateCurrentPageBlocks () {
                 // Update the current page's blocks with the latest from the editor
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         const currentPage = this.pages.find((p)=>p.id === this.currentPageId);
                         if (currentPage) {
@@ -7726,8 +7872,8 @@ document.addEventListener('alpine:init', ()=>{
                 // Don't select blocks during page switching
                 if (this.switchingPages) return;
                 // Focus on the block in the editor
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         const block = editor.blockManager.blocks[blockIndex];
                         if (block) {
@@ -7746,8 +7892,8 @@ document.addEventListener('alpine:init', ()=>{
             },
             moveBlockUp (blockIndex) {
                 if (blockIndex <= 0) return;
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         const blocks = editor.blockManager.blocks;
                         if (blocks[blockIndex] && blocks[blockIndex - 1]) {
@@ -7770,8 +7916,8 @@ document.addEventListener('alpine:init', ()=>{
             moveBlockDown (blockIndex) {
                 const blocks = this.getCurrentPageBlocks();
                 if (blockIndex >= blocks.length - 1) return;
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         const editorBlocks = editor.blockManager.blocks;
                         if (editorBlocks[blockIndex] && editorBlocks[blockIndex + 1]) {
@@ -7792,8 +7938,8 @@ document.addEventListener('alpine:init', ()=>{
                 }
             },
             deleteBlock (blockIndex) {
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     const blocks = editor.blockManager.blocks;
                     if (blocks[blockIndex]) // Use the modal system for block deletion from page manager
                     window.dispatchEvent(new CustomEvent('show-delete-confirmation', {
@@ -7807,8 +7953,8 @@ document.addEventListener('alpine:init', ()=>{
                 }
             },
             confirmDeleteBlockFromPage (blockIndex) {
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         const blocks = editor.blockManager.blocks;
                         if (blocks[blockIndex]) {
@@ -7857,8 +8003,8 @@ document.addEventListener('alpine:init', ()=>{
             // Clean up drag state if needed
             },
             addTemplate (template) {
-                if (window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     if (editor.editor) {
                         // Create LayoutManager and add the template
                         const layoutManager = new (0, $c77c197c3817ff58$export$2e2bcd8739ae039)(editor.editor);
@@ -7867,7 +8013,11 @@ document.addEventListener('alpine:init', ()=>{
                 }
             }
         }));
-});
+}
+// Register all components immediately when this function is defined
+$cf838c15c8b009ba$var$registerAllAlpineComponents();
+// Debug: Log that components are registered
+if (typeof window !== 'undefined' && window.console) console.log('[AlpineBlocks] All components registered, ready for Alpine.js to start');
 // Global media library function
 window.openMediaLibrary = function(blockId, mediaType = 'all') {
     // Get the media picker from the first available editor
@@ -7904,6 +8054,215 @@ window.openMediaLibrary = function(blockId, mediaType = 'all') {
         }
     });
 };
+// Global header toolbar helper functions
+window.AlpineBlocks = window.AlpineBlocks || {};
+/**
+ * Toggle collapse state for a specific editor or all editors
+ * @param {string} editorId - Editor ID or 'all' for all editors
+ */ window.AlpineBlocks.toggleCollapse = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) window.AlpineBlocks.headerToolbar[editorId].toggleCollapse();
+    else // Fallback: dispatch event
+    document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: {
+            editorId: editorId,
+            command: 'toggleCollapse'
+        }
+    }));
+};
+/**
+ * Trigger undo for a specific editor
+ * @param {string} editorId - Editor ID
+ */ window.AlpineBlocks.undo = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) window.AlpineBlocks.headerToolbar[editorId].undo();
+    else document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: {
+            editorId: editorId,
+            command: 'undo'
+        }
+    }));
+};
+/**
+ * Trigger redo for a specific editor
+ * @param {string} editorId - Editor ID
+ */ window.AlpineBlocks.redo = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) window.AlpineBlocks.headerToolbar[editorId].redo();
+    else document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: {
+            editorId: editorId,
+            command: 'redo'
+        }
+    }));
+};
+/**
+ * Trigger preview for a specific editor
+ * @param {string} editorId - Editor ID
+ */ window.AlpineBlocks.preview = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) window.AlpineBlocks.headerToolbar[editorId].preview();
+    else document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: {
+            editorId: editorId,
+            command: 'preview'
+        }
+    }));
+};
+/**
+ * Get the current state of the header toolbar
+ * @param {string} editorId - Editor ID
+ * @returns {object} Current state object
+ */ window.AlpineBlocks.getHeaderState = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) return window.AlpineBlocks.headerToolbar[editorId].getState();
+    return {
+        canUndo: false,
+        canRedo: false,
+        isCollapsed: false
+    };
+};
+/**
+ * Send a custom command to the header toolbar
+ * @param {string} command - Command name
+ * @param {string} editorId - Editor ID
+ * @param {object} data - Optional data
+ */ window.AlpineBlocks.sendHeaderCommand = function(command, editorId = 'alpineblocks-editor', data = {}) {
+    document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: {
+            editorId: editorId,
+            command: command,
+            data: data
+        }
+    }));
+};
+/**
+ * Get pages array from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Pages array
+ */ window.AlpineBlocks.getPages = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && component.pages) return component.pages;
+    }
+    return [];
+};
+/**
+ * Add a new page using the editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {*} Result of addPage method
+ */ window.AlpineBlocks.addPage = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.addPage === 'function') return component.addPage();
+    }
+    return null;
+};
+/**
+ * Get current page title from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {string} Current page title
+ */ window.AlpineBlocks.getCurrentPageTitle = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.getCurrentPageTitle === 'function') return component.getCurrentPageTitle();
+    }
+    return '';
+};
+/**
+ * Get current page blocks from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Current page blocks
+ */ window.AlpineBlocks.getCurrentPageBlocks = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.getCurrentPageBlocks === 'function') return component.getCurrentPageBlocks();
+    }
+    return [];
+};
+/**
+ * Get project settings from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Object} Project settings object
+ */ window.AlpineBlocks.getProjectSettings = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && component.projectSettings) return component.projectSettings;
+    }
+    return {};
+};
+/**
+ * Get print defaults array from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Print defaults array
+ */ window.AlpineBlocks.getPrintDefaults = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && component.printDefaults) return component.printDefaults;
+    }
+    return [];
+};
+/**
+ * Switch to a specific page
+ * @param {string} pageId - Page ID to switch to
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */ window.AlpineBlocks.switchToPage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.switchToPage === 'function') {
+            component.switchToPage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
+/**
+ * Get current page ID
+ * @param {string} editorId - Editor ID
+ * @returns {string} Current page ID
+ */ window.AlpineBlocks.getCurrentPageId = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && component.currentPageId) return component.currentPageId;
+    }
+    return '';
+};
+/**
+ * Delete a page
+ * @param {string} pageId - Page ID to delete
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */ window.AlpineBlocks.deletePage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.deletePage === 'function') {
+            component.deletePage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
+/**
+ * Rename a page
+ * @param {string} pageId - Page ID to rename
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */ window.AlpineBlocks.renamePage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements){
+        const component = $cf838c15c8b009ba$var$Alpine.$data(element);
+        if (component && typeof component.renamePage === 'function') {
+            component.renamePage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
 // Global image upload function
 window.uploadImage = async function(event, blockId) {
     const file = event.target.files[0];
@@ -7927,7 +8286,7 @@ window.uploadImage = async function(event, blockId) {
         const result = await response.json();
         if (result.success && result.url) {
             // Update the image source
-            const editorInstance = window.alpineEditors?.editorjs;
+            const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
             if (editorInstance) {
                 const block = editorInstance.blocks.find((b)=>b.id === blockId);
                 if (block) {
@@ -8025,9 +8384,8 @@ class $cf838c15c8b009ba$export$2e2bcd8739ae039 {
             this.instance = null;
         }
     }
-}
-// Start Alpine.js if not already started
-if (!window.Alpine._started) (0, $5OpyM$alpinejs).start();
+} // Components are registered immediately when the registerAllAlpineComponents function is defined
+ // Alpine.js will be started externally after all components are registered
 
 
 export {$cf838c15c8b009ba$export$2e2bcd8739ae039 as default};

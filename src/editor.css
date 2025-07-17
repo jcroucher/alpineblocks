@@ -583,6 +583,56 @@ body {
     cursor: pointer;
 }
 
+/* Collapsed state - removes editor-specific styling */
+.editor-collapsed .ab-block {
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+}
+
+.editor-collapsed .ab-block:hover {
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.editor-collapsed .ab-block.selected {
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* Hide editor-specific elements in collapsed mode */
+.editor-collapsed .block-remove-btn {
+    display: none !important;
+}
+
+.editor-collapsed .left-border::before {
+    display: none;
+}
+
+/* Also apply collapsed styles to any nested blocks */
+.editor-collapsed .nested-block {
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Active state for the collapse toggle button */
+.toolbar-btn-active {
+    background: var(--primary-100);
+    color: var(--primary-700);
+    border-color: var(--primary-300);
+}
+
 .ab-block:hover {
     background: var(--gray-50);
     transform: translateY(-1px);

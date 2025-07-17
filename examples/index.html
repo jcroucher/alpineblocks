@@ -8,6 +8,7 @@
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/monokai-sublime.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    
 
     <link rel="stylesheet" href="../dist/frontend.css" media="all" data-turbo-track="reload">
     <link rel="stylesheet" href="../dist/editor.css" media="all" data-turbo-track="reload">
@@ -337,7 +338,7 @@
                             </div>
                             <!-- Editor Area -->
                             <div class="panel editor-area" 
-                                 id="editorjs"
+                                 id="alpineblocks-editor"
                                  :class="{ 'print-mode': projectSettings.type === 'print' }"
                                  :style="projectSettings.type === 'print' ? `--print-width: ${projectSettings.printWidth || '210mm'}; --print-height: ${projectSettings.printMaxHeight || '297mm'};` : ''"
                                  x-data="alpineEditor({
@@ -472,7 +473,7 @@
                                   })">
                                 
                                 <!-- Header toolbar rendered outside editor-content -->
-                                <template x-if="editor">
+                                <template x-if="getHeaderToolbar">
                                     <div class="header-toolbar-container" x-html="getHeaderToolbar()"></div>
                                 </template>
                                 
@@ -534,7 +535,7 @@
                                         <!-- Properties Tab -->
                                         <div x-show="activeTab === 'properties'" 
                                              id="settings" 
-                                             x-data="editorSettings('editorjs', {})">
+                                             x-data="editorSettings('alpineblocks-editor', {})">
                                             <template x-for="setting in settings" :key="setting.name">
                                                 <div class="settings-group">
                                                     <template x-if="typeof setting.callback !== 'undefined'">
@@ -741,31 +742,12 @@
                         
                         <!-- JSON Output Section -->
                         <div class="mt-16" x-data="{ jsonOutput: '[]' }" 
-                             x-init="
-                                setInterval(() => {
-                                    // Try to access the editor through the global registry
-                                    if (window.alpineEditors && window.alpineEditors.editorjs) {
-                                        try {
-                                            jsonOutput = window.alpineEditors.editorjs.blocksJSON(false);
-                                        } catch (e) {
-                                            console.warn('Error getting blocks JSON:', e);
-                                        }
-                                    } else {
-                                        // Fallback: try to find it in the Alpine data stack
-                                        // The editor data is now on the editor-area parent div, not the editorjs element
-                                        const editorEl = document.getElementById('editorjs');
-                                        const editorArea = editorEl?.closest('.editor-area');
-                                        if (editorArea && editorArea._x_dataStack && editorArea._x_dataStack.length > 0) {
-                                            for (let i = 0; i < editorArea._x_dataStack.length; i++) {
-                                                if (editorArea._x_dataStack[i].blocksJSON) {
-                                                    jsonOutput = editorArea._x_dataStack[i].blocksJSON(false);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }, 1000)
-                             ">
+                             x-init="setInterval(() => {
+                                 const editorEl = document.getElementById('alpineblocks-editor');
+                                 if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
+                                     jsonOutput = editorEl._x_dataStack[0].blocksJSON();
+                                 }
+                             }, 1000)">
                             <h2 class="text-center text-2xl font-bold text-white mb-6">Live JSON Output</h2>
                             <p class="text-center text-gray-300 mb-8">This updates automatically as you edit blocks in the demo above</p>
                             <div class="bg-gray-900 rounded-lg p-6 max-w-4xl mx-auto max-h-96 overflow-y-auto">
@@ -947,137 +929,149 @@
     </div>
 </div>
 
-<script src="../dist/index.esm.js" type="module"></script>
+<script type="module">
+    // For Parcel dev mode: Import AlpineBlocks and start Alpine manually
+    // This ensures components are registered before Alpine processes the DOM
+    
+    // Import Alpine.js as a module so we have full control
+    import Alpine from 'alpinejs';
+    
+    // Make Alpine available globally
+    window.Alpine = Alpine;
+    
+    // Use an async function to handle the initialization
+    async function initializeAlpineBlocks() {
+        // Import AlpineBlocks to register all components
+        await import('../src/index.js');
+        
+        // Register preview modal component
+    Alpine.data('previewModal', () => ({
+        show: false,
+        content: '',
+        cleanContent: '',
+        viewport: 'desktop',
+        isFullscreen: false,
+        
+        init() {
+            document.addEventListener('editor-preview', (e) => {
+                this.openPreview(e.detail.content);
+            });
+            
+            document.addEventListener('fullscreenchange', () => {
+                this.isFullscreen = !!document.fullscreenElement;
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.show) {
+                    this.closePreview();
+                }
+            });
+        },
+        
+        async openPreview(htmlContent) {
+            this.content = htmlContent;
+            this.cleanContent = await this.cleanContentForPreview(htmlContent);
+            this.show = true;
+            document.body.style.overflow = 'hidden';
+        },
+        
+        async cleanContentForPreview(htmlContent) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            
+            const elementsToClean = tempDiv.querySelectorAll('*');
+            elementsToClean.forEach(el => {
+                const classesToRemove = [
+                    'ab-block', 'selected', 'block-content', 'block-remove-btn',
+                    'wysiwyg-editor', 'wysiwyg-toolbar', 'wysiwyg-toolbar-group',
+                    'wysiwyg-btn', 'wysiwyg-select', 'code-editor', 'code-header',
+                    'code-input', 'preview-section', 'preview-header', 'preview-content',
+                    'raw-preview-toolbar', 'toggle-btn', 'validation-error', 'validation-success',
+                    'block-actions', 'btn-action', 'btn-duplicate', 'btn-delete',
+                    'toolbar-btn', 'toolbar-select', 'toolbar-group', 'toolbar-separator',
+                    'drop-target', 'top-border', 'bottom-border', 'left-border'
+                ];
+                
+                classesToRemove.forEach(className => {
+                    el.classList.remove(className);
+                });
+                
+                const attributesToRemove = [
+                    'x-data', 'x-init', 'x-show', 'x-html', '@click', '@blur', '@input',
+                    '@dragover', '@drop', '@dragstart', '@dragend', 'contenteditable',
+                    'data-block-id', 'data-tool', 'data-tool-id', 'draggable'
+                ];
+                
+                attributesToRemove.forEach(attr => {
+                    el.removeAttribute(attr);
+                });
+                
+                if (el.style) {
+                    el.style.removeProperty('cursor');
+                    el.style.removeProperty('outline');
+                    el.style.removeProperty('user-select');
+                    el.style.removeProperty('pointer-events');
+                }
+            });
+            
+            const buttonsToRemove = tempDiv.querySelectorAll('button, .block-remove-btn, .toolbar-btn, .btn-action');
+            buttonsToRemove.forEach(btn => btn.remove());
+            
+            const editorsToRemove = tempDiv.querySelectorAll('.wysiwyg-toolbar, .code-header, .preview-header, .block-actions, .raw-preview-toolbar');
+            editorsToRemove.forEach(editor => editor.remove());
+            
+            return tempDiv.innerHTML;
+        },
+        
+        closePreview() {
+            this.show = false;
+            document.body.style.overflow = '';
+            
+            if (this.isFullscreen) {
+                document.exitFullscreen();
+            }
+        },
+        
+        setViewport(type) {
+            this.viewport = type;
+        },
+        
+        toggleFullscreen() {
+            if (!this.isFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        },
+        
+        getViewportStyles() {
+            switch (this.viewport) {
+                case 'mobile':
+                    return 'width: 375px; max-width: 375px;';
+                case 'tablet':
+                    return 'width: 768px; max-width: 768px;';
+                case 'desktop':
+                default:
+                    return 'width: 100%; max-width: none;';
+            }
+        }
+        }));
+        
+        // Log that all components are ready
+        console.log('[Dev Mode] All AlpineBlocks components registered, starting Alpine...');
+        
+        // Start Alpine manually after all components are registered
+        Alpine.start();
+    }
+    
+    // Initialize everything
+    initializeAlpineBlocks().catch(error => {
+        console.error('[Dev Mode] Failed to initialize AlpineBlocks:', error);
+    });
+</script>
 <script src="../src/utils/TemplateInteractivity.js" type="module"></script>
 <script>
     hljs.highlightAll();
-    
-    // Preview Modal Alpine Component
-    function previewModal() {
-        return {
-            show: false,
-            content: '',
-            cleanContent: '',
-            viewport: 'desktop', // mobile, tablet, desktop
-            isFullscreen: false,
-            
-            init() {
-                // Listen for preview events
-                document.addEventListener('editor-preview', (e) => {
-                    this.openPreview(e.detail.content);
-                });
-                
-                // Listen for fullscreen changes
-                document.addEventListener('fullscreenchange', () => {
-                    this.isFullscreen = !!document.fullscreenElement;
-                });
-                
-                // ESC key to close preview
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.show) {
-                        this.closePreview();
-                    }
-                });
-            },
-            
-            async openPreview(htmlContent) {
-                this.content = htmlContent;
-                this.cleanContent = await this.cleanContentForPreview(htmlContent);
-                this.show = true;
-                document.body.style.overflow = 'hidden';
-            },
-            
-            async cleanContentForPreview(htmlContent) {
-                // Create a temporary div to manipulate the HTML
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = htmlContent;
-                
-                // Remove all editor-specific classes and attributes
-                const elementsToClean = tempDiv.querySelectorAll('*');
-                elementsToClean.forEach(el => {
-                    // Remove editor-specific classes
-                    const classesToRemove = [
-                        'ab-block', 'selected', 'block-content', 'block-remove-btn',
-                        'wysiwyg-editor', 'wysiwyg-toolbar', 'wysiwyg-toolbar-group',
-                        'wysiwyg-btn', 'wysiwyg-select', 'code-editor', 'code-header',
-                        'code-input', 'preview-section', 'preview-header', 'preview-content',
-                        'raw-preview-toolbar', 'toggle-btn', 'validation-error', 'validation-success',
-                        'block-actions', 'btn-action', 'btn-duplicate', 'btn-delete',
-                        'toolbar-btn', 'toolbar-select', 'toolbar-group', 'toolbar-separator',
-                        'drop-target', 'top-border', 'bottom-border', 'left-border'
-                    ];
-                    
-                    classesToRemove.forEach(className => {
-                        el.classList.remove(className);
-                    });
-                    
-                    // Remove editor-specific attributes
-                    const attributesToRemove = [
-                        'x-data', 'x-init', 'x-show', 'x-html', '@click', '@blur', '@input',
-                        '@dragover', '@drop', '@dragstart', '@dragend', 'contenteditable',
-                        'data-block-id', 'data-tool', 'data-tool-id', 'draggable'
-                    ];
-                    
-                    attributesToRemove.forEach(attr => {
-                        el.removeAttribute(attr);
-                    });
-                    
-                    // Remove style attributes that are editor-specific
-                    if (el.style) {
-                        el.style.removeProperty('cursor');
-                        el.style.removeProperty('outline');
-                        el.style.removeProperty('user-select');
-                        el.style.removeProperty('pointer-events');
-                    }
-                });
-                
-                // Remove all buttons and editor controls
-                const buttonsToRemove = tempDiv.querySelectorAll('button, .block-remove-btn, .toolbar-btn, .btn-action');
-                buttonsToRemove.forEach(btn => btn.remove());
-                
-                // Remove toolbars and editor UI
-                const editorsToRemove = tempDiv.querySelectorAll('.wysiwyg-toolbar, .code-header, .preview-header, .block-actions, .raw-preview-toolbar');
-                editorsToRemove.forEach(editor => editor.remove());
-                
-                // Return just the cleaned content - frontend CSS is already loaded on the page
-                return tempDiv.innerHTML;
-            },
-            
-            closePreview() {
-                this.show = false;
-                document.body.style.overflow = '';
-                
-                // Exit fullscreen if active
-                if (this.isFullscreen) {
-                    document.exitFullscreen();
-                }
-            },
-            
-            setViewport(type) {
-                this.viewport = type;
-            },
-            
-            toggleFullscreen() {
-                if (!this.isFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else {
-                    document.exitFullscreen();
-                }
-            },
-            
-            getViewportStyles() {
-                switch (this.viewport) {
-                    case 'mobile':
-                        return 'width: 375px; max-width: 375px;';
-                    case 'tablet':
-                        return 'width: 768px; max-width: 768px;';
-                    case 'desktop':
-                    default:
-                        return 'width: 100%; max-width: none;';
-                }
-            }
-        };
-    }
 </script>
 
 </body>

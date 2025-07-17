@@ -7,19 +7,21 @@
   "module": "dist/index.esm.js",
   "targets": {
     "main": {
-      "outputFormat": "commonjs"
+      "outputFormat": "commonjs",
+      "isLibrary": true
     },
     "module": {
-      "outputFormat": "esmodule"
+      "outputFormat": "esmodule",
+      "isLibrary": true
     }
   },
   "scripts": {
-    "dev": "parcel examples/index.html --dist-dir ./dist-dev",
+    "dev": "parcel examples/index.html examples/example-usage.html --dist-dir ./dist-dev",
     "build": "parcel build --target main --target module && npm run copy-css",
     "copy-css": "cp src/frontend.css dist/ && cp src/editor.css dist/",
     "build:lib": "parcel build --target main --target module",
-    "build:examples": "parcel build examples/index.html --public-url ./",
-    "start": "parcel examples/index.html",
+    "build:examples": "parcel build examples/index.html examples/example-usage.html --public-url ./",
+    "start": "parcel examples/index.html examples/example-usage.html",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

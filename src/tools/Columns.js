@@ -206,7 +206,7 @@ class Columns extends Tool {
         //const className = classMatch ? classMatch[2] : null;
 
         // Get the tool class from the editor's tool registry
-        const editorInstance = window.alpineEditors?.editorjs;
+        const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
         const className = block.class;
 
         if (!editorInstance || !editorInstance.toolConfig[className]) {
@@ -483,7 +483,7 @@ class Columns extends Tool {
                                      };
                                  }
                                  
-                                 const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
+                                 const columnsBlock = window.alpineEditors['alpineblocks-editor'].blocks.find(b => b.id === '${this.id}');
                                  if (columnsBlock) {
                                      columnsBlock.handleColumnDrop(columnIndex, blockData);
                                  }
@@ -494,7 +494,7 @@ class Columns extends Tool {
                              }
                          },
                          removeNestedBlock(columnIndex, blockId) {
-                             const columnsBlock = window.alpineEditors.editorjs.blocks.find(b => b.id === '${this.id}');
+                             const columnsBlock = window.alpineEditors['alpineblocks-editor'].blocks.find(b => b.id === '${this.id}');
                              if (columnsBlock) {
                                  columnsBlock.removeNestedBlock(columnIndex, blockId);
                              }
@@ -503,7 +503,7 @@ class Columns extends Tool {
                              // Set nested block as active using composite ID
                              const compositeId = '${this.id}::' + blockId;
                              
-                             const editorInstance = window.alpineEditors?.editorjs;
+                             const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
                              
                              if (editorInstance) {
                                  editorInstance.setActive(null, compositeId);
@@ -519,7 +519,7 @@ class Columns extends Tool {
                          handleNestedUpdate(event) {
                              // Handle nested block updates from child components
                              const { blockId, property, value } = event.detail;
-                             const editorInstance = window.alpineEditors?.editorjs;
+                             const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
                              if (editorInstance) {
                                  const settingsElement = document.querySelector('#settings');
                                  if (settingsElement && settingsElement._x_dataStack && settingsElement._x_dataStack[0]) {

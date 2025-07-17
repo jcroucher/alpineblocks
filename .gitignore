@@ -80,6 +80,7 @@ temp/
 
 # Local History (VS Code extension)
 .lh/
+CLAUDE.md
 
 # Optional npm cache directory
 .npm

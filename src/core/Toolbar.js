@@ -61,7 +61,7 @@ export class Toolbar {
         }
 
         // Find the editor instance
-        const editorElement = document.getElementById('editorjs');
+        const editorElement = document.getElementById('alpineblocks-editor');
         if (editorElement && editorElement._x_dataStack && editorElement._x_dataStack[0]) {
             const editorData = editorElement._x_dataStack[0];
             if (editorData.editor) {

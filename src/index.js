@@ -1,6 +1,9 @@
-import Alpine from 'alpinejs';
+// Use globally available Alpine.js
+if (!window.Alpine) {
+    throw new Error('AlpineBlocks requires Alpine.js to be loaded first. Please include Alpine.js before AlpineBlocks.');
+}
 
-window.Alpine = Alpine;
+const Alpine = window.Alpine;
 
 import { Editor } from './core/editor';
 import { Toolbar } from './core/Toolbar';
@@ -12,12 +15,24 @@ import Layout from './core/Layout.js';
 import LayoutManager from './core/LayoutManager.js';
 import { MediaPicker } from './core/MediaPicker.js';
 
+// Register MediaPicker component immediately
+MediaPicker.registerAlpineComponent();
+
+
 /**
  * AlpineBlocks - A lightweight block-based content editor built with Alpine.js
  * 
  * This is the main entry point that sets up the editor, toolbar, and settings
  * components, and dynamically imports all available tools.
  */
+
+// Build information for debugging
+const BUILD_ID = 'AB-2025-01-17-002';
+window.AlpineBlocks = window.AlpineBlocks || {};
+window.AlpineBlocks.buildId = BUILD_ID;
+window.AlpineBlocks.version = '1.0.0';
+
+console.log(`AlpineBlocks loaded - Build: ${BUILD_ID}`);
 
 // Import all tools directly to ensure they're available
 import Paragraph from './tools/Paragraph';
@@ -138,13 +153,17 @@ function getEditorConfigFromDOM() {
     }
 }
 
-// Initialize Alpine with tool loading
-document.addEventListener('alpine:init', () => {
+// Initialize Alpine with tool loading (moved to registerAlpineComponents function)
+function registerAllAlpineComponents() {
+    // Register MediaPicker component first
+    MediaPicker.registerAlpineComponent();
+    
     window.Alpine.data('editorToolbar', () => new Toolbar);
     window.Alpine.data('headerToolbar', (editorId) => ({
         toolbarInstance: null,
         canUndo: false,
         canRedo: false,
+        isCollapsed: false,
         
         init() {
             this.toolbarInstance = new HeaderToolbar(editorId);
@@ -155,6 +174,9 @@ document.addEventListener('alpine:init', () => {
                 if (event.detail.editorId === editorId) {
                     this.canUndo = event.detail.canUndo;
                     this.canRedo = event.detail.canRedo;
+                    if (event.detail.hasOwnProperty('isCollapsed')) {
+                        this.isCollapsed = event.detail.isCollapsed;
+                    }
                 }
             });
         },
@@ -180,6 +202,12 @@ document.addEventListener('alpine:init', () => {
         handleSettings() {
             if (this.toolbarInstance) {
                 this.toolbarInstance.handleSettings();
+            }
+        },
+        
+        toggleCollapse() {
+            if (this.toolbarInstance) {
+                this.toolbarInstance.toggleCollapse();
             }
         }
     }));
@@ -934,8 +962,8 @@ document.addEventListener('alpine:init', () => {
         saveCurrentPageContent() {
             return new Promise((resolve) => {
                 const currentPage = this.pages.find(p => p.id === this.currentPageId);
-                if (currentPage && window.alpineEditors?.editorjs) {
-                    const editor = window.alpineEditors.editorjs;
+                if (currentPage && window.alpineEditors?.['alpineblocks-editor']) {
+                    const editor = window.alpineEditors['alpineblocks-editor'];
                     try {
                         // Use the blocksJSON method to get current blocks
                         const blocksData = JSON.parse(editor.blocksJSON());
@@ -954,8 +982,8 @@ document.addEventListener('alpine:init', () => {
         
         loadPageContent(pageId) {
             const page = this.pages.find(p => p.id === pageId);
-            if (page && window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (page && window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     // Clear existing blocks
                     editor.blockManager.blocks = [];
@@ -1002,7 +1030,7 @@ document.addEventListener('alpine:init', () => {
                         // Force settings panel to clear directly
                         document.dispatchEvent(new CustomEvent('settings-updated', {
                             detail: { 
-                                editorId: 'editorjs',
+                                editorId: 'alpineblocks-editor',
                                 settings: [],
                                 blockId: null
                             }
@@ -1097,8 +1125,8 @@ document.addEventListener('alpine:init', () => {
         
         updateCurrentPageBlocks() {
             // Update the current page's blocks with the latest from the editor
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     const currentPage = this.pages.find(p => p.id === this.currentPageId);
                     if (currentPage) {
@@ -1237,8 +1265,8 @@ document.addEventListener('alpine:init', () => {
             if (this.switchingPages) return;
             
             // Focus on the block in the editor
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     const block = editor.blockManager.blocks[blockIndex];
                     if (block) {
@@ -1257,8 +1285,8 @@ document.addEventListener('alpine:init', () => {
         moveBlockUp(blockIndex) {
             if (blockIndex <= 0) return;
             
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     const blocks = editor.blockManager.blocks;
                     if (blocks[blockIndex] && blocks[blockIndex - 1]) {
@@ -1281,8 +1309,8 @@ document.addEventListener('alpine:init', () => {
             const blocks = this.getCurrentPageBlocks();
             if (blockIndex >= blocks.length - 1) return;
             
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     const editorBlocks = editor.blockManager.blocks;
                     if (editorBlocks[blockIndex] && editorBlocks[blockIndex + 1]) {
@@ -1302,8 +1330,8 @@ document.addEventListener('alpine:init', () => {
         },
         
         deleteBlock(blockIndex) {
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 const blocks = editor.blockManager.blocks;
                 if (blocks[blockIndex]) {
                     // Use the modal system for block deletion from page manager
@@ -1320,8 +1348,8 @@ document.addEventListener('alpine:init', () => {
         },
         
         confirmDeleteBlockFromPage(blockIndex) {
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 try {
                     const blocks = editor.blockManager.blocks;
                     if (blocks[blockIndex]) {
@@ -1380,8 +1408,8 @@ document.addEventListener('alpine:init', () => {
         },
         
         addTemplate(template) {
-            if (window.alpineEditors?.editorjs) {
-                const editor = window.alpineEditors.editorjs;
+            if (window.alpineEditors?.['alpineblocks-editor']) {
+                const editor = window.alpineEditors['alpineblocks-editor'];
                 if (editor.editor) {
                     // Create LayoutManager and add the template
                     const layoutManager = new LayoutManager(editor.editor);
@@ -1390,7 +1418,15 @@ document.addEventListener('alpine:init', () => {
             }
         }
     }));
-});
+}
+
+// Register all components immediately when this function is defined
+registerAllAlpineComponents();
+
+// Debug: Log that components are registered
+if (typeof window !== 'undefined' && window.console) {
+    console.log('[AlpineBlocks] All components registered, ready for Alpine.js to start');
+}
 
 // Global media library function
 window.openMediaLibrary = function(blockId, mediaType = 'all') {
@@ -1431,6 +1467,256 @@ window.openMediaLibrary = function(blockId, mediaType = 'all') {
     });
 };
 
+// Global header toolbar helper functions
+window.AlpineBlocks = window.AlpineBlocks || {};
+
+/**
+ * Toggle collapse state for a specific editor or all editors
+ * @param {string} editorId - Editor ID or 'all' for all editors
+ */
+window.AlpineBlocks.toggleCollapse = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) {
+        window.AlpineBlocks.headerToolbar[editorId].toggleCollapse();
+    } else {
+        // Fallback: dispatch event
+        document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+            detail: { editorId, command: 'toggleCollapse' }
+        }));
+    }
+};
+
+/**
+ * Trigger undo for a specific editor
+ * @param {string} editorId - Editor ID
+ */
+window.AlpineBlocks.undo = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) {
+        window.AlpineBlocks.headerToolbar[editorId].undo();
+    } else {
+        document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+            detail: { editorId, command: 'undo' }
+        }));
+    }
+};
+
+/**
+ * Trigger redo for a specific editor
+ * @param {string} editorId - Editor ID
+ */
+window.AlpineBlocks.redo = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) {
+        window.AlpineBlocks.headerToolbar[editorId].redo();
+    } else {
+        document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+            detail: { editorId, command: 'redo' }
+        }));
+    }
+};
+
+/**
+ * Trigger preview for a specific editor
+ * @param {string} editorId - Editor ID
+ */
+window.AlpineBlocks.preview = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) {
+        window.AlpineBlocks.headerToolbar[editorId].preview();
+    } else {
+        document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+            detail: { editorId, command: 'preview' }
+        }));
+    }
+};
+
+/**
+ * Get the current state of the header toolbar
+ * @param {string} editorId - Editor ID
+ * @returns {object} Current state object
+ */
+window.AlpineBlocks.getHeaderState = function(editorId = 'alpineblocks-editor') {
+    if (window.AlpineBlocks.headerToolbar?.[editorId]) {
+        return window.AlpineBlocks.headerToolbar[editorId].getState();
+    }
+    return { canUndo: false, canRedo: false, isCollapsed: false };
+};
+
+/**
+ * Send a custom command to the header toolbar
+ * @param {string} command - Command name
+ * @param {string} editorId - Editor ID
+ * @param {object} data - Optional data
+ */
+window.AlpineBlocks.sendHeaderCommand = function(command, editorId = 'alpineblocks-editor', data = {}) {
+    document.dispatchEvent(new CustomEvent('alpineblocks-header-command', {
+        detail: { editorId, command, data }
+    }));
+};
+
+/**
+ * Get pages array from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Pages array
+ */
+window.AlpineBlocks.getPages = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && component.pages) {
+            return component.pages;
+        }
+    }
+    return [];
+};
+
+/**
+ * Add a new page using the editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {*} Result of addPage method
+ */
+window.AlpineBlocks.addPage = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.addPage === 'function') {
+            return component.addPage();
+        }
+    }
+    return null;
+};
+
+/**
+ * Get current page title from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {string} Current page title
+ */
+window.AlpineBlocks.getCurrentPageTitle = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.getCurrentPageTitle === 'function') {
+            return component.getCurrentPageTitle();
+        }
+    }
+    return '';
+};
+
+/**
+ * Get current page blocks from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Current page blocks
+ */
+window.AlpineBlocks.getCurrentPageBlocks = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.getCurrentPageBlocks === 'function') {
+            return component.getCurrentPageBlocks();
+        }
+    }
+    return [];
+};
+
+/**
+ * Get project settings from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Object} Project settings object
+ */
+window.AlpineBlocks.getProjectSettings = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && component.projectSettings) {
+            return component.projectSettings;
+        }
+    }
+    return {};
+};
+
+/**
+ * Get print defaults array from editorPages component
+ * @param {string} editorId - Editor ID
+ * @returns {Array} Print defaults array
+ */
+window.AlpineBlocks.getPrintDefaults = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && component.printDefaults) {
+            return component.printDefaults;
+        }
+    }
+    return [];
+};
+
+/**
+ * Switch to a specific page
+ * @param {string} pageId - Page ID to switch to
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */
+window.AlpineBlocks.switchToPage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.switchToPage === 'function') {
+            component.switchToPage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Get current page ID
+ * @param {string} editorId - Editor ID
+ * @returns {string} Current page ID
+ */
+window.AlpineBlocks.getCurrentPageId = function(editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && component.currentPageId) {
+            return component.currentPageId;
+        }
+    }
+    return '';
+};
+
+/**
+ * Delete a page
+ * @param {string} pageId - Page ID to delete
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */
+window.AlpineBlocks.deletePage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.deletePage === 'function') {
+            component.deletePage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Rename a page
+ * @param {string} pageId - Page ID to rename
+ * @param {string} editorId - Editor ID
+ * @returns {boolean} Success status
+ */
+window.AlpineBlocks.renamePage = function(pageId, editorId = 'alpineblocks-editor') {
+    const pageElements = document.querySelectorAll('[x-data*="editorPages"]');
+    for (const element of pageElements) {
+        const component = Alpine.$data(element);
+        if (component && typeof component.renamePage === 'function') {
+            component.renamePage(pageId);
+            return true;
+        }
+    }
+    return false;
+};
+
 // Global image upload function
 window.uploadImage = async function(event, blockId) {
     const file = event.target.files[0];
@@ -1463,7 +1749,7 @@ window.uploadImage = async function(event, blockId) {
         
         if (result.success && result.url) {
             // Update the image source
-            const editorInstance = window.alpineEditors?.editorjs;
+            const editorInstance = window.alpineEditors?.['alpineblocks-editor'];
             if (editorInstance) {
                 const block = editorInstance.blocks.find(b => b.id === blockId);
                 if (block) {
@@ -1598,8 +1884,7 @@ export default class AlpineBlocks {
     }
 }
 
-// Start Alpine.js if not already started
-if (!window.Alpine._started) {
-    Alpine.start();
-}
+
+// Components are registered immediately when the registerAllAlpineComponents function is defined
+// Alpine.js will be started externally after all components are registered
 

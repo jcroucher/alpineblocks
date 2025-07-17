@@ -15,6 +15,7 @@ A lightweight, extensible block-based content editor built with Alpine.js. Creat
 - 🎪 **Drag & Drop** - Intuitive block management
 - 💾 **JSON Export** - Easy data handling
 - 🎛️ **Settings Panel** - Real-time block configuration
+- 🔍 **Collapse Mode** - Toggle button to hide editor padding/borders for clean preview
 
 ## Demo
 
@@ -23,8 +24,23 @@ Check out the live demo at [https://jcroucher.github.io/alpineblocks/](https://j
 ## Installation
 
 ```bash
-npm install alpineblocks
+npm install alpineblocks alpinejs
 ```
+
+## ⚠️ Important: Alpine.js Integration
+
+AlpineBlocks requires Alpine.js 3.x as a peer dependency. **The loading order is critical** - AlpineBlocks components must be registered before Alpine.js starts processing the DOM.
+
+### Correct Loading Order:
+```html
+<!-- 1. Load AlpineBlocks FIRST -->
+<script src="path/to/alpineblocks/dist/index.js"></script>
+
+<!-- 2. Then load Alpine.js with defer -->
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+```
+
+For detailed integration instructions, see [ALPINE_INTEGRATION_GUIDE.md](./ALPINE_INTEGRATION_GUIDE.md)
 
 ## Quick Start
 
@@ -38,11 +54,9 @@ npm install alpineblocks
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlpineBlocks Example</title>
     
-    <!-- Include Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
     <!-- Include AlpineBlocks CSS -->
-    <link rel="stylesheet" href="node_modules/alpineblocks/dist/index.css">
+    <link rel="stylesheet" href="node_modules/alpineblocks/dist/editor.css">
+    <link rel="stylesheet" href="node_modules/alpineblocks/dist/frontend.css">
 </head>
 <body>
     <!-- Editor Container -->
@@ -108,8 +122,12 @@ npm install alpineblocks
         </div>
     </div>
     
-    <!-- Include AlpineBlocks -->
+    <!-- IMPORTANT: Load scripts in this exact order -->
+    <!-- 1. AlpineBlocks must load first to register components -->
     <script src="node_modules/alpineblocks/dist/index.js"></script>
+    
+    <!-- 2. Alpine.js loads after and auto-starts with components ready -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </body>
 </html>
 ```
@@ -117,18 +135,42 @@ npm install alpineblocks
 ### 2. ES Module Usage
 
 ```javascript
-// Import AlpineBlocks
-import 'alpineblocks';
-import 'alpineblocks/dist/index.css';
+import Alpine from 'alpinejs';
+import AlpineBlocks from 'alpineblocks';
+import 'alpineblocks/css';
 
-// Alpine.js will automatically register AlpineBlocks components
+// Make Alpine globally available
+window.Alpine = Alpine;
+
+// Create and initialize the editor
+const editor = new AlpineBlocks({
+    holder: document.getElementById('editor'),
+    tools: [
+        { class: 'Paragraph' },
+        { class: 'Header' },
+        { class: 'List' }
+    ]
+});
+
+// Initialize the editor
+await editor.init();
+
+// Start Alpine after everything is ready
+Alpine.start();
 ```
 
 ### 3. CommonJS Usage
 
 ```javascript
-// Import AlpineBlocks
-require('alpineblocks');
+const Alpine = require('alpinejs');
+const AlpineBlocks = require('alpineblocks');
+require('alpineblocks/css');
+
+// Make Alpine globally available
+window.Alpine = Alpine;
+
+// Usage is the same as ES modules
+const editor = new AlpineBlocks({ /* config */ });
 ```
 
 ## Configuration
@@ -306,6 +348,30 @@ npm run build
 
 # Run tests
 npm test
+```
+
+## Troubleshooting
+
+### "Alpine Expression Error: [component] is not defined"
+This error occurs when Alpine.js starts before AlpineBlocks components are registered.
+
+**Solution:** Ensure AlpineBlocks script loads before Alpine.js:
+```html
+<!-- Correct order -->
+<script src="alpineblocks.js"></script>
+<script src="alpine.js" defer></script>
+```
+
+### Components not working in development server
+When using Parcel, Webpack, or other bundlers, you need manual control over Alpine initialization.
+
+**Solution:** See the [ES Module Usage](#2-es-module-usage) section above or check [ALPINE_INTEGRATION_GUIDE.md](./ALPINE_INTEGRATION_GUIDE.md)
+
+### Styles not loading
+Make sure to include both CSS files:
+```html
+<link rel="stylesheet" href="path/to/editor.css">    <!-- Editor UI styles -->
+<link rel="stylesheet" href="path/to/frontend.css">  <!-- Block content styles -->
 ```
 
 ## Contributing

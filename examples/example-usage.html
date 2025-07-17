@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlpineBlocks - Simple Example</title>
     
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- AlpineBlocks CSS -->
-    <link rel="stylesheet" href="./dist/index.css">
+    <link rel="stylesheet" href="../dist/editor.css">
+    <link rel="stylesheet" href="../dist/frontend.css">
     
     <style>
         body {
@@ -112,6 +111,28 @@
             border-color: #3b82f6;
         }
         
+        .drop-indicator {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #3b82f6;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .drop-indicator-top {
+            top: -1px;
+        }
+        
+        .drop-indicator-bottom {
+            bottom: -1px;
+        }
+        
+        .drop-indicator.active {
+            opacity: 1;
+        }
+        
         .block-remove-btn {
             position: absolute;
             top: 8px;
@@ -176,7 +197,7 @@
     <div class="container">
         <div class="header">
             <h1>AlpineBlocks - Simple Example</h1>
-            <p>A lightweight block editor built with Alpine.js</p>
+            <p>A lightweight block editor built with Alpine.js....</p>
         </div>
         
         <div class="editor-layout">
@@ -185,7 +206,7 @@
                 <div class="panel-header">Tools</div>
                 <div class="panel-content">
                     <div id="toolbar" x-data="editorToolbar()">
-                        <template x-for="tool in tools" :key="tool.name">
+                        <template x-for="tool in tools" :key="tool.class">
                             <div class="tool-item" 
                                  draggable="true"
                                  @dragstart="handleDragStart($event, tool)">
@@ -201,28 +222,22 @@
             <div class="panel">
                 <div class="panel-header">Editor</div>
                 <div class="editor-content" 
-                     id="editor" 
-                     x-data="alpineEditor({
-                         tools: [
-                             { 
-                                 class: 'Paragraph', 
-                                 config: { content: 'Welcome to AlpineBlocks! This is a simple paragraph block.' } 
-                             },
-                             { 
-                                 class: 'Header', 
-                                 config: { content: 'Getting Started', level: 'h2' } 
-                             },
-                             { 
-                                 class: 'List', 
-                                 config: { content: '<li>Drag blocks from the left panel</li><li>Click on blocks to select them</li><li>Use the settings panel to configure blocks</li>', type: 'ul' } 
-                             }
-                         ]
-                     })">
+                     id="alpineblocks-editor"
+                     x-data="alpineEditor()">
                     
-                    <template x-for="block in blocks" :key="block.id">
+                    <template x-for="(block, index) in getEditorBlocks()" :key="block.id">
                         <div class="ab-block" 
                              @click="setActive($event, block.id)"
-                             :class="{ 'selected': selectedBlock === block.id }">
+                             :class="{ 'selected': selectedBlock === block.id }"
+                             @dragover="handleDragOver($event, block.id)"
+                             @dragleave="handleDragLeave($event, block.id)"
+                             @drop="handleDrop($event, hoveredTarget[block.id], block.id)">
+                            
+                            <!-- Drop indicators -->
+                            <div class="drop-indicator drop-indicator-top" 
+                                 :class="{ 'active': hoveredTarget[block.id] === 'top' }"></div>
+                            <div class="drop-indicator drop-indicator-bottom" 
+                                 :class="{ 'active': hoveredTarget[block.id] === 'bottom' }"></div>
                             
                             <!-- Remove Button -->
                             <button class="block-remove-btn" 
@@ -240,8 +255,11 @@
                 <div class="panel-header">Settings</div>
                 <div class="panel-content" 
                      id="settings" 
-                     x-data="editorSettings('editor', {})">
-                    <template x-for="setting in settings" :key="setting.name">
+                     x-data="editorSettings('alpineblocks-editor', {})">
+                    <div x-show="settings.length === 0" class="no-selection">
+                        <p style="text-align: center; color: #9ca3af; margin-top: 20px;">Select a block to edit its settings</p>
+                    </div>
+                    <template x-for="(setting, index) in settings" :key="`${currentBlockId}-${setting.name}-${index}`">
                         <div class="settings-field">
                             <label x-text="setting.label || setting.name"></label>
                             <div x-html="setting.html"></div>
@@ -254,7 +272,7 @@
         <!-- JSON Output -->
         <div class="json-output" x-data="{ jsonOutput: '[]' }" 
              x-init="setInterval(() => {
-                 const editorEl = document.getElementById('editor');
+                 const editorEl = document.getElementById('alpineblocks-editor');
                  if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
                      jsonOutput = editorEl._x_dataStack[0].blocksJSON();
                  }
@@ -264,7 +282,33 @@
         </div>
     </div>
     
-    <!-- Include AlpineBlocks -->
-    <script src="./dist/index.js"></script>
+    <!-- This example requires the Parcel dev server to handle ES modules -->
+    <!-- Run: npm run dev -->
+    <!-- Then open: http://localhost:1234/example-usage.html -->
+    
+    <!-- Load AlpineBlocks and Alpine.js with correct loading order -->
+    <script type="module">
+        // Use an async function to handle the initialization
+        async function initializeAlpineBlocks() {
+            // Import Alpine.js from node_modules
+            const Alpine = await import('../node_modules/alpinejs/dist/module.esm.js');
+            
+            // Make Alpine available globally
+            window.Alpine = Alpine.default;
+            
+            // Import AlpineBlocks to register all components BEFORE starting Alpine
+            await import('../src/index.js');
+            
+            console.log('AlpineBlocks loaded successfully!');
+            
+            // Start Alpine manually after all components are registered
+            Alpine.default.start();
+        }
+        
+        // Initialize everything
+        initializeAlpineBlocks().catch(error => {
+            console.error('Failed to initialize AlpineBlocks:', error);
+        });
+    </script>
 </body>
 </html>

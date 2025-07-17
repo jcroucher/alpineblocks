@@ -84,10 +84,22 @@ export class Editor {
         this.setupKeyboardShortcuts();
 
         this.$nextTick(() => {
-            this.$dispatch('editor-ready', { id: this.id });
+            // Log build info for debugging
+            const buildId = 'AB-2025-01-17-002';
+            console.log(`AlpineBlocks Editor initialized - Build: ${buildId}, Editor ID: ${this.id}`);
+            console.log('Available methods:', {
+                undo: typeof this.undo,
+                redo: typeof this.redo,
+                toggleCollapse: typeof this.toggleCollapse,
+                preview: typeof this.preview,
+                canUndo: typeof this.canUndo,
+                canRedo: typeof this.canRedo
+            });
+            
+            this.$dispatch('editor-ready', { id: this.id, buildId });
             // Also dispatch globally
             document.dispatchEvent(new CustomEvent('editor-ready', {
-                detail: { id: this.id }
+                detail: { id: this.id, buildId }
             }));
         });
     }
@@ -157,6 +169,33 @@ export class Editor {
      */
     getHistoryStatus() {
         return this.historyManager.getStatus();
+    }
+
+    /**
+     * Toggle collapsed state - removes/adds editor padding and borders
+     * @returns {boolean} New collapsed state
+     */
+    toggleCollapse() {
+        if (this.headerToolbar) {
+            this.headerToolbar.toggleCollapse();
+            return this.headerToolbar.isCollapsed;
+        }
+        return false;
+    }
+
+    /**
+     * Trigger preview mode
+     * @returns {Object} Preview data with content and JSON
+     */
+    preview() {
+        if (this.headerToolbar) {
+            this.headerToolbar.handlePreview();
+            return {
+                content: this.getCleanContent ? this.getCleanContent() : this.getEditorContent(),
+                json: this.blocksJSON()
+            };
+        }
+        return null;
     }
 
     /**

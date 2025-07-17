@@ -212,11 +212,12 @@ export class MediaPicker {
     }
 
     /**
-     * Bind Alpine.js data and events
+     * Register Alpine.js component globally
      */
-    bindEvents() {
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('mediaPicker', () => ({
+    static registerAlpineComponent() {
+        if (window.Alpine && window.Alpine.data && !MediaPicker._registered) {
+            MediaPicker._registered = true;
+            window.Alpine.data('mediaPicker', () => ({
                 isOpen: false,
                 isLoading: false,
                 items: [],
@@ -224,7 +225,7 @@ export class MediaPicker {
                 currentPath: '/',
                 currentFilter: 'all',
                 selectedItem: null,
-                config: this.config,
+                config: { allowUpload: true },
                 showUploadPanel: false,
                 uploadProgress: 0,
                 dragOver: false,
@@ -251,8 +252,8 @@ export class MediaPicker {
                 },
 
                 async loadItems(path) {
-                    if (!this.config.apiUrl) {
-                        console.error('No API URL configured for media picker');
+                    if (!this.config.browse) {
+                        console.error('No browse URL configured for media picker');
                         return;
                     }
 
@@ -261,7 +262,7 @@ export class MediaPicker {
                     this.updateBreadcrumbs(path);
 
                     try {
-                        const response = await fetch(`${this.config.apiUrl}/browse`, {
+                        const response = await fetch(this.config.browse, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -297,25 +298,23 @@ export class MediaPicker {
                     }));
                 },
 
-                async navigateToPath(path) {
-                    await this.loadItems(path);
+                navigateToPath(path) {
+                    this.loadItems(path);
                 },
 
-                async navigateToBreadcrumb(index) {
-                    const crumb = this.breadcrumbs[index];
-                    if (crumb) {
-                        await this.loadItems(crumb.path);
-                    }
+                navigateToBreadcrumb(index) {
+                    const path = this.breadcrumbs[index].path;
+                    this.loadItems(path);
                 },
 
-                async filterByType(type) {
+                filterByType(type) {
                     this.currentFilter = type;
-                    await this.loadItems(this.currentPath);
+                    this.loadItems(this.currentPath);
                 },
 
                 selectItem(item) {
                     if (item.type === 'folder') {
-                        this.navigateToPath(item.path);
+                        this.loadItems(item.path);
                     } else {
                         this.selectedItem = item;
                     }
@@ -324,12 +323,16 @@ export class MediaPicker {
                 confirmSelection() {
                     if (this.selectedItem && this.config.onSelect) {
                         this.config.onSelect(this.selectedItem);
-                        this.close();
                     }
+                    this.close();
                 },
 
                 showUpload() {
-                    this.showUploadPanel = !this.showUploadPanel;
+                    this.showUploadPanel = true;
+                },
+
+                hideUpload() {
+                    this.showUploadPanel = false;
                 },
 
                 handleDrop(event) {
@@ -344,49 +347,57 @@ export class MediaPicker {
                 },
 
                 async uploadFiles(files) {
-                    if (!this.config.apiUrl || files.length === 0) return;
+                    if (!this.config.upload) {
+                        console.error('No upload URL configured');
+                        return;
+                    }
 
-                    const formData = new FormData();
-                    files.forEach(file => {
-                        formData.append('files', file);
-                    });
-                    formData.append('path', this.currentPath);
+                    for (const file of files) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('path', this.currentPath);
 
-                    try {
-                        const xhr = new XMLHttpRequest();
-                        
-                        xhr.upload.addEventListener('progress', (e) => {
-                            if (e.lengthComputable) {
-                                this.uploadProgress = Math.round((e.loaded / e.total) * 100);
-                            }
-                        });
-
-                        xhr.addEventListener('load', () => {
-                            if (xhr.status === 200) {
-                                const response = JSON.parse(xhr.responseText);
-                                if (this.config.onUpload) {
-                                    this.config.onUpload(response);
-                                }
-                                this.uploadProgress = 0;
-                                this.showUploadPanel = false;
-                                this.loadItems(this.currentPath);
-                            }
-                        });
-
-                        xhr.addEventListener('error', () => {
-                            console.error('Upload failed');
                             this.uploadProgress = 0;
-                        });
 
-                        xhr.open('POST', `${this.config.apiUrl}/upload`);
-                        xhr.send(formData);
-                    } catch (error) {
-                        console.error('Error uploading files:', error);
-                        this.uploadProgress = 0;
+                            const xhr = new XMLHttpRequest();
+
+                            xhr.upload.addEventListener('progress', (event) => {
+                                if (event.lengthComputable) {
+                                    this.uploadProgress = Math.round((event.loaded / event.total) * 100);
+                                }
+                            });
+
+                            xhr.addEventListener('load', () => {
+                                if (xhr.status === 200) {
+                                    this.uploadProgress = 0;
+                                    this.loadItems(this.currentPath); // Refresh the list
+                                    if (this.config.onUpload) {
+                                        this.config.onUpload(JSON.parse(xhr.responseText));
+                                    }
+                                }
+                            });
+
+                            xhr.open('POST', this.config.upload);
+                            xhr.send(formData);
+                        } catch (error) {
+                            console.error('Error uploading files:', error);
+                            this.uploadProgress = 0;
+                        }
                     }
                 }
             }));
-        });
+        }
+    }
+
+    /**
+     * Bind Alpine.js data and events
+     */
+    bindEvents() {
+        // Register the component if not already registered
+        if (!MediaPicker._registered) {
+            MediaPicker.registerAlpineComponent();
+        }
     }
 
     /**
