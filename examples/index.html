@@ -756,18 +756,41 @@
                             
                         </div> 
                         
-                        <!-- JSON Output Section -->
-                        <div class="mt-16" x-data="{ jsonOutput: '[]' }" 
+                        <!-- JSON and HTML Output Section -->
+                        <div class="mt-16" x-data="{ jsonOutput: '[]', htmlOutput: '' }" 
                              x-init="setInterval(() => {
                                  const editorEl = document.getElementById('alpineblocks-editor');
-                                 if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0].blocksJSON) {
-                                     jsonOutput = editorEl._x_dataStack[0].blocksJSON();
+                                 if (editorEl && editorEl._x_dataStack && editorEl._x_dataStack[0]) {
+                                     // Get JSON output
+                                     if (editorEl._x_dataStack[0].blocksJSON) {
+                                         jsonOutput = editorEl._x_dataStack[0].blocksJSON();
+                                     }
+                                     // Get HTML output
+                                     if (editorEl._x_dataStack[0].getCleanHTML) {
+                                         htmlOutput = editorEl._x_dataStack[0].getCleanHTML();
+                                     }
                                  }
                              }, 1000)">
-                            <h2 class="text-center text-2xl font-bold text-white mb-6">Live JSON Output</h2>
+                            <h2 class="text-center text-2xl font-bold text-white mb-6">Live Output</h2>
                             <p class="text-center text-gray-300 mb-8">This updates automatically as you edit blocks in the demo above</p>
-                            <div class="bg-gray-900 rounded-lg p-6 max-w-4xl mx-auto max-h-96 overflow-y-auto">
-                                <pre class="text-green-400 font-mono text-sm"><code class="json hljs" x-text="jsonOutput"></code></pre>
+                            
+                            <!-- Two column layout for JSON and HTML -->
+                            <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- JSON Output Column -->
+                                <div>
+                                    <h3 class="text-xl font-semibold text-white mb-4">JSON Output</h3>
+                                    <div class="bg-gray-900 rounded-lg p-6 max-h-96 overflow-y-auto">
+                                        <pre class="text-green-400 font-mono text-sm"><code class="json hljs" x-text="jsonOutput"></code></pre>
+                                    </div>
+                                </div>
+                                
+                                <!-- HTML Output Column -->
+                                <div>
+                                    <h3 class="text-xl font-semibold text-white mb-4">HTML Output</h3>
+                                    <div class="bg-gray-900 rounded-lg p-6 max-h-96 overflow-y-auto">
+                                        <pre class="text-blue-400 font-mono text-sm"><code class="html hljs" x-text="htmlOutput"></code></pre>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

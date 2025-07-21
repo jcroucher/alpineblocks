@@ -421,9 +421,9 @@ export function registerAlpineComponents() {
         getCleanHTML() {
             if (!this.editor) return '';
             
-            // Use the editor's getEditorContent method which calls renderBlocks
-            if (typeof this.editor.getEditorContent === 'function') {
-                return this.editor.getEditorContent();
+            // Use the editor's getCleanContent method which calls renderCleanBlocks
+            if (typeof this.editor.getCleanContent === 'function') {
+                return this.editor.getCleanContent();
             }
             
             // Fallback: manually render blocks

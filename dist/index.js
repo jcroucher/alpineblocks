@@ -7168,8 +7168,8 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
             // Export clean HTML content without editor UI
             getCleanHTML () {
                 if (!this.editor) return '';
-                // Use the editor's getEditorContent method which calls renderBlocks
-                if (typeof this.editor.getEditorContent === 'function') return this.editor.getEditorContent();
+                // Use the editor's getCleanContent method which calls renderCleanBlocks
+                if (typeof this.editor.getCleanContent === 'function') return this.editor.getCleanContent();
                 // Fallback: manually render blocks
                 return this.editor.blocks.map((block)=>{
                     if (typeof block.render === 'function') return block.render();
