@@ -31,7 +31,13 @@ export class BlockManager {
     }
 
     renderCleanBlocks() {
-        return this.blocks.map(block => block.render()).join('');
+        return this.blocks.map(block => {
+            const blockClass = block.class || block.type || 'block';
+            const blockId = block.id || '';
+            const renderedContent = block.render();
+            // Wrap each block in a div with class and data-block-id
+            return `<div class="block-wrapper block-${blockClass.toLowerCase()}" data-block-id="${blockId}">${renderedContent}</div>`;
+        }).join('\n');
     }
 
     triggerRedraw() {
