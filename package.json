@@ -1,6 +1,6 @@
 {
   "name": "alpineblocks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight, extensible block-based content editor built with Alpine.js",
   "source": "src/index.js",
   "main": "dist/index.js",

@@ -1395,7 +1395,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             }" 
             x-show="show" 
             @click="show = false"
-            style="display: none;">
+            x-cloak>
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
                     <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
@@ -1492,7 +1492,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             }" 
             x-show="show" 
             @click="show = false"
-            style="display: none;">
+            x-cloak>
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
                     <!-- Edit Icon -->
@@ -8197,6 +8197,48 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
         }
         return false;
     };
+    /**
+   * Load content into the editor from JSON data
+   * @param {Array|String|Object} blocksData - Blocks data to load (array, JSON string, or object with blocks property)
+   * @param {string} editorId - Editor ID (defaults to 'alpineblocks-editor')
+   * @returns {boolean} Success status
+   */ window.AlpineBlocks.loadContent = function(blocksData, editorId = 'alpineblocks-editor') {
+        const editor = window.alpineEditors?.[editorId];
+        if (!editor) {
+            console.error(`AlpineBlocks: Editor with id '${editorId}' not found`);
+            return false;
+        }
+        // Parse blocks data if it's a string
+        let blocks = blocksData;
+        if (typeof blocksData === 'string') try {
+            blocks = JSON.parse(blocksData);
+        } catch (e) {
+            console.error('AlpineBlocks: Failed to parse blocks data:', e);
+            return false;
+        }
+        // Ensure blocks is an array
+        if (!Array.isArray(blocks)) blocks = blocks?.blocks || [];
+        // Clear existing blocks
+        editor.blockManager.blocks = [];
+        // Create blocks from saved data
+        if (blocks && blocks.length > 0) blocks.forEach((blockData)=>{
+            const blockClass = blockData.class || blockData.type || 'Paragraph';
+            // Only create block if tool exists
+            if (blockClass && editor.toolConfig[blockClass]) {
+                const block = editor.initBlock(blockClass, true, blockData.id);
+                // Apply saved configuration
+                if (block && blockData.data) Object.assign(block.config, blockData.data);
+            }
+        });
+        // Add default paragraph if no blocks loaded
+        if (editor.blockManager.blocks.length === 0 && editor.toolConfig['Paragraph']) editor.initBlock('Paragraph', true);
+        // Dispatch events
+        document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+        setTimeout(()=>{
+            document.dispatchEvent(new CustomEvent('editor-changed'));
+        }, 100);
+        return true;
+    };
 }
 
 
@@ -8269,6 +8311,43 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
             });
         }
         return this.instance.getCleanHTML();
+    }
+    /**
+   * Load content into the editor
+   * @param {Array|String|Object} blocksData - Blocks data to load
+   * @returns {boolean} Success status
+   */ loadContent(blocksData) {
+        if (!this.instance) throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        // Parse blocks data if it's a string
+        let blocks = blocksData;
+        if (typeof blocksData === 'string') try {
+            blocks = JSON.parse(blocksData);
+        } catch (e) {
+            console.error('AlpineBlocks: Failed to parse blocks data:', e);
+            return false;
+        }
+        // Ensure blocks is an array
+        if (!Array.isArray(blocks)) blocks = blocks?.blocks || [];
+        // Clear existing blocks
+        this.instance.blockManager.blocks = [];
+        // Create blocks from saved data
+        if (blocks && blocks.length > 0) blocks.forEach((blockData)=>{
+            const blockClass = blockData.class || blockData.type || 'Paragraph';
+            // Only create block if tool exists
+            if (blockClass && this.instance.toolConfig[blockClass]) {
+                const block = this.instance.initBlock(blockClass, true, blockData.id);
+                // Apply saved configuration
+                if (block && blockData.data) Object.assign(block.config, blockData.data);
+            }
+        });
+        // Add default paragraph if no blocks loaded
+        if (this.instance.blockManager.blocks.length === 0 && this.instance.toolConfig['Paragraph']) this.instance.initBlock('Paragraph', true);
+        // Dispatch events
+        document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+        setTimeout(()=>{
+            document.dispatchEvent(new CustomEvent('editor-changed'));
+        }, 100);
+        return true;
     }
     getHTML() {
         if (!this.instance) throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');

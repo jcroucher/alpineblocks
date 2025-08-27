@@ -96,6 +96,67 @@ export default class AlpineBlocks {
         return this.instance.getCleanHTML();
     }
 
+    /**
+     * Load content into the editor
+     * @param {Array|String|Object} blocksData - Blocks data to load
+     * @returns {boolean} Success status
+     */
+    loadContent(blocksData) {
+        if (!this.instance) {
+            throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
+        }
+        
+        // Parse blocks data if it's a string
+        let blocks = blocksData;
+        if (typeof blocksData === 'string') {
+            try {
+                blocks = JSON.parse(blocksData);
+            } catch (e) {
+                console.error('AlpineBlocks: Failed to parse blocks data:', e);
+                return false;
+            }
+        }
+        
+        // Ensure blocks is an array
+        if (!Array.isArray(blocks)) {
+            blocks = blocks?.blocks || [];
+        }
+        
+        // Clear existing blocks
+        this.instance.blockManager.blocks = [];
+        
+        // Create blocks from saved data
+        if (blocks && blocks.length > 0) {
+            blocks.forEach(blockData => {
+                const blockClass = blockData.class || blockData.type || 'Paragraph';
+                
+                // Only create block if tool exists
+                if (blockClass && this.instance.toolConfig[blockClass]) {
+                    const block = this.instance.initBlock(blockClass, true, blockData.id);
+                    
+                    // Apply saved configuration
+                    if (block && blockData.data) {
+                        Object.assign(block.config, blockData.data);
+                    }
+                }
+            });
+        }
+        
+        // Add default paragraph if no blocks loaded
+        if (this.instance.blockManager.blocks.length === 0 && this.instance.toolConfig['Paragraph']) {
+            this.instance.initBlock('Paragraph', true);
+        }
+        
+        // Dispatch events
+        document.dispatchEvent(new CustomEvent('editor-clear-selection'));
+        
+        setTimeout(() => {
+            document.dispatchEvent(new CustomEvent('editor-changed'));
+        }, 100);
+        
+        return true;
+    }
+
     getHTML() {
         if (!this.instance) {
             throw new Error('AlpineBlocks: Editor not initialized. Call init() first.');
