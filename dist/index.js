@@ -1738,24 +1738,11 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Block not found:', block_id);
             return;
         }
-        console.log('[Settings.trigger] Checking property:', property, 'on block class:', block.class || block.constructor.name);
-        console.log('[Settings.trigger] block[property] type:', typeof block[property]);
-        console.log('[Settings.trigger] prototype[property] type:', typeof block.constructor.prototype[property]);
-        if (typeof block[property] === 'function') {
-            console.log('[Settings.trigger] Calling block[property] directly');
-            block[property](value);
-        } else if (typeof block.constructor.prototype[property] === 'function') {
-            console.log('[Settings.trigger] Calling prototype[property]');
-            block.constructor.prototype[property].call(block, value);
-        } else if (property === 'columnCount' && typeof block.constructor.prototype.updateColumnCount === 'function') {
-            console.log('[Settings.trigger] Calling updateColumnCount fallback');
-            block.constructor.prototype.updateColumnCount.call(block, value);
-        } else if (block.config && block.config.hasOwnProperty(property)) {
-            console.log('[Settings.trigger] Setting config property');
+        if (typeof block[property] === 'function') block[property](value);
+        else if (block.config && block.config.hasOwnProperty(property)) {
             block.config[property] = value;
             block.triggerRedraw();
         } else {
-            console.log('[Settings.trigger] Setting direct property');
             block[property] = value;
             if (block.triggerRedraw) block.triggerRedraw();
         }
@@ -5353,14 +5340,22 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                 name: 'columnCount',
                 label: 'Column Layout',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'columnCount', $event.target.value)">
-                    <option value="2" ${currentColumnCount === 2 ? 'selected' : ''}>Two Columns</option>
-                    <option value="3" ${currentColumnCount === 3 ? 'selected' : ''}>Three Columns</option>
-                    <option value="4" ${currentColumnCount === 4 ? 'selected' : ''}>Four Columns</option>
-                    <option value="custom" ${![
-                    2,
-                    3,
-                    4
-                ].includes(currentColumnCount) ? 'selected' : ''}>Custom</option>
+                    <option value="1" ${currentColumnCount === 1 ? 'selected' : ''}>1 column - 1/12</option>
+                    <option value="2" ${currentColumnCount === 2 ? 'selected' : ''}>2 columns - 1/6</option>
+                    <option value="3" ${currentColumnCount === 3 ? 'selected' : ''}>3 columns - 1/4</option>
+                    <option value="4" ${currentColumnCount === 4 ? 'selected' : ''}>4 columns - 1/3</option>
+                    <option value="5" ${currentColumnCount === 5 ? 'selected' : ''}>5 columns - 5/12</option>
+                    <option value="6" ${currentColumnCount === 6 ? 'selected' : ''}>6 columns - 1/2</option>
+                    <option value="7" ${currentColumnCount === 7 ? 'selected' : ''}>7 columns - 7/12</option>
+                    <option value="8" ${currentColumnCount === 8 ? 'selected' : ''}>8 columns - 2/3</option>
+                    <option value="9" ${currentColumnCount === 9 ? 'selected' : ''}>9 columns - 3/4</option>
+                    <option value="10" ${currentColumnCount === 10 ? 'selected' : ''}>10 columns - 5/6</option>
+                    <option value="11" ${currentColumnCount === 11 ? 'selected' : ''}>11 columns - 11/12</option>
+                    <option value="12" ${currentColumnCount === 12 ? 'selected' : ''}>12 columns - 1/1</option>
+                    <option value="20%" ${this.isPercentageLayout('20%') ? 'selected' : ''}>20% - 1/5</option>
+                    <option value="40%" ${this.isPercentageLayout('40%') ? 'selected' : ''}>40% - 2/5</option>
+                    <option value="60%" ${this.isPercentageLayout('60%') ? 'selected' : ''}>60% - 3/5</option>
+                    <option value="80%" ${this.isPercentageLayout('80%') ? 'selected' : ''}>80% - 4/5</option>
                 </select>`
             },
             {
@@ -5400,6 +5395,14 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
             }
         ];
     }
+    /**
+   * Check if the current layout matches a percentage-based layout
+   * @param {string} percentage - The percentage to check (e.g., '20%', '40%')
+   * @returns {boolean} True if the current layout matches the percentage
+   */ isPercentageLayout(percentage) {
+        if (this.config.columns.length !== 1) return false;
+        return this.config.columns[0].width === percentage;
+    }
     static toolbox() {
         return {
             name: 'Columns',
@@ -5409,20 +5412,35 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
         };
     }
     /**
-   * Update the number of columns
-   * @param {string|number} count - The number of columns to create
+   * Update the number of columns or set percentage-based width
+   * @param {string|number} count - The number of columns to create or percentage value
    */ columnCount(count) {
-        console.log('[Columns.columnCount] Called with:', count);
-        if (count === 'custom') return;
+        // Handle percentage-based layouts
+        if (typeof count === 'string' && count.endsWith('%')) {
+            this.config.columns = [
+                {
+                    blocks: this.config.columns[0]?.blocks || [],
+                    width: count
+                }
+            ];
+            this.triggerRedraw();
+            if (this.editor && this.editor.selectedBlock === this.id) document.dispatchEvent(new CustomEvent('editor-block-changed', {
+                detail: {
+                    block_id: this.id
+                }
+            }));
+            return;
+        }
+        // Handle numeric column counts
+        const numColumns = parseInt(count);
         const newColumns = [];
-        for(let i = 0; i < parseInt(count); i++)newColumns.push({
-            blocks: [],
+        // Preserve existing blocks when possible
+        for(let i = 0; i < numColumns; i++)newColumns.push({
+            blocks: this.config.columns[i]?.blocks || [],
             width: '1fr'
         });
-        console.log('[Columns.columnCount] Creating', newColumns.length, 'columns');
         this.config.columns = newColumns;
         this.triggerRedraw();
-        console.log('[Columns.columnCount] Redraw triggered');
         // Trigger settings refresh to update the dropdown
         if (this.editor && this.editor.selectedBlock === this.id) document.dispatchEvent(new CustomEvent('editor-block-changed', {
             detail: {
@@ -6823,29 +6841,22 @@ var $981f6cf7cc85cc93$export$2e2bcd8739ae039 = $981f6cf7cc85cc93$var$Button;
 
 
 // Tool modules registry
-// Order determines toolbar display order
 const $b17ae581ae35a84e$export$1c6f616578103705 = {
-    Columns: // Content tools
-    $02817afdb34def6d$export$2e2bcd8739ae039,
+    Paragraph: $80c6fdb5c294ffa6$export$2e2bcd8739ae039,
     Header: $de5191df6222c084$export$2e2bcd8739ae039,
-    WYSIWYG: $56ed62fe01aa8034$export$2e2bcd8739ae039,
-    Button: // Rich text
-    $981f6cf7cc85cc93$export$2e2bcd8739ae039,
+    List: $db7363abc9a57c89$export$2e2bcd8739ae039,
+    Code: $f832c373f6c04470$export$2e2bcd8739ae039,
+    Image: $27011ebc47b257c8$export$2e2bcd8739ae039,
     Quote: $3c596c9f1e11bbb7$export$2e2bcd8739ae039,
-    Delimiter: $e5fc3b2383ff720a$export$2e2bcd8739ae039,
-    Image: // Media tools
-    $27011ebc47b257c8$export$2e2bcd8739ae039,
+    WYSIWYG: $56ed62fe01aa8034$export$2e2bcd8739ae039,
+    Alert: $c6b5f9fc4fa47998$export$2e2bcd8739ae039,
     VideoPlayer: $4399172a73dade70$export$2e2bcd8739ae039,
     AudioPlayer: $6ddc38c087d52cba$export$2e2bcd8739ae039,
-    Carousel: // Interactive tools
-    $06ccccc81b3eddf4$export$2e2bcd8739ae039,
-    Alert: $c6b5f9fc4fa47998$export$2e2bcd8739ae039,
-    Raw: // Advanced tools
-    $dbf99af480fb2d13$export$2e2bcd8739ae039,
-    Paragraph: // Legacy/hidden tools (not shown in toolbar by default)
-    $80c6fdb5c294ffa6$export$2e2bcd8739ae039,
-    List: $db7363abc9a57c89$export$2e2bcd8739ae039,
-    Code: $f832c373f6c04470$export$2e2bcd8739ae039
+    Carousel: $06ccccc81b3eddf4$export$2e2bcd8739ae039,
+    Columns: $02817afdb34def6d$export$2e2bcd8739ae039,
+    Raw: $dbf99af480fb2d13$export$2e2bcd8739ae039,
+    Delimiter: $e5fc3b2383ff720a$export$2e2bcd8739ae039,
+    Button: $981f6cf7cc85cc93$export$2e2bcd8739ae039
 };
 function $b17ae581ae35a84e$export$9040e3cbd6c7ffef() {
     const config = {};
