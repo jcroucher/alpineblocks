@@ -17,22 +17,28 @@ import Button from '../tools/Button';
 import { Debug } from './utils/Debug';
 
 // Tool modules registry
+// Order determines toolbar display order
 const toolModules = {
-    Paragraph,
+    // Content tools
+    Columns,
     Header,
-    List,
-    Code,
-    Image,
+    WYSIWYG,    // Rich text
+    Button,
     Quote,
-    WYSIWYG,
-    Alert,
+    Delimiter,
+    // Media tools
+    Image,
     VideoPlayer,
     AudioPlayer,
+    // Interactive tools
     Carousel,
-    Columns,
+    Alert,
+    // Advanced tools
     Raw,
-    Delimiter,
-    Button
+    // Legacy/hidden tools (not shown in toolbar by default)
+    Paragraph,
+    List,
+    Code
 };
 
 /**
