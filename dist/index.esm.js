@@ -1071,6 +1071,12 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         }
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
+        // Check for template drag data and merge it into config
+        if (window.templateDragData && window.templateDragData.type === blockName) {
+            Object.assign(config, window.templateDragData.config);
+            // Clear the template drag data after use
+            window.templateDragData = null;
+        }
         const newBlock = new BlockClass({
             id: existingId || (0, $c9716fc55d08135c$export$567fc7097e064344)(),
             updateFunction: this.updateFunction.bind(this),
@@ -6773,22 +6779,29 @@ var $ff02aedcfec75f6b$export$2e2bcd8739ae039 = $ff02aedcfec75f6b$var$Button;
 
 
 // Tool modules registry
+// Order determines toolbar display order
 const $54dbff4655f90a4d$export$1c6f616578103705 = {
-    Paragraph: $4672dcc6140b9c43$export$2e2bcd8739ae039,
+    Columns: // Content tools
+    $caf1e97d18e29b9d$export$2e2bcd8739ae039,
     Header: $33963d57131b26df$export$2e2bcd8739ae039,
-    List: $84a8a2891314e8a4$export$2e2bcd8739ae039,
-    Code: $5946ce6f8e5f3f11$export$2e2bcd8739ae039,
-    Image: $89b22059272e1d27$export$2e2bcd8739ae039,
-    Quote: $56e8ed795405fb5c$export$2e2bcd8739ae039,
     WYSIWYG: $806caca8705a7215$export$2e2bcd8739ae039,
-    Alert: $18282cbdca00d23e$export$2e2bcd8739ae039,
+    Button: // Rich text
+    $ff02aedcfec75f6b$export$2e2bcd8739ae039,
+    Quote: $56e8ed795405fb5c$export$2e2bcd8739ae039,
+    Delimiter: $fd39480e8716551f$export$2e2bcd8739ae039,
+    Image: // Media tools
+    $89b22059272e1d27$export$2e2bcd8739ae039,
     VideoPlayer: $1d78d83887e524f6$export$2e2bcd8739ae039,
     AudioPlayer: $b7a015afcd00e44f$export$2e2bcd8739ae039,
-    Carousel: $5158dfa5f71afbd5$export$2e2bcd8739ae039,
-    Columns: $caf1e97d18e29b9d$export$2e2bcd8739ae039,
-    Raw: $08ab3851bf56e43b$export$2e2bcd8739ae039,
-    Delimiter: $fd39480e8716551f$export$2e2bcd8739ae039,
-    Button: $ff02aedcfec75f6b$export$2e2bcd8739ae039
+    Carousel: // Interactive tools
+    $5158dfa5f71afbd5$export$2e2bcd8739ae039,
+    Alert: $18282cbdca00d23e$export$2e2bcd8739ae039,
+    Raw: // Advanced tools
+    $08ab3851bf56e43b$export$2e2bcd8739ae039,
+    Paragraph: // Legacy/hidden tools (not shown in toolbar by default)
+    $4672dcc6140b9c43$export$2e2bcd8739ae039,
+    List: $84a8a2891314e8a4$export$2e2bcd8739ae039,
+    Code: $5946ce6f8e5f3f11$export$2e2bcd8739ae039
 };
 function $54dbff4655f90a4d$export$9040e3cbd6c7ffef() {
     const config = {};
