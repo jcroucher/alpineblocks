@@ -1,6 +1,6 @@
 {
   "name": "alpineblocks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight, extensible block-based content editor built with Alpine.js",
   "source": "src/index.js",
   "main": "dist/index.js",
@@ -21,6 +21,7 @@
     "copy-css": "cp src/frontend.css dist/ && cp src/editor.css dist/",
     "copy-layouts": "mkdir -p ./dist-dev/layouts && cp -r examples/layouts/* ./dist-dev/layouts/",
     "build:lib": "parcel build --target main --target module",
+    "build:watch": "parcel watch --target main --target module",
     "build:examples": "parcel build examples/index.html examples/example-usage.html --public-url ./",
     "start": "parcel examples/index.html examples/example-usage.html",
     "test": "jest",

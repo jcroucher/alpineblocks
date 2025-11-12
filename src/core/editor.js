@@ -1152,7 +1152,7 @@ export class Editor {
             }" 
             x-show="show" 
             @click="show = false"
-            style="display: none;">
+            x-cloak>
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
                     <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
@@ -1257,7 +1257,7 @@ export class Editor {
             }" 
             x-show="show" 
             @click="show = false"
-            style="display: none;">
+            x-cloak>
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
                     <!-- Edit Icon -->
