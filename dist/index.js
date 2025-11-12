@@ -1738,11 +1738,24 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Block not found:', block_id);
             return;
         }
-        if (typeof block[property] === 'function') block[property](value);
-        else if (block.config && block.config.hasOwnProperty(property)) {
+        console.log('[Settings.trigger] Checking property:', property, 'on block class:', block.class || block.constructor.name);
+        console.log('[Settings.trigger] block[property] type:', typeof block[property]);
+        console.log('[Settings.trigger] prototype[property] type:', typeof block.constructor.prototype[property]);
+        if (typeof block[property] === 'function') {
+            console.log('[Settings.trigger] Calling block[property] directly');
+            block[property](value);
+        } else if (typeof block.constructor.prototype[property] === 'function') {
+            console.log('[Settings.trigger] Calling prototype[property]');
+            block.constructor.prototype[property].call(block, value);
+        } else if (property === 'columnCount' && typeof block.constructor.prototype.updateColumnCount === 'function') {
+            console.log('[Settings.trigger] Calling updateColumnCount fallback');
+            block.constructor.prototype.updateColumnCount.call(block, value);
+        } else if (block.config && block.config.hasOwnProperty(property)) {
+            console.log('[Settings.trigger] Setting config property');
             block.config[property] = value;
             block.triggerRedraw();
         } else {
+            console.log('[Settings.trigger] Setting direct property');
             block[property] = value;
             if (block.triggerRedraw) block.triggerRedraw();
         }
@@ -5329,15 +5342,25 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
             responsive: this.config.responsive || true,
             breakpoint: this.config.breakpoint || '768px'
         };
-        this.settings = [
+    }
+    /**
+   * Get settings dynamically based on current config
+   * Using a getter ensures settings reflect current state
+   */ get settings() {
+        const currentColumnCount = this.config.columns.length;
+        return [
             {
                 name: 'columnCount',
                 label: 'Column Layout',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'columnCount', $event.target.value)">
-                    <option value="2">Two Columns</option>
-                    <option value="3">Three Columns</option>
-                    <option value="4">Four Columns</option>
-                    <option value="custom">Custom</option>
+                    <option value="2" ${currentColumnCount === 2 ? 'selected' : ''}>Two Columns</option>
+                    <option value="3" ${currentColumnCount === 3 ? 'selected' : ''}>Three Columns</option>
+                    <option value="4" ${currentColumnCount === 4 ? 'selected' : ''}>Four Columns</option>
+                    <option value="custom" ${![
+                    2,
+                    3,
+                    4
+                ].includes(currentColumnCount) ? 'selected' : ''}>Custom</option>
                 </select>`
             },
             {
@@ -5352,10 +5375,10 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                 name: 'alignment',
                 label: 'Vertical Alignment',
                 html: `<select class="settings-select" @change="trigger('${this.id}', 'alignment', $event.target.value)">
-                    <option value="top">Top</option>
-                    <option value="center">Center</option>
-                    <option value="bottom">Bottom</option>
-                    <option value="stretch">Stretch</option>
+                    <option value="top" ${this.config.alignment === 'top' ? 'selected' : ''}>Top</option>
+                    <option value="center" ${this.config.alignment === 'center' ? 'selected' : ''}>Center</option>
+                    <option value="bottom" ${this.config.alignment === 'bottom' ? 'selected' : ''}>Bottom</option>
+                    <option value="stretch" ${this.config.alignment === 'stretch' ? 'selected' : ''}>Stretch</option>
                 </select>`
             },
             {
@@ -5363,7 +5386,7 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
                 label: 'Responsive Layout',
                 html: `<div class="settings-group">
                     <label class="settings-checkbox">
-                        <input type="checkbox" 
+                        <input type="checkbox"
                             @change="trigger('${this.id}', 'responsive', $event.target.checked)"
                             ${this.config.responsive ? 'checked' : ''}>
                         <span class="settings-checkbox-label">Responsive Layout</span>
@@ -5388,15 +5411,24 @@ var $06ccccc81b3eddf4$export$2e2bcd8739ae039 = $06ccccc81b3eddf4$var$Carousel;
     /**
    * Update the number of columns
    * @param {string|number} count - The number of columns to create
-   */ updateColumnCount(count) {
+   */ columnCount(count) {
+        console.log('[Columns.columnCount] Called with:', count);
         if (count === 'custom') return;
         const newColumns = [];
         for(let i = 0; i < parseInt(count); i++)newColumns.push({
             blocks: [],
             width: '1fr'
         });
+        console.log('[Columns.columnCount] Creating', newColumns.length, 'columns');
         this.config.columns = newColumns;
         this.triggerRedraw();
+        console.log('[Columns.columnCount] Redraw triggered');
+        // Trigger settings refresh to update the dropdown
+        if (this.editor && this.editor.selectedBlock === this.id) document.dispatchEvent(new CustomEvent('editor-block-changed', {
+            detail: {
+                block_id: this.id
+            }
+        }));
     }
     /**
    * Generate CSS styles for the column grid
