@@ -49,7 +49,6 @@ class Columns extends Tool {
                     <option value="40%" ${this.isPercentageLayout('40%') ? 'selected' : ''}>40% - 2/5</option>
                     <option value="60%" ${this.isPercentageLayout('60%') ? 'selected' : ''}>60% - 3/5</option>
                     <option value="80%" ${this.isPercentageLayout('80%') ? 'selected' : ''}>80% - 4/5</option>
-                    <option value="custom" ${![1,2,3,4,5,6,7,8,9,10,11,12].includes(currentColumnCount) && !this.isPercentageLayout('20%') && !this.isPercentageLayout('40%') && !this.isPercentageLayout('60%') && !this.isPercentageLayout('80%') ? 'selected' : ''}>Custom</option>
                 </select>`
             },
             {
@@ -114,10 +113,6 @@ class Columns extends Tool {
      * @param {string|number} count - The number of columns to create or percentage value
      */
     columnCount(count) {
-        if (count === 'custom') {
-            return;
-        }
-
         // Handle percentage-based layouts
         if (typeof count === 'string' && count.endsWith('%')) {
             this.config.columns = [
