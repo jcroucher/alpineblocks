@@ -711,16 +711,23 @@ export class Editor {
      * @returns {Object} New block instance
      */
     initBlock(blockName, push = false, existingId = null) {
-        
+
         if (!this.toolConfig || !this.toolConfig[blockName]) {
             Debug.error(`Tool configuration for ${blockName} not found`);
             return null;
         }
 
         const BlockClass = this.toolConfig[blockName].class;
-        
+
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
-        
+
+        // Check for template drag data and merge it into config
+        if (window.templateDragData && window.templateDragData.type === blockName) {
+            Object.assign(config, window.templateDragData.config);
+            // Clear the template drag data after use
+            window.templateDragData = null;
+        }
+
         const newBlock = new BlockClass({
             id: existingId || generateId(),
             updateFunction: this.updateFunction.bind(this),
@@ -730,8 +737,8 @@ export class Editor {
 
         // Preserve the clean class name
         newBlock.class = blockName;
-        
-        
+
+
         newBlock.init(this);
 
 
