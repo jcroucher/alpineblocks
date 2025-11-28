@@ -4082,9 +4082,10 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    */ renderFormatSelect(targetId) {
         return `
             <select class="toolbar-select toolbar-format-block"
-                    @change="handleToolbarCommand('formatBlock', $event.target.value)"
+                    @change="if ($event.target.value) handleToolbarCommand('formatBlock', $event.target.value)"
                     title="Format"
                     style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                <option value="">Format</option>
                 <option value="p">Paragraph</option>
                 <option value="h1">Heading 1</option>
                 <option value="h2">Heading 2</option>
@@ -4155,7 +4156,7 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    */ renderFontFamilySelect() {
         return `
             <select class="toolbar-select toolbar-font-family"
-                    @change="handleToolbarCommand('fontName', $event.target.value)"
+                    @change="if ($event.target.value) handleToolbarCommand('fontName', $event.target.value)"
                     title="Font Family"
                     style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Font Family</option>
@@ -4177,7 +4178,7 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    */ renderFontSizeSelect() {
         return `
             <select class="toolbar-select toolbar-font-size"
-                    @change="handleToolbarCommand('fontSize', $event.target.value)"
+                    @change="if ($event.target.value) handleToolbarCommand('fontSize', $event.target.value)"
                     title="Font Size"
                     style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Size</option>
