@@ -1,11 +1,11 @@
-// Use globally available Alpine.js (optional for TinyMCE-only usage)
+// Use globally available Alpine.js (optional for rich text editor usage)
 const Alpine = window.Alpine;
 
 // Import modular components
 import { registerAlpineComponents } from './core/AlpineComponents';
 import { setupGlobalAPI } from './core/GlobalAPI';
 import { MediaPicker } from './core/MediaPicker.js';
-import TinyMCE from './editors/TinyMCE';
+import RichTextEditor from './editors/RichTextEditor';
 
 // Register MediaPicker component immediately
 MediaPicker.registerAlpineComponent();
@@ -24,8 +24,8 @@ window.AlpineBlocks = window.AlpineBlocks || {};
 window.AlpineBlocks.buildId = BUILD_ID;
 window.AlpineBlocks.version = '1.0.0';
 
-// Expose TinyMCE integration
-window.AlpineBlocks.TinyMCE = TinyMCE;
+// Expose RichTextEditor
+window.AlpineBlocks.RichTextEditor = RichTextEditor;
 
 console.log(`AlpineBlocks loaded - Build: ${BUILD_ID}`);
 

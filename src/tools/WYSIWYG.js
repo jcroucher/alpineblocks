@@ -1,27 +1,41 @@
 import Tool from '../core/Tool';
-import { escapeHtml } from '../utils/HtmlEscape';
-import tinymceLoader from '../utils/TinyMCELoader';
+import { CommonEditorToolbar } from '../core/CommonEditorToolbar';
 
 class WYSIWYG extends Tool {
     constructor({id, updateFunction, config}) {
         super(id, updateFunction, config);
 
         this.config = {
-            content: this.config.content || 'Start typing here...',
-            format: this.config.format || 'p'
+            content: this.config.content || '<p>Start typing here...</p>',
+            format: this.config.format || 'div',
+            features: this.config.features || {
+                bold: true,
+                italic: true,
+                underline: true,
+                strikethrough: true,
+                formatBlock: true,
+                lists: true,
+                links: true,
+                alignment: true,
+                indentation: true,
+                textColor: true,
+                backgroundColor: true,
+                fontSize: true,
+                fontFamily: true
+            }
         };
 
         this.editorId = `wysiwyg-${this.id}`;
-        this.editorInitialized = false;
+        this.toolbar = null;
 
         this.settings = [
             {
                 name: 'format',
                 label: 'Block Format',
                 html: `<select @change="trigger('${this.id}', 'format', $event.target.value)">
-                    <option value="p">Paragraph</option>
-                    <option value="div">Plain</option>
-                    <option value="pre">Preformatted</option>
+                    <option value="div" ${this.config.format === 'div' ? 'selected' : ''}>Plain</option>
+                    <option value="p" ${this.config.format === 'p' ? 'selected' : ''}>Paragraph</option>
+                    <option value="pre" ${this.config.format === 'pre' ? 'selected' : ''}>Preformatted</option>
                 </select>`
             }
         ];
@@ -36,37 +50,47 @@ class WYSIWYG extends Tool {
         };
     }
 
-    editorRender() {
-        // Initialize TinyMCE after a short delay to ensure DOM is ready
-        if (!this.editorInitialized) {
-            this.editorInitialized = true;
-            setTimeout(async () => {
-                try {
-                    await tinymceLoader.init(`#${this.editorId}`, {
-                        height: 300,
-                        plugins: 'lists link image code',
-                        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
-                        source: '/tinymce/tinymce.min.js',
-                        setup: (editor) => {
-                            editor.on('change', () => {
-                                this.config.content = editor.getContent();
-                                if (this.updateFunction) {
-                                    this.updateFunction();
-                                }
-                            });
-                        }
-                    });
-                } catch (error) {
-                    console.error('Failed to initialize TinyMCE for WYSIWYG block:', error);
-                }
-            }, 100);
-        }
+    init() {
+        // Initialize toolbar
+        this.toolbar = new CommonEditorToolbar({
+            className: 'wysiwyg-toolbar',
+            features: this.config.features
+        });
+    }
 
-        return `<div class="wysiwyg-editor">
-            <textarea
-                id="${this.editorId}"
-                class="wysiwyg-content"
-            >${this.config.content}</textarea>
+    editorRender() {
+        // Return editor with toolbar
+        return `<div class="wysiwyg-editor-wrapper"
+                     style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;"
+                     x-data="{ editorId: '${this.editorId}' }"
+                     x-init="
+                        // Setup toolbar command handler
+                        $nextTick(() => {
+                            const editor = document.getElementById('${this.editorId}');
+                            if (editor) {
+                                $el.handleToolbarCommand = (command, value) => {
+                                    editor.focus();
+                                    try {
+                                        document.execCommand(command, false, value);
+                                    } catch (error) {
+                                        console.warn('Command execution failed:', command, error);
+                                    }
+                                };
+                            }
+                        });
+                     ">
+            <!-- Toolbar -->
+            <div class="wysiwyg-toolbar-container">
+                ${this.toolbar ? this.toolbar.render(this.editorId) : ''}
+            </div>
+
+            <!-- Editor -->
+            <div id="${this.editorId}"
+                 class="wysiwyg-content"
+                 contenteditable="true"
+                 @blur="if(block) { block.config.content = $el.innerHTML; }"
+                 @input="if(block) { block.config.content = $el.innerHTML; }"
+                 style="min-height: 200px; padding: 12px; outline: none; background: white;">${this.config.content}</div>
         </div>`;
     }
 
