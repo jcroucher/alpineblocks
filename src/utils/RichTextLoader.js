@@ -192,13 +192,38 @@ class RichTextLoader {
      * @param {HTMLElement} editorDiv - Editor contenteditable div
      */
     setupToolbarHandlers(toolbarContainer, editorDiv) {
+        // Store the last selection
+        let savedSelection = null;
+
+        // Save selection when editor loses focus
+        editorDiv.addEventListener('blur', () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0);
+            }
+        });
+
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
+            // Restore selection if we have one
+            if (savedSelection) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+            }
+
             editorDiv.focus();
+
             try {
                 document.execCommand(command, false, value);
             } catch (error) {
                 console.warn('Command execution failed:', command, error);
+            }
+
+            // Save the new selection after the command
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0);
             }
         };
 
@@ -212,6 +237,14 @@ class RichTextLoader {
         // Try immediately and also after a short delay for Alpine initialization
         setTimeout(injectHandler, 0);
         setTimeout(injectHandler, 100);
+
+        // Prevent toolbar buttons from stealing focus on mousedown
+        toolbarContainer.addEventListener('mousedown', (e) => {
+            const button = e.target.closest('button, select, input');
+            if (button) {
+                e.preventDefault(); // Prevent focus loss from contenteditable
+            }
+        });
 
         // Also set up manual event listeners as fallback
         toolbarContainer.addEventListener('click', (e) => {
