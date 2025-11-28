@@ -128,7 +128,24 @@ class RichTextLoader {
             `;
             document.head.appendChild(styleEl);
 
+            // Create code view textarea (hidden by default)
+            const codeTextarea = document.createElement('textarea');
+            codeTextarea.id = `${editorId}-code`;
+            codeTextarea.className = 'richtext-code-view';
+            codeTextarea.style.display = 'none';
+            codeTextarea.style.minHeight = `${config.height || this.defaultConfig.height}px`;
+            codeTextarea.style.padding = '12px';
+            codeTextarea.style.fontFamily = 'monospace';
+            codeTextarea.style.fontSize = '13px';
+            codeTextarea.style.lineHeight = '1.5';
+            codeTextarea.style.border = 'none';
+            codeTextarea.style.outline = 'none';
+            codeTextarea.style.resize = 'vertical';
+            codeTextarea.style.width = '100%';
+            codeTextarea.style.backgroundColor = '#f9fafb';
+
             wrapper.appendChild(editorDiv);
+            wrapper.appendChild(codeTextarea);
 
             // Configure execCommand to use HTML tags instead of CSS styles
             // This makes bold use <b> instead of <span style="font-weight: bold">
@@ -144,7 +161,7 @@ class RichTextLoader {
             }
 
             // Setup Alpine.js event handlers for toolbar
-            this.setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId);
+            this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId);
 
             // Sync changes back to textarea
             editorDiv.addEventListener('input', () => {
@@ -162,15 +179,32 @@ class RichTextLoader {
                 }
             });
 
+            // Sync code view changes back to textarea
+            codeTextarea.addEventListener('input', () => {
+                element.value = codeTextarea.value;
+                if (config.onChange) {
+                    config.onChange(codeTextarea.value);
+                }
+            });
+
+            codeTextarea.addEventListener('blur', () => {
+                element.value = codeTextarea.value;
+                if (config.onBlur) {
+                    config.onBlur(codeTextarea.value);
+                }
+            });
+
             const instance = {
                 id: editorId,
                 element: element,
                 editorDiv: editorDiv,
+                codeTextarea: codeTextarea,
                 wrapper: wrapper,
                 toolbar: toolbar,
                 getContent: () => editorDiv.innerHTML,
                 setContent: (content) => {
                     editorDiv.innerHTML = content;
+                    codeTextarea.value = content;
                     element.value = content;
                 },
                 focus: () => editorDiv.focus(),
@@ -213,12 +247,14 @@ class RichTextLoader {
      * Setup toolbar button handlers
      * @param {HTMLElement} toolbarContainer - Toolbar container element
      * @param {HTMLElement} editorDiv - Editor contenteditable div
+     * @param {HTMLElement} codeTextarea - Code view textarea
      * @param {Object} toolbar - Toolbar instance
      * @param {string} editorId - Editor ID
      */
-    setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId) {
+    setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId) {
         // Store the last selection
         let savedSelection = null;
+        let isCodeViewActive = false;
 
         // Save selection when editor loses focus
         editorDiv.addEventListener('blur', () => {
@@ -231,6 +267,33 @@ class RichTextLoader {
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
             console.log('[RichText] Executing command:', command, 'value:', value);
+
+            // Handle toggle code view command
+            if (command === 'toggleCodeView') {
+                if (isCodeViewActive) {
+                    // Switch from code view to WYSIWYG
+                    editorDiv.innerHTML = codeTextarea.value;
+                    editorDiv.style.display = '';
+                    codeTextarea.style.display = 'none';
+                    isCodeViewActive = false;
+                    console.log('[RichText] Switched to WYSIWYG view');
+                } else {
+                    // Switch from WYSIWYG to code view
+                    codeTextarea.value = editorDiv.innerHTML;
+                    editorDiv.style.display = 'none';
+                    codeTextarea.style.display = 'block';
+                    isCodeViewActive = true;
+                    codeTextarea.focus();
+                    console.log('[RichText] Switched to code view');
+                }
+                return;
+            }
+
+            // For all other commands, ensure we're in WYSIWYG mode
+            if (isCodeViewActive) {
+                console.warn('[RichText] Cannot execute formatting commands in code view');
+                return;
+            }
 
             // Focus the editor
             editorDiv.focus();

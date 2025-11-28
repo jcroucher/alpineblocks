@@ -3938,6 +3938,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                 blocks: true,
                 undo: true,
                 redo: true,
+                codeView: true,
                 ...options.features
             },
             customTools: options.customTools || [],
@@ -4051,6 +4052,13 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             });
             toolbarHTML += '</div>';
         }
+        // Code View button (always last, on the right)
+        if (features.codeView) {
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderCodeViewButton();
+            toolbarHTML += '</div>';
+        }
         toolbarHTML += '</div>';
         return toolbarHTML;
     }
@@ -4107,6 +4115,20 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                     style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px;">
                 ${this.getIcon('blocks')}
                 <span>Blocks</span>
+            </button>
+        `;
+    }
+    /**
+   * Render the code view toggle button
+   * @returns {string} Button HTML
+   */ renderCodeViewButton() {
+        return `
+            <button class="toolbar-btn toolbar-btn-codeview"
+                    @click="handleToolbarCommand('toggleCodeView')"
+                    title="Toggle Code View"
+                    type="button"
+                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                ${this.getIcon('code')}
             </button>
         `;
     }
@@ -4213,6 +4235,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ getIcon(command) {
         const icons = {
             blocks: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M192 64v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32H224c-17.7 0-32 14.3-32 32zM82.7 207c-15.3 8.8-20.5 28.4-11.7 43.7l32 55.4c8.8 15.3 28.4 20.5 43.7 11.7l55.4-32c15.3-8.8 20.5-28.4 11.7-43.7l-32-55.4c-8.8-15.3-28.4-20.5-43.7-11.7L82.7 207zM288 192c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V224c0-17.7-14.3-32-32-32H288zM64 352c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32H64zM320 384v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32H352c-17.7 0-32 14.3-32 32z"/></svg>',
+            code: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 512" fill="currentColor"><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>',
             bold: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H80 96 224c70.7 0 128 57.3 128 128c0 31.3-11.3 60.1-30 82.3c37.1 22.4 62 63.1 62 109.7c0 70.7-57.3 128-128 128H96 80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V256 96H32C14.3 96 0 81.7 0 64zM224 224c35.3 0 64-28.7 64-64s-28.7-64-64-64H112V224H224zM112 288V416H256c35.3 0 64-28.7 64-64s-28.7-64-64-64H224 112z"/></svg>',
             italic: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M128 64c0-17.7 14.3-32 32-32H352c17.7 0 32 14.3 32 32s-14.3 32-32 32H293.3L160 416h64c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H90.7L224 96H160c-17.7 0-32-14.3-32-32z"/></svg>',
             underline: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M16 64c0-17.7 14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H128V224c0 53 43 96 96 96s96-43 96-96V96H304c-17.7 0-32-14.3-32-32s14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H384V224c0 88.4-71.6 160-160 160s-160-71.6-160-160V96H48C30.3 96 16 81.7 16 64zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32z"/></svg>',
@@ -8489,7 +8512,23 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 #${editorDiv.id} ol { list-style-type: decimal !important; margin-left: 20px !important; }
             `;
             document.head.appendChild(styleEl);
+            // Create code view textarea (hidden by default)
+            const codeTextarea = document.createElement('textarea');
+            codeTextarea.id = `${editorId}-code`;
+            codeTextarea.className = 'richtext-code-view';
+            codeTextarea.style.display = 'none';
+            codeTextarea.style.minHeight = `${config.height || this.defaultConfig.height}px`;
+            codeTextarea.style.padding = '12px';
+            codeTextarea.style.fontFamily = 'monospace';
+            codeTextarea.style.fontSize = '13px';
+            codeTextarea.style.lineHeight = '1.5';
+            codeTextarea.style.border = 'none';
+            codeTextarea.style.outline = 'none';
+            codeTextarea.style.resize = 'vertical';
+            codeTextarea.style.width = '100%';
+            codeTextarea.style.backgroundColor = '#f9fafb';
             wrapper.appendChild(editorDiv);
+            wrapper.appendChild(codeTextarea);
             // Configure execCommand to use HTML tags instead of CSS styles
             // This makes bold use <b> instead of <span style="font-weight: bold">
             // Also enable undo functionality
@@ -8503,7 +8542,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 console.warn('Could not configure execCommand settings:', e);
             }
             // Setup Alpine.js event handlers for toolbar
-            this.setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId);
+            this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId);
             // Sync changes back to textarea
             editorDiv.addEventListener('input', ()=>{
                 element.value = editorDiv.innerHTML;
@@ -8514,15 +8553,26 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 element.value = editorDiv.innerHTML;
                 if (config.onBlur) config.onBlur(editorDiv.innerHTML);
             });
+            // Sync code view changes back to textarea
+            codeTextarea.addEventListener('input', ()=>{
+                element.value = codeTextarea.value;
+                if (config.onChange) config.onChange(codeTextarea.value);
+            });
+            codeTextarea.addEventListener('blur', ()=>{
+                element.value = codeTextarea.value;
+                if (config.onBlur) config.onBlur(codeTextarea.value);
+            });
             const instance = {
                 id: editorId,
                 element: element,
                 editorDiv: editorDiv,
+                codeTextarea: codeTextarea,
                 wrapper: wrapper,
                 toolbar: toolbar,
                 getContent: ()=>editorDiv.innerHTML,
                 setContent: (content)=>{
                     editorDiv.innerHTML = content;
+                    codeTextarea.value = content;
                     element.value = content;
                 },
                 focus: ()=>editorDiv.focus(),
@@ -8557,11 +8607,13 @@ class $9aaf352ee83751f3$var$RichTextLoader {
    * Setup toolbar button handlers
    * @param {HTMLElement} toolbarContainer - Toolbar container element
    * @param {HTMLElement} editorDiv - Editor contenteditable div
+   * @param {HTMLElement} codeTextarea - Code view textarea
    * @param {Object} toolbar - Toolbar instance
    * @param {string} editorId - Editor ID
-   */ setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId) {
+   */ setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId) {
         // Store the last selection
         let savedSelection = null;
+        let isCodeViewActive = false;
         // Save selection when editor loses focus
         editorDiv.addEventListener('blur', ()=>{
             const selection = window.getSelection();
@@ -8570,6 +8622,31 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         // Define the command handler function
         const handleToolbarCommand = (command, value = null)=>{
             console.log('[RichText] Executing command:', command, 'value:', value);
+            // Handle toggle code view command
+            if (command === 'toggleCodeView') {
+                if (isCodeViewActive) {
+                    // Switch from code view to WYSIWYG
+                    editorDiv.innerHTML = codeTextarea.value;
+                    editorDiv.style.display = '';
+                    codeTextarea.style.display = 'none';
+                    isCodeViewActive = false;
+                    console.log('[RichText] Switched to WYSIWYG view');
+                } else {
+                    // Switch from WYSIWYG to code view
+                    codeTextarea.value = editorDiv.innerHTML;
+                    editorDiv.style.display = 'none';
+                    codeTextarea.style.display = 'block';
+                    isCodeViewActive = true;
+                    codeTextarea.focus();
+                    console.log('[RichText] Switched to code view');
+                }
+                return;
+            }
+            // For all other commands, ensure we're in WYSIWYG mode
+            if (isCodeViewActive) {
+                console.warn('[RichText] Cannot execute formatting commands in code view');
+                return;
+            }
             // Focus the editor
             editorDiv.focus();
             // Get current selection
