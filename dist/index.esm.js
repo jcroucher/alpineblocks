@@ -3935,6 +3935,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                 backgroundColor: true,
                 fontSize: true,
                 fontFamily: true,
+                blocks: true,
                 ...options.features
             },
             customTools: options.customTools || [],
@@ -3951,6 +3952,13 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
         const features = this.options.features;
         const customTools = this.options.customTools;
         let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">`;
+        // Blocks button (special AlpineBlocks feature)
+        if (features.blocks) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderBlocksButton();
+            toolbarHTML += '</div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        }
         // Text formatting group
         if (features.bold || features.italic || features.underline || features.strikethrough) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -4078,12 +4086,27 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
         `;
     }
     /**
+   * Render the blocks button (AlpineBlocks special feature)
+   * @returns {string} Button HTML
+   */ renderBlocksButton() {
+        return `
+            <button class="toolbar-btn toolbar-btn-blocks"
+                    @click="alert('\u{1F9F1} AlpineBlocks Editor Active!')"
+                    title="AlpineBlocks Editor"
+                    type="button"
+                    style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px;">
+                ${this.getIcon('blocks')}
+                <span>Blocks</span>
+            </button>
+        `;
+    }
+    /**
    * Render the link button with prompt
    * @returns {string} Button HTML
    */ renderLinkButton() {
         return `
-            <button class="toolbar-btn" 
-                    @click="handleToolbarCommand('createLink', prompt('Enter link URL'))" 
+            <button class="toolbar-btn"
+                    @click="handleToolbarCommand('createLink', prompt('Enter link URL'))"
                     title="Insert Link"
                     type="button">
                 ${this.getIcon('link')}
@@ -4179,6 +4202,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    * @returns {string} FontAwesome SVG icon
    */ getIcon(command) {
         const icons = {
+            blocks: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M192 64v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32H224c-17.7 0-32 14.3-32 32zM82.7 207c-15.3 8.8-20.5 28.4-11.7 43.7l32 55.4c8.8 15.3 28.4 20.5 43.7 11.7l55.4-32c15.3-8.8 20.5-28.4 11.7-43.7l-32-55.4c-8.8-15.3-28.4-20.5-43.7-11.7L82.7 207zM288 192c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V224c0-17.7-14.3-32-32-32H288zM64 352c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32H64zM320 384v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32H352c-17.7 0-32 14.3-32 32z"/></svg>',
             bold: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H80 96 224c70.7 0 128 57.3 128 128c0 31.3-11.3 60.1-30 82.3c37.1 22.4 62 63.1 62 109.7c0 70.7-57.3 128-128 128H96 80 32c-17.7 0-32-14.3-32-32s14.3-32 32-32H48V256 96H32C14.3 96 0 81.7 0 64zM224 224c35.3 0 64-28.7 64-64s-28.7-64-64-64H112V224H224zM112 288V416H256c35.3 0 64-28.7 64-64s-28.7-64-64-64H224 112z"/></svg>',
             italic: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M128 64c0-17.7 14.3-32 32-32H352c17.7 0 32 14.3 32 32s-14.3 32-32 32H293.3L160 416h64c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H90.7L224 96H160c-17.7 0-32-14.3-32-32z"/></svg>',
             underline: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M16 64c0-17.7 14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H128V224c0 53 43 96 96 96s96-43 96-96V96H304c-17.7 0-32-14.3-32-32s14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H384V224c0 88.4-71.6 160-160 160s-160-71.6-160-160V96H48C30.3 96 16 81.7 16 64zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32z"/></svg>',
@@ -4252,6 +4276,7 @@ class $806caca8705a7215$var$WYSIWYG extends (0, $7a9b6788f4274d37$export$2e2bcd8
             content: this.config.content || '<p>Start typing here...</p>',
             format: this.config.format || 'div',
             features: this.config.features || {
+                blocks: true,
                 bold: true,
                 italic: true,
                 underline: true,
@@ -8356,6 +8381,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         this.defaultConfig = {
             height: 400,
             features: {
+                blocks: true,
                 bold: true,
                 italic: true,
                 underline: true,

@@ -9,6 +9,7 @@ class WYSIWYG extends Tool {
             content: this.config.content || '<p>Start typing here...</p>',
             format: this.config.format || 'div',
             features: this.config.features || {
+                blocks: true,
                 bold: true,
                 italic: true,
                 underline: true,

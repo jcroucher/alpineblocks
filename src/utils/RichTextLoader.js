@@ -14,6 +14,7 @@ class RichTextLoader {
         this.defaultConfig = {
             height: 400,
             features: {
+                blocks: true,
                 bold: true,
                 italic: true,
                 underline: true,
