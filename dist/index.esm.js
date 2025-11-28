@@ -8569,9 +8569,16 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         setTimeout(injectHandler, 0);
         setTimeout(injectHandler, 100);
         // Prevent toolbar buttons from stealing focus on mousedown
+        // Note: We DON'T preventDefault on buttons because that blocks the click event
+        // Instead, we prevent default only on the editor blur to maintain selection
         toolbarContainer.addEventListener('mousedown', (e)=>{
-            const button = e.target.closest('button, select, input');
-            if (button) e.preventDefault(); // Prevent focus loss from contenteditable
+            const button = e.target.closest('button');
+            if (button) // Don't preventDefault - it blocks click events!
+            // The editor focus() call in handleToolbarCommand handles selection
+            return;
+            // For select/input, we still need to prevent default
+            const input = e.target.closest('select, input');
+            if (input) e.preventDefault();
         });
         // Also set up manual event listeners as fallback
         toolbarContainer.addEventListener('click', (e)=>{
