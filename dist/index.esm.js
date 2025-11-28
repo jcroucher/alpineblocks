@@ -8373,6 +8373,24 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
         return this.loadPromise;
     }
     /**
+   * Register AlpineBlocks custom toolbar buttons
+   * @param {object} editor - TinyMCE editor instance
+   */ registerCustomButtons(editor) {
+        // Register AlpineBlocks toolbar button
+        editor.ui.registry.addButton('alpineblocks', {
+            text: "\uD83E\uDDF1 Blocks",
+            tooltip: 'AlpineBlocks TinyMCE Integration',
+            onAction: ()=>{
+                // Placeholder action - will be implemented later
+                editor.notificationManager.open({
+                    text: 'AlpineBlocks TinyMCE Integration Active',
+                    type: 'info',
+                    timeout: 3000
+                });
+            }
+        });
+    }
+    /**
    * Initialize TinyMCE on a selector with custom configuration
    * @param {string} selector - CSS selector for textarea(s)
    * @param {object} config - TinyMCE configuration options
@@ -8380,13 +8398,17 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
    */ async init(selector, config = {}) {
         // Ensure TinyMCE is loaded
         if (!this.isLoaded()) await this.load(config.source || '/tinymce/tinymce.min.js');
-        // Merge with default config
+        // Merge with default config and add alpineblocks button to toolbar
+        const defaultToolbar = 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image';
+        const toolbar = config.toolbar || defaultToolbar;
+        const toolbarWithBlocks = `alpineblocks | ${toolbar}`;
         const finalConfig = {
             ...this.defaultConfig,
             ...config,
             selector: selector,
             base_url: config.base_url || '/tinymce',
-            suffix: '.min'
+            suffix: '.min',
+            toolbar: toolbarWithBlocks
         };
         // Remove source from config as it's not a TinyMCE option
         delete finalConfig.source;
@@ -8395,6 +8417,8 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
             window.tinymce.init({
                 ...finalConfig,
                 setup: (editor)=>{
+                    // Register custom AlpineBlocks buttons
+                    this.registerCustomButtons(editor);
                     // Track the instance
                     editor.on('init', ()=>{
                         this.instances.set(editor.id, editor);

@@ -75,6 +75,26 @@ class TinyMCELoader {
     }
 
     /**
+     * Register AlpineBlocks custom toolbar buttons
+     * @param {object} editor - TinyMCE editor instance
+     */
+    registerCustomButtons(editor) {
+        // Register AlpineBlocks toolbar button
+        editor.ui.registry.addButton('alpineblocks', {
+            text: '🧱 Blocks',
+            tooltip: 'AlpineBlocks TinyMCE Integration',
+            onAction: () => {
+                // Placeholder action - will be implemented later
+                editor.notificationManager.open({
+                    text: 'AlpineBlocks TinyMCE Integration Active',
+                    type: 'info',
+                    timeout: 3000
+                });
+            }
+        });
+    }
+
+    /**
      * Initialize TinyMCE on a selector with custom configuration
      * @param {string} selector - CSS selector for textarea(s)
      * @param {object} config - TinyMCE configuration options
@@ -86,13 +106,18 @@ class TinyMCELoader {
             await this.load(config.source || '/tinymce/tinymce.min.js');
         }
 
-        // Merge with default config
+        // Merge with default config and add alpineblocks button to toolbar
+        const defaultToolbar = 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image';
+        const toolbar = config.toolbar || defaultToolbar;
+        const toolbarWithBlocks = `alpineblocks | ${toolbar}`;
+
         const finalConfig = {
             ...this.defaultConfig,
             ...config,
             selector,
             base_url: config.base_url || '/tinymce',
-            suffix: '.min'
+            suffix: '.min',
+            toolbar: toolbarWithBlocks
         };
 
         // Remove source from config as it's not a TinyMCE option
@@ -103,6 +128,9 @@ class TinyMCELoader {
             window.tinymce.init({
                 ...finalConfig,
                 setup: (editor) => {
+                    // Register custom AlpineBlocks buttons
+                    this.registerCustomButtons(editor);
+
                     // Track the instance
                     editor.on('init', () => {
                         this.instances.set(editor.id, editor);
