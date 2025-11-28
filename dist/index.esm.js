@@ -8580,8 +8580,9 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         // Also set up manual event listeners as fallback
         toolbarContainer.addEventListener('click', (e)=>{
             // Handle regular toolbar buttons with data-command
+            // BUT exclude color inputs (they need to open the picker first)
             const button = e.target.closest('[data-command]');
-            if (button) {
+            if (button && button.tagName !== 'INPUT') {
                 e.preventDefault();
                 const command = button.dataset.command;
                 handleToolbarCommand(command, null);
