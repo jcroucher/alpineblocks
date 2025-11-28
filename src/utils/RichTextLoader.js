@@ -99,9 +99,10 @@ class RichTextLoader {
                 features: config.features || this.defaultConfig.features
             });
 
-            // Create toolbar container
+            // Create toolbar container with Alpine x-data
             const toolbarContainer = document.createElement('div');
             toolbarContainer.className = 'richtext-toolbar-container';
+            toolbarContainer.setAttribute('x-data', '{ handleToolbarCommand: null }');
             toolbarContainer.innerHTML = toolbar.render(editorId);
             wrapper.appendChild(toolbarContainer);
 
@@ -191,41 +192,67 @@ class RichTextLoader {
      * @param {HTMLElement} editorDiv - Editor contenteditable div
      */
     setupToolbarHandlers(toolbarContainer, editorDiv) {
-        // Create Alpine.js scope data for the toolbar
-        if (window.Alpine) {
-            // Use Alpine.js if available
-            const scope = {
-                handleToolbarCommand: (command, value = null) => {
-                    editorDiv.focus();
-                    try {
-                        document.execCommand(command, false, value);
-                    } catch (error) {
-                        console.warn('Command execution failed:', command, error);
-                    }
-                }
-            };
+        // Define the command handler function
+        const handleToolbarCommand = (command, value = null) => {
+            editorDiv.focus();
+            try {
+                document.execCommand(command, false, value);
+            } catch (error) {
+                console.warn('Command execution failed:', command, error);
+            }
+        };
 
-            // Attach Alpine scope
-            window.Alpine.bind(toolbarContainer, scope);
-        } else {
-            // Fallback: manual event listeners
-            toolbarContainer.addEventListener('click', (e) => {
-                const button = e.target.closest('[data-command]');
-                if (button) {
-                    e.preventDefault();
-                    const command = button.dataset.command;
-                    editorDiv.focus();
-                    document.execCommand(command, false, null);
-                }
-            });
+        // Wait for Alpine to initialize the x-data, then inject the function
+        const injectHandler = () => {
+            if (window.Alpine && toolbarContainer._x_dataStack && toolbarContainer._x_dataStack[0]) {
+                toolbarContainer._x_dataStack[0].handleToolbarCommand = handleToolbarCommand;
+            }
+        };
 
-            toolbarContainer.addEventListener('change', (e) => {
-                if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
-                    e.preventDefault();
-                    editorDiv.focus();
+        // Try immediately and also after a short delay for Alpine initialization
+        setTimeout(injectHandler, 0);
+        setTimeout(injectHandler, 100);
+
+        // Also set up manual event listeners as fallback
+        toolbarContainer.addEventListener('click', (e) => {
+            // Handle regular toolbar buttons with data-command
+            const button = e.target.closest('[data-command]');
+            if (button) {
+                e.preventDefault();
+                const command = button.dataset.command;
+                handleToolbarCommand(command, null);
+                return;
+            }
+        });
+
+        // Handle select changes
+        toolbarContainer.addEventListener('change', (e) => {
+            if (e.target.classList.contains('toolbar-select')) {
+                const value = e.target.value;
+                // Extract command from @change attribute or use common pattern
+                if (e.target.classList.contains('toolbar-font-family')) {
+                    handleToolbarCommand('fontName', value);
+                } else if (e.target.classList.contains('toolbar-font-size')) {
+                    handleToolbarCommand('fontSize', value);
+                } else {
+                    // For format block selector
+                    handleToolbarCommand('formatBlock', value);
                 }
-            });
-        }
+            }
+        });
+
+        // Handle color inputs
+        toolbarContainer.addEventListener('change', (e) => {
+            if (e.target.type === 'color') {
+                const value = e.target.value;
+                // Check parent structure to determine if foreColor or backColor
+                if (e.target.parentElement && e.target.parentElement.innerHTML.includes('foreColor')) {
+                    handleToolbarCommand('foreColor', value);
+                } else if (e.target.parentElement && e.target.parentElement.innerHTML.includes('backColor')) {
+                    handleToolbarCommand('backColor', value);
+                }
+            }
+        });
     }
 
     /**
