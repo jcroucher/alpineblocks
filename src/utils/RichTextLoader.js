@@ -213,17 +213,36 @@ class RichTextLoader {
      * @param {string} editorId - Editor ID
      */
     setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId) {
+        // Store the last selection
+        let savedSelection = null;
+
+        // Save selection when editor loses focus
+        editorDiv.addEventListener('blur', () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0);
+            }
+        });
+
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
             console.log('[RichText] Executing command:', command, 'value:', value);
 
-            // Get current selection before focusing
+            // Focus the editor
+            editorDiv.focus();
+
+            // Restore saved selection if it exists
+            if (savedSelection) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+                console.log('[RichText] Restored selection:', selection.toString());
+            }
+
+            // Get current selection
             const selection = window.getSelection();
             console.log('[RichText] Current selection:', selection.toString());
             console.log('[RichText] Selection range count:', selection.rangeCount);
-
-            // Focus the editor
-            editorDiv.focus();
 
             try {
                 const result = document.execCommand(command, false, value);
@@ -231,6 +250,11 @@ class RichTextLoader {
 
                 // Log the HTML after command to see what changed
                 console.log('[RichText] Editor HTML after command:', editorDiv.innerHTML);
+
+                // Save the new selection
+                if (selection.rangeCount > 0) {
+                    savedSelection = selection.getRangeAt(0);
+                }
             } catch (error) {
                 console.warn('[RichText] Command execution failed:', command, error);
             }
