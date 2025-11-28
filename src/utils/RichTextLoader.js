@@ -280,13 +280,12 @@ class RichTextLoader {
         toolbarContainer.addEventListener('change', (e) => {
             if (e.target.classList.contains('toolbar-select')) {
                 const value = e.target.value;
-                // Extract command from @change attribute or use common pattern
+                // Determine command based on class
                 if (e.target.classList.contains('toolbar-font-family')) {
                     handleToolbarCommand('fontName', value);
                 } else if (e.target.classList.contains('toolbar-font-size')) {
                     handleToolbarCommand('fontSize', value);
-                } else {
-                    // For format block selector
+                } else if (e.target.classList.contains('toolbar-format-block')) {
                     handleToolbarCommand('formatBlock', value);
                 }
             }
@@ -294,14 +293,10 @@ class RichTextLoader {
 
         // Handle color inputs
         toolbarContainer.addEventListener('change', (e) => {
-            if (e.target.type === 'color') {
+            if (e.target.type === 'color' && e.target.dataset.command) {
+                const command = e.target.dataset.command;
                 const value = e.target.value;
-                // Check parent structure to determine if foreColor or backColor
-                if (e.target.parentElement && e.target.parentElement.innerHTML.includes('foreColor')) {
-                    handleToolbarCommand('foreColor', value);
-                } else if (e.target.parentElement && e.target.parentElement.innerHTML.includes('backColor')) {
-                    handleToolbarCommand('backColor', value);
-                }
+                handleToolbarCommand(command, value);
             }
         });
     }

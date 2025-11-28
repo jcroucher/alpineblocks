@@ -204,10 +204,9 @@ export class CommonEditorToolbar {
      */
     renderButton(command, title, icon, shortcut = '') {
         const tooltipText = shortcut ? `${title} (${shortcut})` : title;
-        
+
         return `
-            <button class="toolbar-btn" 
-                    @click="handleToolbarCommand('${command}')" 
+            <button class="toolbar-btn"
                     title="${tooltipText}"
                     type="button"
                     data-command="${command}"
@@ -224,8 +223,7 @@ export class CommonEditorToolbar {
      */
     renderFormatSelect(targetId) {
         return `
-            <select class="toolbar-select" 
-                    @change="handleToolbarCommand('formatBlock', $event.target.value)"
+            <select class="toolbar-select toolbar-format-block"
                     title="Format"
                     style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="p">Paragraph</option>
@@ -282,14 +280,14 @@ export class CommonEditorToolbar {
     renderColorPicker(command, title, icon) {
         return `
             <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
-                <input type="color" 
-                       class="toolbar-color-input" 
-                       @change="handleToolbarCommand('${command}', $event.target.value)"
+                <input type="color"
+                       class="toolbar-color-input toolbar-color-${command}"
+                       data-command="${command}"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer;">
-                <button class="toolbar-btn toolbar-color-btn" 
-                        @click="$event.target.previousElementSibling.click()"
+                <button class="toolbar-btn toolbar-color-btn"
+                        onclick="this.previousElementSibling.click()"
                         title="${title}"
                         type="button"
                         style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -305,8 +303,7 @@ export class CommonEditorToolbar {
      */
     renderFontFamilySelect() {
         return `
-            <select class="toolbar-select toolbar-font-family" 
-                    @change="handleToolbarCommand('fontName', $event.target.value)"
+            <select class="toolbar-select toolbar-font-family"
                     title="Font Family"
                     style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Font Family</option>
@@ -329,8 +326,7 @@ export class CommonEditorToolbar {
      */
     renderFontSizeSelect() {
         return `
-            <select class="toolbar-select toolbar-font-size" 
-                    @change="handleToolbarCommand('fontSize', $event.target.value)"
+            <select class="toolbar-select toolbar-font-size"
                     title="Font Size"
                     style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Size</option>
