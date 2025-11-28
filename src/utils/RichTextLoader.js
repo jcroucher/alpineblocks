@@ -231,17 +231,19 @@ class RichTextLoader {
             // Focus the editor
             editorDiv.focus();
 
-            // Restore saved selection if it exists
-            if (savedSelection) {
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(savedSelection);
-                console.log('[RichText] Restored selection:', selection.toString());
-            }
-
             // Get current selection
             const selection = window.getSelection();
-            console.log('[RichText] Current selection:', selection.toString());
+
+            // Only restore saved selection if there's no current selection
+            // This prevents overwriting a new user selection with the old saved one
+            if (savedSelection && selection.rangeCount === 0) {
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+                console.log('[RichText] Restored saved selection:', selection.toString());
+            } else {
+                console.log('[RichText] Using current selection:', selection.toString());
+            }
+
             console.log('[RichText] Selection range count:', selection.rangeCount);
 
             try {
