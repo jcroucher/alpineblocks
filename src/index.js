@@ -9,6 +9,7 @@ const Alpine = window.Alpine;
 import { registerAlpineComponents } from './core/AlpineComponents';
 import { setupGlobalAPI } from './core/GlobalAPI';
 import { MediaPicker } from './core/MediaPicker.js';
+import TinyMCE from './editors/TinyMCE';
 
 // Register MediaPicker component immediately
 MediaPicker.registerAlpineComponent();
@@ -26,6 +27,9 @@ const BUILD_ID = 'AB-2025-01-17-002';
 window.AlpineBlocks = window.AlpineBlocks || {};
 window.AlpineBlocks.buildId = BUILD_ID;
 window.AlpineBlocks.version = '1.0.0';
+
+// Expose TinyMCE integration
+window.AlpineBlocks.TinyMCE = TinyMCE;
 
 console.log(`AlpineBlocks loaded - Build: ${BUILD_ID}`);
 

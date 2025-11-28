@@ -8306,6 +8306,296 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
 
 
 /**
+ * TinyMCE Editor Wrapper
+ * High-level API for TinyMCE integration in AlpineBlocks
+ *
+ * Provides easy-to-use methods for initializing TinyMCE with
+ * AlpineBlocks-specific customizations and configurations
+ */ /**
+ * TinyMCE Loader Utility
+ * Centralized TinyMCE loading and initialization for AlpineBlocks
+ *
+ * This provides a single source of truth for TinyMCE across all systems
+ * that use AlpineBlocks (main app, WPS Pages, WPS Mailer, etc.)
+ */ class $4d54409e0d13f61b$var$TinyMCELoader {
+    constructor(){
+        this.loaded = false;
+        this.loading = false;
+        this.loadPromise = null;
+        this.instances = new Map();
+        this.defaultConfig = {
+            height: 400,
+            menubar: false,
+            plugins: 'lists link image table code',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+            statusbar: true,
+            resize: true,
+            promotion: false,
+            branding: false
+        };
+    }
+    /**
+   * Check if TinyMCE is already loaded
+   */ isLoaded() {
+        return typeof window.tinymce !== 'undefined';
+    }
+    /**
+   * Load TinyMCE from the specified source
+   * @param {string} source - URL to tinymce.min.js (default: /tinymce/tinymce.min.js)
+   * @returns {Promise}
+   */ async load(source = '/tinymce/tinymce.min.js') {
+        // If already loaded, return immediately
+        if (this.isLoaded()) {
+            this.loaded = true;
+            return Promise.resolve(window.tinymce);
+        }
+        // If currently loading, return the existing promise
+        if (this.loading && this.loadPromise) return this.loadPromise;
+        // Start loading
+        this.loading = true;
+        this.loadPromise = new Promise((resolve, reject)=>{
+            const script = document.createElement('script');
+            script.src = source;
+            script.async = true;
+            script.onload = ()=>{
+                this.loaded = true;
+                this.loading = false;
+                console.log("\u2705 AlpineBlocks TinyMCE loaded from", source);
+                resolve(window.tinymce);
+            };
+            script.onerror = ()=>{
+                this.loading = false;
+                this.loadPromise = null;
+                reject(new Error(`Failed to load TinyMCE from ${source}`));
+            };
+            document.head.appendChild(script);
+        });
+        return this.loadPromise;
+    }
+    /**
+   * Initialize TinyMCE on a selector with custom configuration
+   * @param {string} selector - CSS selector for textarea(s)
+   * @param {object} config - TinyMCE configuration options
+   * @returns {Promise}
+   */ async init(selector, config = {}) {
+        // Ensure TinyMCE is loaded
+        if (!this.isLoaded()) await this.load(config.source || '/tinymce/tinymce.min.js');
+        // Merge with default config
+        const finalConfig = {
+            ...this.defaultConfig,
+            ...config,
+            selector: selector,
+            base_url: config.base_url || '/tinymce',
+            suffix: '.min'
+        };
+        // Remove source from config as it's not a TinyMCE option
+        delete finalConfig.source;
+        // Initialize TinyMCE
+        return new Promise((resolve, reject)=>{
+            window.tinymce.init({
+                ...finalConfig,
+                setup: (editor)=>{
+                    // Track the instance
+                    editor.on('init', ()=>{
+                        this.instances.set(editor.id, editor);
+                        console.log("\u2705 AlpineBlocks TinyMCE initialized:", editor.id);
+                    });
+                    // Call user's setup function if provided
+                    if (config.setup) config.setup(editor);
+                    // Auto-save on change
+                    editor.on('change', ()=>{
+                        editor.save();
+                    });
+                    // Save on blur
+                    editor.on('blur', ()=>{
+                        editor.save();
+                    });
+                    // Resolve when ready
+                    editor.on('init', ()=>{
+                        resolve(editor);
+                    });
+                }
+            });
+        });
+    }
+    /**
+   * Initialize all matching textareas, handling hidden accordions
+   * @param {string} selector - CSS selector for textarea(s)
+   * @param {object} config - TinyMCE configuration options
+   * @returns {Promise}
+   */ async initAll(selector, config = {}) {
+        if (!this.isLoaded()) await this.load(config.source || '/tinymce/tinymce.min.js');
+        const promises = [];
+        document.querySelectorAll(selector).forEach((editor)=>{
+            // Skip if already initialized
+            if (window.tinymce.get(editor.id)) return;
+            // Check if editor is in a hidden accordion
+            const accordion = editor.closest('[data-accordion-target="content"]');
+            if (accordion && accordion.classList.contains('hidden')) // Skip hidden editors - they'll be initialized when accordion opens
+            return;
+            promises.push(this.init(`#${editor.id}`, config));
+        });
+        return Promise.all(promises);
+    }
+    /**
+   * Remove all TinyMCE instances
+   */ removeAll() {
+        if (this.isLoaded()) {
+            window.tinymce.remove();
+            this.instances.clear();
+        }
+    }
+    /**
+   * Remove a specific TinyMCE instance
+   * @param {string} id - Editor ID
+   */ remove(id) {
+        if (this.isLoaded()) {
+            const editor = window.tinymce.get(id);
+            if (editor) {
+                editor.remove();
+                this.instances.delete(id);
+            }
+        }
+    }
+    /**
+   * Setup Turbo compatibility
+   * Cleans up editors before page cache
+   */ setupTurboCompatibility() {
+        document.addEventListener('turbo:before-cache', ()=>{
+            this.removeAll();
+        });
+        document.addEventListener('turbo:load', ()=>{
+        // Re-initialize will happen when init() is called
+        });
+    }
+    /**
+   * Setup accordion compatibility
+   * Initializes editors when accordion panels are opened
+   * @param {string} selector - CSS selector for textarea(s)
+   * @param {object} config - TinyMCE configuration options
+   */ setupAccordionCompatibility(selector, config = {}) {
+        document.addEventListener('click', (e)=>{
+            const accordionButton = e.target.closest('[data-action*="accordion#toggle"]');
+            if (accordionButton) setTimeout(()=>{
+                const accordionElement = accordionButton.closest('[data-controller="accordion"]');
+                if (accordionElement) {
+                    const accordionContent = accordionElement.querySelector('[data-accordion-target="content"]');
+                    if (accordionContent && !accordionContent.classList.contains('hidden')) accordionContent.querySelectorAll(selector).forEach((editor)=>{
+                        if (!window.tinymce.get(editor.id)) this.init(`#${editor.id}`, config);
+                    });
+                }
+            }, 50);
+        });
+    }
+}
+// Export singleton instance
+const $4d54409e0d13f61b$var$tinymceLoader = new $4d54409e0d13f61b$var$TinyMCELoader();
+var $4d54409e0d13f61b$export$2e2bcd8739ae039 = $4d54409e0d13f61b$var$tinymceLoader;
+
+
+class $4c258c6d02efe768$var$TinyMCE {
+    constructor(){
+        this.loader = (0, $4d54409e0d13f61b$export$2e2bcd8739ae039);
+    }
+    /**
+   * Initialize TinyMCE with AlpineBlocks defaults
+   * @param {string} selector - CSS selector for textarea(s)
+   * @param {object} options - Configuration options
+   * @returns {Promise}
+   */ async initialize(selector, options = {}) {
+        const config = {
+            height: options.height || 400,
+            plugins: options.plugins || 'lists link image table code',
+            toolbar: options.toolbar || 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+            menubar: options.menubar !== undefined ? options.menubar : false,
+            statusbar: options.statusbar !== undefined ? options.statusbar : true,
+            resize: options.resize !== undefined ? options.resize : true,
+            promotion: false,
+            branding: false,
+            ...options
+        };
+        return this.loader.initAll(selector, config);
+    }
+    /**
+   * Initialize a single editor instance
+   * @param {string} id - Element ID
+   * @param {object} options - Configuration options
+   * @returns {Promise}
+   */ async initializeOne(id, options = {}) {
+        const selector = id.startsWith('#') ? id : `#${id}`;
+        return this.loader.init(selector, options);
+    }
+    /**
+   * Remove all editor instances
+   */ removeAll() {
+        this.loader.removeAll();
+    }
+    /**
+   * Remove a specific editor instance
+   * @param {string} id - Editor ID
+   */ remove(id) {
+        this.loader.remove(id);
+    }
+    /**
+   * Check if TinyMCE is loaded
+   * @returns {boolean}
+   */ isLoaded() {
+        return this.loader.isLoaded();
+    }
+    /**
+   * Load TinyMCE from source
+   * @param {string} source - URL to tinymce.min.js
+   * @returns {Promise}
+   */ async load(source = '/tinymce/tinymce.min.js') {
+        return this.loader.load(source);
+    }
+    /**
+   * Setup automatic compatibility features
+   * @param {string} selector - CSS selector for textarea(s)
+   * @param {object} options - Configuration options
+   */ setupAutoInit(selector, options = {}) {
+        // Setup Turbo compatibility
+        this.loader.setupTurboCompatibility();
+        // Setup accordion compatibility
+        this.loader.setupAccordionCompatibility(selector, options);
+        // Initialize on DOM ready
+        const initEditors = ()=>{
+            this.initialize(selector, options);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initEditors);
+        else initEditors();
+        // Re-initialize on Turbo navigation
+        document.addEventListener('turbo:load', initEditors);
+        document.addEventListener('turbo:render', initEditors);
+    }
+    /**
+   * Get the raw TinyMCE loader instance
+   * For advanced use cases
+   */ getLoader() {
+        return this.loader;
+    }
+    /**
+   * Get a specific editor instance
+   * @param {string} id - Editor ID
+   * @returns {object|null}
+   */ getEditor(id) {
+        if (this.isLoaded()) return window.tinymce.get(id);
+        return null;
+    }
+    /**
+   * Get all editor instances
+   * @returns {Array}
+   */ getAllEditors() {
+        if (this.isLoaded()) return window.tinymce.get();
+        return [];
+    }
+}
+// Export singleton instance
+const $4c258c6d02efe768$var$tinymce = new $4c258c6d02efe768$var$TinyMCE();
+var $4c258c6d02efe768$export$2e2bcd8739ae039 = $4c258c6d02efe768$var$tinymce;
+
+
+/**
  * AlpineBlocks class for external programmatic usage
  * Provides a class-based interface for initializing and managing AlpineBlocks editors
  */ class $9ec6aa5c367a70a1$export$2e2bcd8739ae039 {
@@ -8441,6 +8731,8 @@ const $cf838c15c8b009ba$var$BUILD_ID = 'AB-2025-01-17-002';
 window.AlpineBlocks = window.AlpineBlocks || {};
 window.AlpineBlocks.buildId = $cf838c15c8b009ba$var$BUILD_ID;
 window.AlpineBlocks.version = '1.0.0';
+// Expose TinyMCE integration
+window.AlpineBlocks.TinyMCE = (0, $4c258c6d02efe768$export$2e2bcd8739ae039);
 console.log(`AlpineBlocks loaded - Build: ${$cf838c15c8b009ba$var$BUILD_ID}`);
 // Tool registry is now handled in separate module
 // Register all Alpine components
