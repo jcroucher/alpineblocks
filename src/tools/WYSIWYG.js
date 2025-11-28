@@ -1,6 +1,6 @@
 import Tool from '../core/Tool';
 import { escapeHtml } from '../utils/HtmlEscape';
-import { CommonEditorToolbar } from '../core/CommonEditorToolbar';
+import tinymceLoader from '../utils/TinyMCELoader';
 
 class WYSIWYG extends Tool {
     constructor({id, updateFunction, config}) {
@@ -11,10 +11,8 @@ class WYSIWYG extends Tool {
             format: this.config.format || 'p'
         };
 
-        // Initialize common toolbar
-        this.toolbar = new CommonEditorToolbar({
-            className: 'wysiwyg-toolbar'
-        });
+        this.editorId = `wysiwyg-${this.id}`;
+        this.editorInitialized = false;
 
         this.settings = [
             {
@@ -39,24 +37,36 @@ class WYSIWYG extends Tool {
     }
 
     editorRender() {
-        return `<div class="wysiwyg-editor" x-data="{ 
-            handleToolbarCommand(command, value) {
-                const contentEl = document.getElementById('wysiwyg-content-${this.id}');
-                if (contentEl) {
-                    contentEl.focus();
-                    document.execCommand(command, false, value);
+        // Initialize TinyMCE after a short delay to ensure DOM is ready
+        if (!this.editorInitialized) {
+            this.editorInitialized = true;
+            setTimeout(async () => {
+                try {
+                    await tinymceLoader.init(`#${this.editorId}`, {
+                        height: 300,
+                        plugins: 'lists link image code',
+                        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
+                        source: '/tinymce/tinymce.min.js',
+                        setup: (editor) => {
+                            editor.on('change', () => {
+                                this.config.content = editor.getContent();
+                                if (this.updateFunction) {
+                                    this.updateFunction();
+                                }
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.error('Failed to initialize TinyMCE for WYSIWYG block:', error);
                 }
-            }
-        }">
-            ${this.toolbar.render()}
-            <${this.config.format} 
-                id="wysiwyg-content-${this.id}"
+            }, 100);
+        }
+
+        return `<div class="wysiwyg-editor">
+            <textarea
+                id="${this.editorId}"
                 class="wysiwyg-content"
-                contenteditable="true"
-                x-html="block.config.content"
-                @blur="block.config.content = $event.target.innerHTML"
-                @paste="$event.preventDefault(); document.execCommand('insertText', false, $event.clipboardData.getData('text/plain'))"
-            ></${this.config.format}>
+            >${this.config.content}</textarea>
         </div>`;
     }
 
