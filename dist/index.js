@@ -4137,12 +4137,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
                        data-command="${command}"
                        title="${title}"
                        value="#000000"
-                       style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer;">
+                       style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
                 <button class="toolbar-btn toolbar-color-btn"
-                        onclick="this.previousElementSibling.click()"
+                        onclick="this.previousElementSibling.click(); return false;"
                         title="${title}"
                         type="button"
-                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
                     ${icon}
                 </button>
             </div>
@@ -8615,6 +8615,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
             if (e.target.type === 'color' && e.target.dataset.command) {
                 const command = e.target.dataset.command;
                 const value = e.target.value;
+                console.log('[RichText] Color input changed:', command, value);
                 handleToolbarCommand(command, value);
             }
         });

@@ -285,12 +285,12 @@ export class CommonEditorToolbar {
                        data-command="${command}"
                        title="${title}"
                        value="#000000"
-                       style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer;">
+                       style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
                 <button class="toolbar-btn toolbar-color-btn"
-                        onclick="this.previousElementSibling.click()"
+                        onclick="this.previousElementSibling.click(); return false;"
                         title="${title}"
                         type="button"
-                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
                     ${icon}
                 </button>
             </div>

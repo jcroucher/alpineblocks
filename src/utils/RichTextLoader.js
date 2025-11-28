@@ -296,6 +296,7 @@ class RichTextLoader {
             if (e.target.type === 'color' && e.target.dataset.command) {
                 const command = e.target.dataset.command;
                 const value = e.target.value;
+                console.log('[RichText] Color input changed:', command, value);
                 handleToolbarCommand(command, value);
             }
         });
