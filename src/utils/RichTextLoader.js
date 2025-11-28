@@ -292,6 +292,11 @@ class RichTextLoader {
                 return;
             }
 
+            // Don't prevent default on color inputs - they use @input which needs the selection intact
+            if (e.target.tagName === 'INPUT' && e.target.type === 'color') {
+                return;
+            }
+
             // Prevent default on mousedown to keep editor focused
             // This preserves the selection when clicking toolbar buttons
             e.preventDefault();

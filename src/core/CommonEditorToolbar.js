@@ -284,7 +284,7 @@ export class CommonEditorToolbar {
             <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
                 <input type="color"
                        class="toolbar-color-input toolbar-color-${command}"
-                       @change="handleToolbarCommand('${command}', $event.target.value)"
+                       @input="handleToolbarCommand('${command}', $event.target.value)"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">

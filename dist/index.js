@@ -4136,7 +4136,7 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
             <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
                 <input type="color"
                        class="toolbar-color-input toolbar-color-${command}"
-                       @change="handleToolbarCommand('${command}', $event.target.value)"
+                       @input="handleToolbarCommand('${command}', $event.target.value)"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
@@ -8609,6 +8609,8 @@ class $937888ae7cc593aa$var$RichTextLoader {
         toolbarContainer.addEventListener('mousedown', (e)=>{
             // Don't prevent default on select elements - they need to open
             if (e.target.tagName === 'SELECT') return;
+            // Don't prevent default on color inputs - they use @input which needs the selection intact
+            if (e.target.tagName === 'INPUT' && e.target.type === 'color') return;
             // Prevent default on mousedown to keep editor focused
             // This preserves the selection when clicking toolbar buttons
             e.preventDefault();
