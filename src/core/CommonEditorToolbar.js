@@ -207,9 +207,9 @@ export class CommonEditorToolbar {
 
         return `
             <button class="toolbar-btn"
+                    @click="handleToolbarCommand('${command}')"
                     title="${tooltipText}"
                     type="button"
-                    data-command="${command}"
                     style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 ${icon}
             </button>
@@ -224,6 +224,7 @@ export class CommonEditorToolbar {
     renderFormatSelect(targetId) {
         return `
             <select class="toolbar-select toolbar-format-block"
+                    @change="handleToolbarCommand('formatBlock', $event.target.value)"
                     title="Format"
                     style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="p">Paragraph</option>
@@ -282,7 +283,7 @@ export class CommonEditorToolbar {
             <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
                 <input type="color"
                        class="toolbar-color-input toolbar-color-${command}"
-                       data-command="${command}"
+                       @change="handleToolbarCommand('${command}', $event.target.value)"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
@@ -304,6 +305,7 @@ export class CommonEditorToolbar {
     renderFontFamilySelect() {
         return `
             <select class="toolbar-select toolbar-font-family"
+                    @change="handleToolbarCommand('fontName', $event.target.value)"
                     title="Font Family"
                     style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Font Family</option>
@@ -327,6 +329,7 @@ export class CommonEditorToolbar {
     renderFontSizeSelect() {
         return `
             <select class="toolbar-select toolbar-font-size"
+                    @change="handleToolbarCommand('fontSize', $event.target.value)"
                     title="Font Size"
                     style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Size</option>

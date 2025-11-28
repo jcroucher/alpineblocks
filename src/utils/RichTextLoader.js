@@ -247,59 +247,11 @@ class RichTextLoader {
         setTimeout(injectHandler, 0);
         setTimeout(injectHandler, 100);
 
-        // Prevent toolbar buttons from stealing focus on mousedown
-        // Note: We DON'T preventDefault on buttons because that blocks the click event
-        // Instead, we prevent default only on the editor blur to maintain selection
+        // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e) => {
-            const button = e.target.closest('button');
-            if (button) {
-                // Don't preventDefault - it blocks click events!
-                // The editor focus() call in handleToolbarCommand handles selection
-                return;
-            }
-            // For select/input, we still need to prevent default
-            const input = e.target.closest('select, input');
-            if (input) {
-                e.preventDefault();
-            }
-        });
-
-        // Also set up manual event listeners as fallback
-        toolbarContainer.addEventListener('click', (e) => {
-            // Handle regular toolbar buttons with data-command
-            // BUT exclude color inputs (they need to open the picker first)
-            const button = e.target.closest('[data-command]');
-            if (button && button.tagName !== 'INPUT') {
-                e.preventDefault();
-                const command = button.dataset.command;
-                handleToolbarCommand(command, null);
-                return;
-            }
-        });
-
-        // Handle select changes
-        toolbarContainer.addEventListener('change', (e) => {
-            if (e.target.classList.contains('toolbar-select')) {
-                const value = e.target.value;
-                // Determine command based on class
-                if (e.target.classList.contains('toolbar-font-family')) {
-                    handleToolbarCommand('fontName', value);
-                } else if (e.target.classList.contains('toolbar-font-size')) {
-                    handleToolbarCommand('fontSize', value);
-                } else if (e.target.classList.contains('toolbar-format-block')) {
-                    handleToolbarCommand('formatBlock', value);
-                }
-            }
-        });
-
-        // Handle color inputs
-        toolbarContainer.addEventListener('change', (e) => {
-            if (e.target.type === 'color' && e.target.dataset.command) {
-                const command = e.target.dataset.command;
-                const value = e.target.value;
-                console.log('[RichText] Color input changed:', command, value);
-                handleToolbarCommand(command, value);
-            }
+            // Prevent default on mousedown to keep editor focused
+            // This preserves the selection when clicking toolbar buttons
+            e.preventDefault();
         });
     }
 

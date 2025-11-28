@@ -4055,9 +4055,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
         const tooltipText = shortcut ? `${title} (${shortcut})` : title;
         return `
             <button class="toolbar-btn"
+                    @click="handleToolbarCommand('${command}')"
                     title="${tooltipText}"
                     type="button"
-                    data-command="${command}"
                     style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 ${icon}
             </button>
@@ -4070,6 +4070,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ renderFormatSelect(targetId) {
         return `
             <select class="toolbar-select toolbar-format-block"
+                    @change="handleToolbarCommand('formatBlock', $event.target.value)"
                     title="Format"
                     style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="p">Paragraph</option>
@@ -4122,7 +4123,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
                 <input type="color"
                        class="toolbar-color-input toolbar-color-${command}"
-                       data-command="${command}"
+                       @change="handleToolbarCommand('${command}', $event.target.value)"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
@@ -4142,6 +4143,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ renderFontFamilySelect() {
         return `
             <select class="toolbar-select toolbar-font-family"
+                    @change="handleToolbarCommand('fontName', $event.target.value)"
                     title="Font Family"
                     style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Font Family</option>
@@ -4163,6 +4165,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ renderFontSizeSelect() {
         return `
             <select class="toolbar-select toolbar-font-size"
+                    @change="handleToolbarCommand('fontSize', $event.target.value)"
                     title="Font Size"
                     style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
                 <option value="">Size</option>
@@ -8565,48 +8568,11 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         // Try immediately and also after a short delay for Alpine initialization
         setTimeout(injectHandler, 0);
         setTimeout(injectHandler, 100);
-        // Prevent toolbar buttons from stealing focus on mousedown
-        // Note: We DON'T preventDefault on buttons because that blocks the click event
-        // Instead, we prevent default only on the editor blur to maintain selection
+        // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e)=>{
-            const button = e.target.closest('button');
-            if (button) // Don't preventDefault - it blocks click events!
-            // The editor focus() call in handleToolbarCommand handles selection
-            return;
-            // For select/input, we still need to prevent default
-            const input = e.target.closest('select, input');
-            if (input) e.preventDefault();
-        });
-        // Also set up manual event listeners as fallback
-        toolbarContainer.addEventListener('click', (e)=>{
-            // Handle regular toolbar buttons with data-command
-            // BUT exclude color inputs (they need to open the picker first)
-            const button = e.target.closest('[data-command]');
-            if (button && button.tagName !== 'INPUT') {
-                e.preventDefault();
-                const command = button.dataset.command;
-                handleToolbarCommand(command, null);
-                return;
-            }
-        });
-        // Handle select changes
-        toolbarContainer.addEventListener('change', (e)=>{
-            if (e.target.classList.contains('toolbar-select')) {
-                const value = e.target.value;
-                // Determine command based on class
-                if (e.target.classList.contains('toolbar-font-family')) handleToolbarCommand('fontName', value);
-                else if (e.target.classList.contains('toolbar-font-size')) handleToolbarCommand('fontSize', value);
-                else if (e.target.classList.contains('toolbar-format-block')) handleToolbarCommand('formatBlock', value);
-            }
-        });
-        // Handle color inputs
-        toolbarContainer.addEventListener('change', (e)=>{
-            if (e.target.type === 'color' && e.target.dataset.command) {
-                const command = e.target.dataset.command;
-                const value = e.target.value;
-                console.log('[RichText] Color input changed:', command, value);
-                handleToolbarCommand(command, value);
-            }
+            // Prevent default on mousedown to keep editor focused
+            // This preserves the selection when clicking toolbar buttons
+            e.preventDefault();
         });
     }
     /**
