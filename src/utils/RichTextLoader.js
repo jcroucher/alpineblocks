@@ -260,43 +260,23 @@ class RichTextLoader {
             }
         };
 
-        // Initialize toolbar with Alpine
-        const initToolbar = () => {
-            // Create Alpine component with data
-            const alpineData = {
-                handleToolbarCommand: handleToolbarCommand
-            };
-
-            // Set the x-data with the actual object
-            toolbarContainer._x_dataStack = [alpineData];
-            toolbarContainer.setAttribute('x-data', 'true');
-
-            // Now set the toolbar HTML
-            toolbarContainer.innerHTML = toolbar.render(editorId);
-
-            // Tell Alpine to process this element
-            if (window.Alpine) {
-                window.Alpine.initTree(toolbarContainer);
-                console.log('[RichText] Initialized Alpine toolbar');
-            }
-        };
-
-        // Wait for Alpine to be ready
-        if (window.Alpine) {
-            initToolbar();
-        } else {
-            // Listen for Alpine initialization
-            document.addEventListener('alpine:init', () => {
-                initToolbar();
-            });
-
-            // Fallback timeout
-            setTimeout(() => {
-                if (window.Alpine) {
-                    initToolbar();
-                }
-            }, 100);
+        // Store the handler in a global registry that Alpine can access
+        if (!window.__richTextHandlers) {
+            window.__richTextHandlers = {};
         }
+        window.__richTextHandlers[editorId] = handleToolbarCommand;
+
+        // Create x-data that references the global handler
+        toolbarContainer.setAttribute('x-data', `{
+            get handleToolbarCommand() {
+                return window.__richTextHandlers['${editorId}'];
+            }
+        }`);
+
+        // Set the toolbar HTML
+        toolbarContainer.innerHTML = toolbar.render(editorId);
+
+        console.log('[RichText] Toolbar initialized with global handler for:', editorId);
 
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e) => {
