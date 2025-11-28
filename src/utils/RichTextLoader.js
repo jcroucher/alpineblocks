@@ -201,42 +201,26 @@ class RichTextLoader {
      * @param {HTMLElement} editorDiv - Editor contenteditable div
      */
     setupToolbarHandlers(toolbarContainer, editorDiv) {
-        // Store the last selection
-        let savedSelection = null;
-
-        // Save selection when editor loses focus
-        editorDiv.addEventListener('blur', () => {
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                savedSelection = selection.getRangeAt(0);
-            }
-        });
-
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
             console.log('[RichText] Executing command:', command, 'value:', value);
 
-            // Restore selection if we have one
-            if (savedSelection) {
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(savedSelection);
-                console.log('[RichText] Restored selection:', selection.toString());
-            }
+            // Get current selection before focusing
+            const selection = window.getSelection();
+            console.log('[RichText] Current selection:', selection.toString());
+            console.log('[RichText] Selection range count:', selection.rangeCount);
 
+            // Focus the editor
             editorDiv.focus();
 
             try {
                 const result = document.execCommand(command, false, value);
                 console.log('[RichText] execCommand result:', result);
+
+                // Log the HTML after command to see what changed
+                console.log('[RichText] Editor HTML after command:', editorDiv.innerHTML);
             } catch (error) {
                 console.warn('[RichText] Command execution failed:', command, error);
-            }
-
-            // Save the new selection after the command
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                savedSelection = selection.getRangeAt(0);
             }
         };
 
