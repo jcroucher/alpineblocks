@@ -8570,9 +8570,13 @@ class $937888ae7cc593aa$var$RichTextLoader {
             editorDiv.focus();
             // Get current selection
             const selection = window.getSelection();
-            // Only restore saved selection if there's no current selection
-            // This prevents overwriting a new user selection with the old saved one
-            if (savedSelection && selection.rangeCount === 0) {
+            // Check if current selection is collapsed (just a cursor, no text selected)
+            const isCollapsed = selection.rangeCount > 0 ? selection.getRangeAt(0).collapsed : true;
+            // Restore saved selection if:
+            // 1. There's no current selection (rangeCount === 0), OR
+            // 2. The current selection is collapsed (just a cursor position)
+            // This handles color pickers and dropdowns while preventing overwriting actual text selections
+            if (savedSelection && (selection.rangeCount === 0 || isCollapsed)) {
                 selection.removeAllRanges();
                 selection.addRange(savedSelection);
                 console.log('[RichText] Restored saved selection:', selection.toString());
