@@ -132,9 +132,13 @@ class RichTextLoader {
 
             // Configure execCommand to use HTML tags instead of CSS styles
             // This makes bold use <b> instead of <span style="font-weight: bold">
+            // Also enable undo functionality
             try {
                 document.execCommand('styleWithCSS', false, false);
                 document.execCommand('defaultParagraphSeparator', false, 'p');
+                // Enable undo - this is already enabled by default in modern browsers
+                // but we explicitly set it here for clarity
+                editorDiv.contentEditable = 'true';
             } catch (e) {
                 console.warn('Could not configure execCommand settings:', e);
             }

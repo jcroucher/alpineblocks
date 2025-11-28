@@ -20,6 +20,8 @@ export class CommonEditorToolbar {
                 fontSize: true,
                 fontFamily: true,
                 blocks: true,
+                undo: true,
+                redo: true,
                 ...options.features
             },
             customTools: options.customTools || [],
@@ -44,6 +46,22 @@ export class CommonEditorToolbar {
         if (features.blocks) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             toolbarHTML += this.renderBlocksButton();
+            toolbarHTML += '</div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        }
+
+        // Undo/Redo group
+        if (features.undo || features.redo) {
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+
+            if (features.undo) {
+                toolbarHTML += this.renderButton('undo', 'Undo', this.getIcon('undo'), 'Ctrl+Z');
+            }
+
+            if (features.redo) {
+                toolbarHTML += this.renderButton('redo', 'Redo', this.getIcon('redo'), 'Ctrl+Y');
+            }
+
             toolbarHTML += '</div>';
             toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
         }
@@ -387,7 +405,9 @@ export class CommonEditorToolbar {
             indent: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64zM192 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32zm32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM127.8 268.6L25.8 347.9C15.3 356.1 0 348.6 0 335.3V176.7c0-13.3 15.3-20.8 25.8-12.6l101.9 79.3c8.2 6.4 8.2 18.9 0 25.3z"/></svg>',
             outdent: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M0 64C0 46.3 14.3 32 32 32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64zM192 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32zm32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H224c-17.7 0-32-14.3-32-32s14.3-32 32-32zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM25.8 268.6c-8.2-6.4-8.2-18.9 0-25.3L127.8 164c10.5-8.2 25.8-.7 25.8 12.6V335.3c0 13.3-15.3 20.8-25.8 12.6L25.8 268.6z"/></svg>',
             textColor: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M221.5 51.7C216.6 39.8 204.9 32 192 32s-24.6 7.8-29.5 19.7l-120 288-40 96c-6.8 16.3 .9 35 17.2 41.8s35-.9 41.8-17.2L93.3 384H290.7l31.8 76.3c6.8 16.3 25.5 24 41.8 17.2s24-25.5 17.2-41.8l-40-96-120-288zM264 320H120l72-172.8L264 320z"/></svg>',
-            backgroundColor: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 576 512" fill="currentColor"><path d="M339.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L568.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S517.7-4.4 494.1 9.2L262.4 187.2c-24 18-38.2 46.1-38.2 76.1v73.1L339.3 367.1zm-19.6 25.4l-116-104.4C143.9 304.3 96 356.4 96 416c0 53 43 96 96 96s96-43 96-96c0-30.4-14.2-57.7-36.3-75.5zM406.2 416c0 79.5-64.5 144-144 144s-144-64.5-144-144c0-27.7 22.3-50 50-50s50 22.3 50 50c0 30.9 25.1 56 56 56s56-25.1 56-56c0-27.7 22.3-50 50-50s50 22.3 50 50zM192 128c-17.7 0-32-14.3-32-32V32c0-17.7 14.3-32 32-32s32 14.3 32 32V96c0 17.7-14.3 32-32 32z"/></svg>'
+            backgroundColor: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 576 512" fill="currentColor"><path d="M339.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L568.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S517.7-4.4 494.1 9.2L262.4 187.2c-24 18-38.2 46.1-38.2 76.1v73.1L339.3 367.1zm-19.6 25.4l-116-104.4C143.9 304.3 96 356.4 96 416c0 53 43 96 96 96s96-43 96-96c0-30.4-14.2-57.7-36.3-75.5zM406.2 416c0 79.5-64.5 144-144 144s-144-64.5-144-144c0-27.7 22.3-50 50-50s50 22.3 50 50c0 30.9 25.1 56 56 56s56-25.1 56-56c0-27.7 22.3-50 50-50s50 22.3 50 50zM192 128c-17.7 0-32-14.3-32-32V32c0-17.7 14.3-32 32-32s32 14.3 32 32V96c0 17.7-14.3 32-32 32z"/></svg>',
+            undo: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M125.7 160H176c17.7 0 32 14.3 32 32s-14.3 32-32 32H48c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32s32 14.3 32 32v51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"/></svg>',
+            redo: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H464c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0s-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3s163.8-62.5 226.3 0L386.3 160z"/></svg>'
         };
         
         return icons[command] || '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
