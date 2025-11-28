@@ -8453,8 +8453,6 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             // Create toolbar container with Alpine x-data
             const toolbarContainer = document.createElement('div');
             toolbarContainer.className = 'richtext-toolbar-container';
-            toolbarContainer.setAttribute('x-data', '{ handleToolbarCommand: null }');
-            toolbarContainer.innerHTML = toolbar.render(editorId);
             wrapper.appendChild(toolbarContainer);
             // Create contenteditable div
             const editorDiv = document.createElement('div');
@@ -8488,7 +8486,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 console.warn('Could not configure execCommand settings:', e);
             }
             // Setup Alpine.js event handlers for toolbar
-            this.setupToolbarHandlers(toolbarContainer, editorDiv);
+            this.setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId);
             // Sync changes back to textarea
             editorDiv.addEventListener('input', ()=>{
                 element.value = editorDiv.innerHTML;
@@ -8542,7 +8540,9 @@ class $9aaf352ee83751f3$var$RichTextLoader {
    * Setup toolbar button handlers
    * @param {HTMLElement} toolbarContainer - Toolbar container element
    * @param {HTMLElement} editorDiv - Editor contenteditable div
-   */ setupToolbarHandlers(toolbarContainer, editorDiv) {
+   * @param {Object} toolbar - Toolbar instance
+   * @param {string} editorId - Editor ID
+   */ setupToolbarHandlers(toolbarContainer, editorDiv, toolbar, editorId) {
         // Define the command handler function
         const handleToolbarCommand = (command, value = null)=>{
             console.log('[RichText] Executing command:', command, 'value:', value);
@@ -8561,13 +8561,25 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 console.warn('[RichText] Command execution failed:', command, error);
             }
         };
-        // Wait for Alpine to initialize the x-data, then inject the function
+        // Set x-data attribute first
+        toolbarContainer.setAttribute('x-data', '{ handleToolbarCommand: null }');
+        // Set the toolbar HTML
+        toolbarContainer.innerHTML = toolbar.render(editorId);
+        // Wait for Alpine to initialize, then inject the function
         const injectHandler = ()=>{
-            if (window.Alpine && toolbarContainer._x_dataStack && toolbarContainer._x_dataStack[0]) toolbarContainer._x_dataStack[0].handleToolbarCommand = handleToolbarCommand;
+            if (window.Alpine) {
+                // Try to get the Alpine scope
+                if (toolbarContainer._x_dataStack && toolbarContainer._x_dataStack[0]) {
+                    toolbarContainer._x_dataStack[0].handleToolbarCommand = handleToolbarCommand;
+                    console.log('[RichText] Injected handleToolbarCommand into Alpine scope');
+                } else // If _x_dataStack doesn't exist yet, try using Alpine's magic
+                setTimeout(injectHandler, 50);
+            }
         };
-        // Try immediately and also after a short delay for Alpine initialization
+        // Try injection immediately and with delays
         setTimeout(injectHandler, 0);
         setTimeout(injectHandler, 100);
+        setTimeout(injectHandler, 250);
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e)=>{
             // Prevent default on mousedown to keep editor focused
