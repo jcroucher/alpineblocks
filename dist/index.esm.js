@@ -8592,6 +8592,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         console.log('[RichText] Toolbar initialized with global handler for:', editorId);
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e)=>{
+            // Don't prevent default on select elements - they need to open
+            if (e.target.tagName === 'SELECT') return;
             // Prevent default on mousedown to keep editor focused
             // This preserves the selection when clicking toolbar buttons
             e.preventDefault();
