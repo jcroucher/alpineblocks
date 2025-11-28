@@ -118,6 +118,18 @@ class RichTextLoader {
             editorDiv.style.backgroundColor = 'white';
             editorDiv.innerHTML = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
 
+            // Add inline style to ensure formatting tags work
+            const styleEl = document.createElement('style');
+            styleEl.textContent = `
+                #${editorDiv.id} b, #${editorDiv.id} strong { font-weight: bold !important; }
+                #${editorDiv.id} i, #${editorDiv.id} em { font-style: italic !important; }
+                #${editorDiv.id} u { text-decoration: underline !important; }
+                #${editorDiv.id} strike, #${editorDiv.id} s { text-decoration: line-through !important; }
+                #${editorDiv.id} ul { list-style-type: disc !important; margin-left: 20px !important; }
+                #${editorDiv.id} ol { list-style-type: decimal !important; margin-left: 20px !important; }
+            `;
+            document.head.appendChild(styleEl);
+
             wrapper.appendChild(editorDiv);
 
             // Configure execCommand to use HTML tags instead of CSS styles
