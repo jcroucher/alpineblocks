@@ -8577,25 +8577,37 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 console.warn('[RichText] Command execution failed:', command, error);
             }
         };
-        // Set x-data attribute first
-        toolbarContainer.setAttribute('x-data', '{ handleToolbarCommand: null }');
-        // Set the toolbar HTML
-        toolbarContainer.innerHTML = toolbar.render(editorId);
-        // Wait for Alpine to initialize, then inject the function
-        const injectHandler = ()=>{
+        // Initialize toolbar with Alpine
+        const initToolbar = ()=>{
+            // Create Alpine component with data
+            const alpineData = {
+                handleToolbarCommand: handleToolbarCommand
+            };
+            // Set the x-data with the actual object
+            toolbarContainer._x_dataStack = [
+                alpineData
+            ];
+            toolbarContainer.setAttribute('x-data', 'true');
+            // Now set the toolbar HTML
+            toolbarContainer.innerHTML = toolbar.render(editorId);
+            // Tell Alpine to process this element
             if (window.Alpine) {
-                // Try to get the Alpine scope
-                if (toolbarContainer._x_dataStack && toolbarContainer._x_dataStack[0]) {
-                    toolbarContainer._x_dataStack[0].handleToolbarCommand = handleToolbarCommand;
-                    console.log('[RichText] Injected handleToolbarCommand into Alpine scope');
-                } else // If _x_dataStack doesn't exist yet, try using Alpine's magic
-                setTimeout(injectHandler, 50);
+                window.Alpine.initTree(toolbarContainer);
+                console.log('[RichText] Initialized Alpine toolbar');
             }
         };
-        // Try injection immediately and with delays
-        setTimeout(injectHandler, 0);
-        setTimeout(injectHandler, 100);
-        setTimeout(injectHandler, 250);
+        // Wait for Alpine to be ready
+        if (window.Alpine) initToolbar();
+        else {
+            // Listen for Alpine initialization
+            document.addEventListener('alpine:init', ()=>{
+                initToolbar();
+            });
+            // Fallback timeout
+            setTimeout(()=>{
+                if (window.Alpine) initToolbar();
+            }, 100);
+        }
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e)=>{
             // Prevent default on mousedown to keep editor focused
