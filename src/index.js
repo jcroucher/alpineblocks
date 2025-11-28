@@ -1,8 +1,4 @@
-// Use globally available Alpine.js
-if (!window.Alpine) {
-    throw new Error('AlpineBlocks requires Alpine.js to be loaded first. Please include Alpine.js before AlpineBlocks.');
-}
-
+// Use globally available Alpine.js (optional for TinyMCE-only usage)
 const Alpine = window.Alpine;
 
 // Import modular components
@@ -32,6 +28,11 @@ window.AlpineBlocks.version = '1.0.0';
 window.AlpineBlocks.TinyMCE = TinyMCE;
 
 console.log(`AlpineBlocks loaded - Build: ${BUILD_ID}`);
+
+// Dispatch custom event to notify when AlpineBlocks is ready
+window.dispatchEvent(new CustomEvent('alpineblocks:ready', {
+    detail: { buildId: BUILD_ID, version: '1.0.0' }
+}));
 
 // Tool registry is now handled in separate module
 

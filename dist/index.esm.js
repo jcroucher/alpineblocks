@@ -1,4 +1,4 @@
-// Use globally available Alpine.js
+// Use globally available Alpine.js (optional for TinyMCE-only usage)
 /**
  * Debug configuration for AlpineBlocks
  * Centralized place to control all debugging settings
@@ -8741,7 +8741,6 @@ var $4c258c6d02efe768$export$2e2bcd8739ae039 = $4c258c6d02efe768$var$tinymce;
 }
 
 
-if (!window.Alpine) throw new Error('AlpineBlocks requires Alpine.js to be loaded first. Please include Alpine.js before AlpineBlocks.');
 const $cf838c15c8b009ba$var$Alpine = window.Alpine;
 // Register MediaPicker component immediately
 (0, $b5462ce2cda23cb5$export$3c3dcc0b41d7c7e9).registerAlpineComponent();
@@ -8758,6 +8757,13 @@ window.AlpineBlocks.version = '1.0.0';
 // Expose TinyMCE integration
 window.AlpineBlocks.TinyMCE = (0, $4c258c6d02efe768$export$2e2bcd8739ae039);
 console.log(`AlpineBlocks loaded - Build: ${$cf838c15c8b009ba$var$BUILD_ID}`);
+// Dispatch custom event to notify when AlpineBlocks is ready
+window.dispatchEvent(new CustomEvent('alpineblocks:ready', {
+    detail: {
+        buildId: $cf838c15c8b009ba$var$BUILD_ID,
+        version: '1.0.0'
+    }
+}));
 // Tool registry is now handled in separate module
 // Register all Alpine components
 (0, $0982ba88a7f01dd6$export$cb57fc1addf981be)();
