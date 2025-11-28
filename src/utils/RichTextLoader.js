@@ -120,6 +120,15 @@ class RichTextLoader {
 
             wrapper.appendChild(editorDiv);
 
+            // Configure execCommand to use HTML tags instead of CSS styles
+            // This makes bold use <b> instead of <span style="font-weight: bold">
+            try {
+                document.execCommand('styleWithCSS', false, false);
+                document.execCommand('defaultParagraphSeparator', false, 'p');
+            } catch (e) {
+                console.warn('Could not configure execCommand settings:', e);
+            }
+
             // Setup Alpine.js event handlers for toolbar
             this.setupToolbarHandlers(toolbarContainer, editorDiv);
 
@@ -205,19 +214,23 @@ class RichTextLoader {
 
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
+            console.log('[RichText] Executing command:', command, 'value:', value);
+
             // Restore selection if we have one
             if (savedSelection) {
                 const selection = window.getSelection();
                 selection.removeAllRanges();
                 selection.addRange(savedSelection);
+                console.log('[RichText] Restored selection:', selection.toString());
             }
 
             editorDiv.focus();
 
             try {
-                document.execCommand(command, false, value);
+                const result = document.execCommand(command, false, value);
+                console.log('[RichText] execCommand result:', result);
             } catch (error) {
-                console.warn('Command execution failed:', command, error);
+                console.warn('[RichText] Command execution failed:', command, error);
             }
 
             // Save the new selection after the command
