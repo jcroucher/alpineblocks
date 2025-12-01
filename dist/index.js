@@ -9505,7 +9505,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
         sidebar.className = 'alpineblocks-sidebar';
         // Initialize Alpine components on the sidebar
         sidebar.setAttribute('x-data', `{
-            activeTab: 'tools',
+            activeTab: 'templates',
             toolbarData: null,
             templatesData: null,
             selectedTemplate: null,
@@ -9773,11 +9773,13 @@ class $937888ae7cc593aa$var$RichTextLoader {
             </div>
 
             <div class="panel-tabs">
+                <!-- Tools tab hidden for mailer templates -->
                 <button class="panel-tab"
                         :class="{ 'active': activeTab === 'tools' }"
                         @click="activeTab = 'tools'"
                         title="Tools"
-                        type="button">
+                        type="button"
+                        style="display: none;">
                     <svg style="width: 20px; height: 20px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
                     </svg>
