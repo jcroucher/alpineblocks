@@ -4197,11 +4197,10 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    */ renderButton(command, title, icon, shortcut = '') {
         const tooltipText = shortcut ? `${title} (${shortcut})` : title;
         return `
-            <button class="toolbar-btn"
-                    @click="handleToolbarCommand('${command}')"
+            <button @click="handleToolbarCommand('${command}')"
                     title="${tooltipText}"
                     type="button"
-                    style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #333; transition: all 0.15s ease; cursor: pointer;"
                     @mouseenter="$el.style.backgroundColor='#e7f0ff';"
                     @mouseleave="$el.style.backgroundColor='transparent';">
                 ${icon}
@@ -4237,11 +4236,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    * @returns {string} Button HTML
    */ renderBlocksButton() {
         return `
-            <button class="toolbar-btn toolbar-btn-blocks"
-                    @click="handleToolbarCommand('toggleBlocksSidebar')"
+            <button @click="handleToolbarCommand('toggleBlocksSidebar')"
                     title="AlpineBlocks Editor"
                     type="button"
-                    style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px;">
+                    style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px; cursor: pointer; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#dbeafe';"
+                    @mouseleave="$el.style.backgroundColor='#eff6ff';">
                 ${this.getIcon('blocks')}
                 <span>Blocks</span>
             </button>
@@ -4252,11 +4252,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    * @returns {string} Button HTML
    */ renderCodeViewButton() {
         return `
-            <button class="toolbar-btn toolbar-btn-codeview"
-                    @click="handleToolbarCommand('toggleCodeView')"
+            <button @click="handleToolbarCommand('toggleCodeView')"
                     title="Toggle Code View"
                     type="button"
-                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; transition: all 0.15s ease; color: #333;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='white';">
                 ${this.getIcon('code')}
             </button>
         `;
@@ -4400,10 +4401,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    * @returns {string} Button HTML
    */ renderLinkButton() {
         return `
-            <button class="toolbar-btn"
-                    @click="handleToolbarCommand('createLink', prompt('Enter link URL'))"
+            <button @click="handleToolbarCommand('createLink', prompt('Enter link URL'))"
                     title="Insert Link"
-                    type="button">
+                    type="button"
+                    style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #333; transition: all 0.15s ease; cursor: pointer;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 ${this.getIcon('link')}
             </button>
         `;
@@ -4416,18 +4419,16 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    * @returns {string} Color picker HTML
    */ renderColorPicker(command, title, icon) {
         return `
-            <div class="toolbar-color-wrapper" style="position: relative; flex-shrink: 0;">
+            <div style="position: relative; flex-shrink: 0;">
                 <input type="color"
-                       class="toolbar-color-input toolbar-color-${command}"
                        @input="handleToolbarCommand('${command}', $event.target.value)"
                        title="${title}"
                        value="#000000"
                        style="position: absolute; opacity: 0; width: 32px; height: 32px; cursor: pointer; left: 0; top: 0;">
-                <button class="toolbar-btn toolbar-color-btn"
-                        onclick="this.previousElementSibling.click(); return false;"
+                <button onclick="this.previousElementSibling.click(); return false;"
                         title="${title}"
                         type="button"
-                        style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; color: #333; transition: all 0.15s ease;"
+                        style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; color: #333; transition: all 0.15s ease; cursor: pointer;"
                         onmouseenter="this.style.backgroundColor='#e7f0ff';"
                         onmouseleave="this.style.backgroundColor='transparent';">
                     ${icon}
@@ -4488,11 +4489,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    */ renderCustomTool(tool) {
         const clickHandler = tool.callback || 'console.log("Custom tool clicked")';
         return `
-            <button class="toolbar-btn toolbar-btn-custom" 
-                    @click="${clickHandler}" 
+            <button @click="${clickHandler}"
                     title="${tool.title || tool.name}"
                     type="button"
-                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; transition: all 0.15s ease; color: #333;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='white';">
                 ${tool.icon || "\uD83D\uDD27"}
             </button>
         `;
