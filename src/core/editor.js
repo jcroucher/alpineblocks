@@ -762,13 +762,13 @@ export class Editor {
      * @param {string} position - Drop position
      * @param {string|null} blockId - ID of target block
      */
-    handleDrop(event, position = 'end', blockId = null) {
+    async handleDrop(event, position = 'end', blockId = null) {
         event.preventDefault();
-        
+
         this.clearDragTimeouts();
-        
+
         const dragData = event.dataTransfer.getData('text/plain');
-        
+
         // Check if this is a template drop
         let isTemplate = false;
         let templateData = null;
@@ -781,9 +781,39 @@ export class Editor {
         } catch (e) {
             // Not JSON, treat as regular block name
         }
-        
+
         if (isTemplate && templateData) {
-            // Handle template drop
+            // Check if this is a lazy template that needs loading
+            if (templateData._templateRef) {
+                // Get the template reference from global storage
+                const template = window._alpineTemplates?.draggedTemplate;
+
+                if (template) {
+                    console.log('[Editor] Loading lazy template:', template.id);
+
+                    // Load template if not already loaded
+                    if (!template.html && template.loadContent) {
+                        console.log('[Editor] Template not loaded yet, loading now...');
+                        await template.loadContent();
+                    }
+
+                    // Extract blocks now that template is loaded
+                    const blocks = template.extractBlocks();
+                    console.log('[Editor] Extracted blocks:', blocks.length);
+
+                    // Update templateData with blocks
+                    templateData = {
+                        id: template.id,
+                        name: template.name,
+                        description: template.description,
+                        blocks: blocks
+                    };
+                } else {
+                    console.warn('[Editor] Template reference not found in window._alpineTemplates');
+                }
+            }
+
+            // Handle template drop (now with blocks loaded)
             this.handleTemplateDrop(templateData, blockId);
         } else {
             // Handle regular block drop
@@ -799,7 +829,7 @@ export class Editor {
                 const index = this.blocks.findIndex(b => b.id === blockId);
                 const insertPosition = this.hoveredTarget[blockId] === 'top' ? 'before' : 'after';
                 delete this.hoveredTarget[blockId];
-                
+
                 if (insertPosition === 'before') {
                     this.blocks.splice(index, 0, newBlock);
                 } else {

@@ -211,13 +211,149 @@ class RichTextLoader {
                 }
             });
 
-            // Handle template drops
+            // Handle template drops with visual indicator
+            let dropIndicator = null;
+            let currentDropTarget = null;
+            let insertBefore = true;
+
+            // Add drop animation styles
+            if (!document.getElementById('richtext-drop-animation')) {
+                const style = document.createElement('style');
+                style.id = 'richtext-drop-animation';
+                style.textContent = `
+                    @keyframes dropPulse {
+                        0%, 100% {
+                            opacity: 0.9;
+                            transform: scaleY(1);
+                            box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+                        }
+                        50% {
+                            opacity: 1;
+                            transform: scaleY(1.3);
+                            box-shadow: 0 0 20px rgba(59, 130, 246, 1);
+                        }
+                    }
+                    .richtext-drop-indicator {
+                        display: block !important;
+                        height: 6px !important;
+                        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6) !important;
+                        background-size: 200% 100% !important;
+                        margin: 8px 0 !important;
+                        border-radius: 3px !important;
+                        pointer-events: none !important;
+                        animation: dropPulse 0.8s ease-in-out infinite, gradientShift 2s linear infinite !important;
+                        position: relative !important;
+                        box-shadow: 0 0 12px rgba(59, 130, 246, 0.8) !important;
+                    }
+                    .richtext-drop-indicator::before {
+                        content: "DROP HERE" !important;
+                        position: absolute !important;
+                        top: -24px !important;
+                        left: 50% !important;
+                        transform: translateX(-50%) !important;
+                        background: #3b82f6 !important;
+                        color: white !important;
+                        padding: 4px 12px !important;
+                        border-radius: 4px !important;
+                        font-size: 11px !important;
+                        font-weight: 600 !important;
+                        letter-spacing: 0.5px !important;
+                        white-space: nowrap !important;
+                        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4) !important;
+                    }
+                    @keyframes gradientShift {
+                        0% { background-position: 0% 50%; }
+                        100% { background-position: 200% 50%; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
             editorDiv.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'copy';
+
+                // Find which element we're closest to
+                const y = e.clientY;
+                const children = Array.from(editorDiv.children).filter(child =>
+                    !child.classList.contains('richtext-drop-indicator')
+                );
+
+                let closestElement = null;
+                let closestDistance = Infinity;
+                let shouldInsertBefore = true;
+
+                children.forEach(child => {
+                    const rect = child.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+
+                    // Distance to top edge
+                    const distanceToTop = Math.abs(y - rect.top);
+                    // Distance to bottom edge
+                    const distanceToBottom = Math.abs(y - rect.bottom);
+
+                    if (distanceToTop < closestDistance) {
+                        closestDistance = distanceToTop;
+                        closestElement = child;
+                        shouldInsertBefore = true;
+                    }
+
+                    if (distanceToBottom < closestDistance) {
+                        closestDistance = distanceToBottom;
+                        closestElement = child;
+                        shouldInsertBefore = false;
+                    }
+                });
+
+                // Create drop indicator if needed
+                if (!dropIndicator) {
+                    dropIndicator = document.createElement('div');
+                    dropIndicator.className = 'richtext-drop-indicator';
+                    dropIndicator.contentEditable = 'false';
+                }
+
+                // If we have a target element, position the indicator
+                if (closestElement) {
+                    // Remove indicator from current position
+                    if (dropIndicator.parentElement) {
+                        dropIndicator.remove();
+                    }
+
+                    // Insert indicator at the new position
+                    if (shouldInsertBefore) {
+                        closestElement.parentNode.insertBefore(dropIndicator, closestElement);
+                    } else {
+                        if (closestElement.nextSibling) {
+                            closestElement.parentNode.insertBefore(dropIndicator, closestElement.nextSibling);
+                        } else {
+                            closestElement.parentNode.appendChild(dropIndicator);
+                        }
+                    }
+
+                    currentDropTarget = closestElement;
+                    insertBefore = shouldInsertBefore;
+                } else if (children.length === 0) {
+                    // Empty editor - just append
+                    if (!dropIndicator.parentElement) {
+                        editorDiv.appendChild(dropIndicator);
+                    }
+                    currentDropTarget = null;
+                    insertBefore = true;
+                }
             });
 
-            editorDiv.addEventListener('drop', (e) => {
+            editorDiv.addEventListener('dragleave', (e) => {
+                // Only remove if we're leaving the editor completely
+                const relatedTarget = e.relatedTarget;
+                if (!editorDiv.contains(relatedTarget)) {
+                    if (dropIndicator && dropIndicator.parentElement) {
+                        dropIndicator.remove();
+                    }
+                    currentDropTarget = null;
+                }
+            });
+
+            editorDiv.addEventListener('drop', async (e) => {
                 console.log('[RichText] Drop event triggered');
                 const dragDataText = e.dataTransfer.getData('text/plain');
                 console.log('[RichText] dataTransfer text/plain:', dragDataText);
@@ -230,20 +366,48 @@ class RichTextLoader {
                 // Try to parse as JSON first (AlpineBlocks template format)
                 try {
                     const dragData = JSON.parse(dragDataText);
-                    if (dragData.type === 'template' && dragData.data && dragData.data.blocks) {
-                        // Extract HTML from template blocks
-                        console.log('[RichText] Detected AlpineBlocks template drop');
-                        isTemplateDrop = true;
-                        templateId = dragData.data.id || null;
-                        templateName = dragData.data.name || null;
+                    if (dragData.type === 'template' && dragData.data) {
+                        // Check if this is a lazy template that needs loading
+                        if (dragData.data._templateRef) {
+                            console.log('[RichText] Detected lazy template drop, loading...');
 
-                        // Concatenate HTML from all blocks
-                        htmlContent = dragData.data.blocks
-                            .map(block => block.data.content || '')
-                            .join('\n');
+                            // Get the template reference from global storage
+                            const template = window._alpineTemplates?.draggedTemplate;
 
-                        console.log('[RichText] Extracted HTML from template blocks, length:', htmlContent.length);
-                        console.log('[RichText] Template ID:', templateId, 'Name:', templateName);
+                            if (template) {
+                                console.log('[RichText] Found template reference:', template.id);
+
+                                // Load template if not already loaded
+                                if (!template.html && template.loadContent) {
+                                    console.log('[RichText] Loading template content...');
+                                    await template.loadContent();
+                                }
+
+                                // Use the raw HTML directly for RichText editor
+                                isTemplateDrop = true;
+                                templateId = template.id;
+                                templateName = template.name;
+                                htmlContent = template.html;
+
+                                console.log('[RichText] Loaded template HTML, length:', htmlContent?.length || 0);
+                            } else {
+                                console.warn('[RichText] Template reference not found in window._alpineTemplates');
+                            }
+                        } else if (dragData.data.blocks) {
+                            // Old format with pre-extracted blocks
+                            console.log('[RichText] Detected AlpineBlocks template drop');
+                            isTemplateDrop = true;
+                            templateId = dragData.data.id || null;
+                            templateName = dragData.data.name || null;
+
+                            // Concatenate HTML from all blocks
+                            htmlContent = dragData.data.blocks
+                                .map(block => block.data.content || '')
+                                .join('\n');
+
+                            console.log('[RichText] Extracted HTML from template blocks, length:', htmlContent.length);
+                            console.log('[RichText] Template ID:', templateId, 'Name:', templateName);
+                        }
                     }
                 } catch (parseError) {
                     // Not JSON, check if it's a simple drag type like 'Raw'
@@ -261,6 +425,7 @@ class RichTextLoader {
                     e.stopPropagation();
 
                     console.log('[RichText] Inserting template HTML, length:', htmlContent.length);
+                    console.log('[RichText] Drop target:', currentDropTarget, 'Insert before:', insertBefore);
 
                     // Generate unique ID for this template instance
                     const instanceId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -273,55 +438,47 @@ class RichTextLoader {
                     templateWrapper.setAttribute('contenteditable', 'true');
                     templateWrapper.innerHTML = htmlContent;
 
-                    // Get selection or cursor position
-                    const selection = window.getSelection();
-                    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                    // Add escape paragraph AFTER
+                    const escapeParagraphAfter = document.createElement('p');
+                    escapeParagraphAfter.innerHTML = '<br>';
 
-                    if (range) {
-                        // Delete any selected content
-                        range.deleteContents();
+                    // Use the drop indicator position to insert content
+                    if (currentDropTarget) {
+                        console.log('[RichText] Inserting at drop indicator position');
 
-                        // Check if we're inserting at the very beginning of the editor
-                        const isAtStart = range.startOffset === 0 &&
-                                         (range.startContainer === editorDiv ||
-                                         (range.startContainer.nodeType === Node.TEXT_NODE &&
-                                          range.startContainer.parentNode === editorDiv &&
-                                          !range.startContainer.previousSibling) ||
-                                         (range.startContainer.nodeType === Node.ELEMENT_NODE &&
-                                          range.startContainer.parentNode === editorDiv &&
-                                          !range.startContainer.previousSibling));
-
-                        // Build the complete insertion fragment with escape paragraphs
-                        const completeFragment = document.createDocumentFragment();
+                        // Check if we're inserting at the very beginning
+                        const isAtStart = insertBefore && !currentDropTarget.previousSibling;
 
                         // Add escape paragraph BEFORE if at start
                         if (isAtStart) {
                             const escapeParagraphBefore = document.createElement('p');
                             escapeParagraphBefore.innerHTML = '<br>';
-                            completeFragment.appendChild(escapeParagraphBefore);
-                            console.log('[RichText] Will add escape paragraph before block (at start)');
+                            editorDiv.insertBefore(escapeParagraphBefore, currentDropTarget);
+                            console.log('[RichText] Added escape paragraph before block (at start)');
                         }
 
-                        // Add the wrapped template content
-                        completeFragment.appendChild(templateWrapper);
+                        // Insert the template wrapper
+                        if (insertBefore) {
+                            currentDropTarget.parentNode.insertBefore(templateWrapper, currentDropTarget);
+                        } else {
+                            if (currentDropTarget.nextSibling) {
+                                currentDropTarget.parentNode.insertBefore(templateWrapper, currentDropTarget.nextSibling);
+                            } else {
+                                currentDropTarget.parentNode.appendChild(templateWrapper);
+                            }
+                        }
 
-                        // Add escape paragraph AFTER
-                        const escapeParagraphAfter = document.createElement('p');
-                        escapeParagraphAfter.innerHTML = '<br>';
-                        completeFragment.appendChild(escapeParagraphAfter);
-
-                        // Insert the complete fragment at once
-                        range.insertNode(completeFragment);
-
-                        // Move cursor into the escape paragraph after
-                        range.selectNodeContents(escapeParagraphAfter);
-                        range.collapse(true);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
+                        // Insert escape paragraph after the template
+                        if (templateWrapper.nextSibling) {
+                            editorDiv.insertBefore(escapeParagraphAfter, templateWrapper.nextSibling);
+                        } else {
+                            editorDiv.appendChild(escapeParagraphAfter);
+                        }
 
                         console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     } else {
-                        // No selection, append to end
+                        // No drop target (empty editor or fallback)
+                        console.log('[RichText] No drop target, appending to end');
                         const isEmpty = editorDiv.innerHTML.trim() === '' ||
                                        editorDiv.innerHTML === '<p><br></p>' ||
                                        editorDiv.textContent.trim() === '';
@@ -339,19 +496,17 @@ class RichTextLoader {
                         editorDiv.appendChild(templateWrapper);
 
                         // Add escape paragraph at the end
-                        const escapeParagraphAfter = document.createElement('p');
-                        escapeParagraphAfter.innerHTML = '<br>';
                         editorDiv.appendChild(escapeParagraphAfter);
-
-                        // Move cursor to the escape paragraph after
-                        const newRange = document.createRange();
-                        newRange.selectNodeContents(escapeParagraphAfter);
-                        newRange.collapse(true);
-                        selection.removeAllRanges();
-                        selection.addRange(newRange);
 
                         console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     }
+
+                    // Remove drop indicator and reset state
+                    if (dropIndicator && dropIndicator.parentElement) {
+                        dropIndicator.remove();
+                    }
+                    dropIndicator = null;
+                    currentDropTarget = null;
 
                     // Sync to textarea
                     element.value = editorDiv.innerHTML;
@@ -710,14 +865,122 @@ class RichTextLoader {
                 const style = this.currentElementStyle || '';
                 const props = {};
 
+                console.log('[parseCSSProperties] Input style:', style);
+
                 // Split by semicolon and parse each property
                 style.split(';').forEach(prop => {
-                    const [key, value] = prop.split(':').map(s => s.trim());
+                    console.log('[parseCSSProperties] Processing prop:', JSON.stringify(prop));
+                    const colonIndex = prop.indexOf(':');
+                    if (colonIndex === -1) return;
+
+                    const key = prop.substring(0, colonIndex).trim();
+                    const value = prop.substring(colonIndex + 1).trim();
+                    console.log('[parseCSSProperties] key:', JSON.stringify(key), 'value:', JSON.stringify(value));
+
                     if (key && value) {
-                        props[key] = value;
+                        // Handle shorthand border property: "2px solid #3b82f6"
+                        if (key === 'border') {
+                            console.log('[parseCSSProperties] Found border shorthand:', value);
+                            // Use simple space split instead of regex - works better
+                            const parts = value.split(' ').filter(p => p);
+                            console.log('[parseCSSProperties] Border parts:', parts);
+                            // Try to identify width, style, and color from the parts
+                            parts.forEach(part => {
+                                console.log('[parseCSSProperties] Checking part:', part);
+
+                                // Check if it's a border style first (most specific)
+                                if (['solid', 'dashed', 'dotted', 'double', 'none', 'hidden', 'groove', 'ridge', 'inset', 'outset'].includes(part)) {
+                                    props['border-style'] = part;
+                                    console.log('[parseCSSProperties] Set border-style:', part);
+                                }
+                                // Check if it's a color
+                                else if (part.startsWith('#') || part.startsWith('rgb') || part.startsWith('hsl')) {
+                                    props['border-color'] = part;
+                                    console.log('[parseCSSProperties] Set border-color:', part);
+                                }
+                                // Check if it's a width - must end with a unit or be 0
+                                else {
+                                    const widthRegex = new RegExp('^[0-9]+\\.?[0-9]*(px|em|rem|pt|%|vh|vw|vmin|vmax|ch|ex)$');
+                                    const isWidth = widthRegex.test(part);
+                                    console.log('[parseCSSProperties] Width regex test for "' + part + '":', isWidth);
+                                    if (isWidth || part === '0') {
+                                        props['border-width'] = part;
+                                        console.log('[parseCSSProperties] Set border-width:', part);
+                                    } else {
+                                        console.log('[parseCSSProperties] Part did not match any pattern:', part);
+                                    }
+                                }
+                            });
+                            // Don't store the shorthand property itself
+                        }
+                        // Handle shorthand padding: "2rem" or "1rem 2rem" etc
+                        else if (key === 'padding' && !key.includes('-')) {
+                            const parts = value.split(' ').filter(p => p);
+                            if (parts.length === 1) {
+                                // All sides
+                                props['padding-top'] = parts[0];
+                                props['padding-right'] = parts[0];
+                                props['padding-bottom'] = parts[0];
+                                props['padding-left'] = parts[0];
+                            } else if (parts.length === 2) {
+                                // top/bottom, left/right
+                                props['padding-top'] = parts[0];
+                                props['padding-bottom'] = parts[0];
+                                props['padding-left'] = parts[1];
+                                props['padding-right'] = parts[1];
+                            } else if (parts.length === 3) {
+                                // top, left/right, bottom
+                                props['padding-top'] = parts[0];
+                                props['padding-right'] = parts[1];
+                                props['padding-left'] = parts[1];
+                                props['padding-bottom'] = parts[2];
+                            } else if (parts.length === 4) {
+                                // top, right, bottom, left
+                                props['padding-top'] = parts[0];
+                                props['padding-right'] = parts[1];
+                                props['padding-bottom'] = parts[2];
+                                props['padding-left'] = parts[3];
+                            }
+                            // Don't store the shorthand property itself
+                        }
+                        // Handle shorthand margin: "2rem" or "1rem 2rem" etc
+                        else if (key === 'margin' && !key.includes('-')) {
+                            const parts = value.split(' ').filter(p => p);
+                            if (parts.length === 1) {
+                                // All sides
+                                props['margin-top'] = parts[0];
+                                props['margin-right'] = parts[0];
+                                props['margin-bottom'] = parts[0];
+                                props['margin-left'] = parts[0];
+                            } else if (parts.length === 2) {
+                                // top/bottom, left/right
+                                props['margin-top'] = parts[0];
+                                props['margin-bottom'] = parts[0];
+                                props['margin-left'] = parts[1];
+                                props['margin-right'] = parts[1];
+                            } else if (parts.length === 3) {
+                                // top, left/right, bottom
+                                props['margin-top'] = parts[0];
+                                props['margin-right'] = parts[1];
+                                props['margin-left'] = parts[1];
+                                props['margin-bottom'] = parts[2];
+                            } else if (parts.length === 4) {
+                                // top, right, bottom, left
+                                props['margin-top'] = parts[0];
+                                props['margin-right'] = parts[1];
+                                props['margin-bottom'] = parts[2];
+                                props['margin-left'] = parts[3];
+                            }
+                            // Don't store the shorthand property itself
+                        }
+                        else {
+                            // Regular property - just store it
+                            props[key] = value;
+                        }
                     }
                 });
 
+                console.log('[parseCSSProperties] Final cssProperties:', props);
                 this.cssProperties = props;
             },
             updateCSSProperty(property, value) {
@@ -930,22 +1193,33 @@ class RichTextLoader {
                         <div class="templates-grid">
                             <template x-for="template in filteredTemplates" :key="template.id">
                                 <div class="template-item"
-                                     draggable="true"
-                                     @dragstart="handleTemplateDragStart && handleTemplateDragStart($event, template)"
-                                     @dragend="handleTemplateDragEnd && handleTemplateDragEnd($event)"
-                                     @click="handleTemplateClick && handleTemplateClick($event, template)"
-                                     :data-template="JSON.stringify(template)"
-                                     :title="template.description"
-                                     style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; cursor: pointer; margin-bottom: 0.5rem; transition: all 0.2s ease;"
+                                     style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; margin-bottom: 0.5rem; transition: all 0.2s ease;"
                                      onmouseover="this.style.borderColor='#93c5fd'; this.style.background='#eff6ff'; this.style.transform='translateY(-1px)'"
                                      onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.transform='translateY(0)'">
-                                    <div class="template-preview" style="width: 100%;">
+                                    <div class="template-preview"
+                                         draggable="true"
+                                         @dragstart="handleTemplateDragStart && handleTemplateDragStart($event, template)"
+                                         @dragend="handleTemplateDragEnd && handleTemplateDragEnd($event)"
+                                         @click="handleTemplateClick && handleTemplateClick($event, template)"
+                                         :data-template="JSON.stringify(template)"
+                                         :title="template.description"
+                                         style="flex: 1; cursor: pointer;">
                                         <div class="template-header" style="display: flex; align-items: center; gap: 0.5rem;">
                                             <div class="template-icon" x-html="template.icon" style="font-size: 1.125rem; min-width: 20px;"></div>
                                             <div class="template-name" x-text="template.name" style="font-size: 0.875rem; font-weight: 500; color: #374151;"></div>
                                         </div>
                                         <div class="template-description" x-text="template.description" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;"></div>
                                     </div>
+                                    <button @click.stop="$dispatch('open-template-editor', template.id)"
+                                            type="button"
+                                            title="Edit template"
+                                            style="flex-shrink: 0; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem; background: white; color: #6b7280; cursor: pointer; transition: all 0.2s;"
+                                            onmouseover="this.style.borderColor='#2563eb'; this.style.color='#2563eb'; this.style.background='#eff6ff';"
+                                            onmouseout="this.style.borderColor='#d1d5db'; this.style.color='#6b7280'; this.style.background='white';">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;">
+                                            <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                                        </svg>
+                                    </button>
                                 </div>
                             </template>
                         </div>
@@ -1076,7 +1350,7 @@ class RichTextLoader {
                             </div>
 
                             <!-- Padding & Margin (Box Layout) -->
-                            <div style="display: flex; gap: 1rem; margin-bottom: 0;">
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                                 <div style="flex: 1;">
                                     <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Padding</label>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.125rem;">
@@ -1145,6 +1419,130 @@ class RichTextLoader {
                                         <div></div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Position -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Position</label>
+                                <select :value="cssProperties['position'] || 'static'"
+                                        @change="updateCSSProperty('position', $event.target.value)"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    <option value="static">Static</option>
+                                    <option value="relative">Relative</option>
+                                    <option value="absolute">Absolute</option>
+                                    <option value="fixed">Fixed</option>
+                                    <option value="sticky">Sticky</option>
+                                </select>
+                            </div>
+
+                            <!-- Border -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Border</label>
+                                <div style="display: flex; flex-direction: column; gap: 0.375rem;">
+                                    <input type="text"
+                                           :value="cssProperties['border-width'] || ''"
+                                           @input="updateCSSProperty('border-width', $event.target.value)"
+                                           placeholder="Width (e.g. 2px)"
+                                           style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    <select :value="cssProperties['border-style'] || 'solid'"
+                                            @change="updateCSSProperty('border-style', $event.target.value)"
+                                            style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                        <option value="solid">Solid</option>
+                                        <option value="dashed">Dashed</option>
+                                        <option value="dotted">Dotted</option>
+                                        <option value="double">Double</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                        <input type="color"
+                                               :value="(cssProperties['border-color'] || '#000000').startsWith('#') ? cssProperties['border-color'] : '#000000'"
+                                               @input="updateCSSProperty('border-color', $event.target.value)"
+                                               style="width: 40px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                                        <input type="text"
+                                               :value="cssProperties['border-color'] || ''"
+                                               @input="updateCSSProperty('border-color', $event.target.value)"
+                                               placeholder="Color"
+                                               style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Border Radius -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Border Radius</label>
+                                <input type="text"
+                                       :value="cssProperties['border-radius'] || ''"
+                                       @input="updateCSSProperty('border-radius', $event.target.value)"
+                                       placeholder="e.g. 1rem, 8px"
+                                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                            </div>
+
+                            <!-- Box Shadow -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Box Shadow</label>
+                                <input type="text"
+                                       :value="cssProperties['box-shadow'] || ''"
+                                       @input="updateCSSProperty('box-shadow', $event.target.value)"
+                                       placeholder="e.g. 0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                            </div>
+
+                            <!-- Dimensions -->
+                            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Width</label>
+                                    <input type="text"
+                                           :value="cssProperties['width'] || ''"
+                                           @input="updateCSSProperty('width', $event.target.value)"
+                                           placeholder="e.g. 100%, auto"
+                                           style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Height</label>
+                                    <input type="text"
+                                           :value="cssProperties['height'] || ''"
+                                           @input="updateCSSProperty('height', $event.target.value)"
+                                           placeholder="e.g. 100%, auto"
+                                           style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                </div>
+                            </div>
+
+                            <!-- Display & Flex -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Display</label>
+                                <select :value="cssProperties['display'] || 'block'"
+                                        @change="updateCSSProperty('display', $event.target.value)"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    <option value="block">Block</option>
+                                    <option value="inline">Inline</option>
+                                    <option value="inline-block">Inline Block</option>
+                                    <option value="flex">Flex</option>
+                                    <option value="grid">Grid</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+
+                            <!-- Flex Direction (shown when display is flex) -->
+                            <div style="margin-bottom: 1rem;" x-show="cssProperties['display'] === 'flex'">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Flex Direction</label>
+                                <select :value="cssProperties['flex-direction'] || 'row'"
+                                        @change="updateCSSProperty('flex-direction', $event.target.value)"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    <option value="row">Row</option>
+                                    <option value="column">Column</option>
+                                    <option value="row-reverse">Row Reverse</option>
+                                    <option value="column-reverse">Column Reverse</option>
+                                </select>
+                            </div>
+
+                            <!-- Transform -->
+                            <div style="margin-bottom: 0;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Transform</label>
+                                <input type="text"
+                                       :value="cssProperties['transform'] || ''"
+                                       @input="updateCSSProperty('transform', $event.target.value)"
+                                       placeholder="e.g. scale(1.05), rotate(10deg)"
+                                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
                             </div>
                         </div>
 

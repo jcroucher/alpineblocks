@@ -1226,18 +1226,43 @@ export function registerAlpineComponents() {
             this.addTemplate(template);
         },
 
+        async handleTemplateMouseDown(event, template) {
+            // Start loading template on mousedown
+            if (template.loadContent && !template.html && !template._loading) {
+                template._loading = true;
+                console.log(`[editorTemplates] Loading template ${template.id} on mousedown...`);
+                try {
+                    await template.loadContent();
+                    console.log(`[editorTemplates] Template ${template.id} loaded, HTML length: ${template.html?.length || 0}`);
+                } catch (error) {
+                    console.error(`[editorTemplates] Failed to load template ${template.id}:`, error);
+                } finally {
+                    template._loading = false;
+                }
+            }
+        },
+
         handleTemplateDragStart(event, template) {
-            const extractedBlocks = template.extractBlocks();
+            // Always allow drag to start - we'll handle loading on drop
+            // Store template reference in drag data
             event.dataTransfer.setData('text/plain', JSON.stringify({
                 type: 'template',
                 data: {
                     id: template.id,
                     name: template.name,
                     description: template.description,
-                    blocks: extractedBlocks
+                    // Don't include blocks yet - will be loaded on drop if needed
+                    _templateRef: true
                 }
             }));
             event.dataTransfer.effectAllowed = 'copy';
+
+            // Store reference globally for drop handler to access
+            if (!window._alpineTemplates) {
+                window._alpineTemplates = {};
+            }
+            window._alpineTemplates.draggedTemplate = template;
+            console.log('[editorTemplates] Stored template reference globally:', template.id);
         },
 
         handleTemplateDragEnd(event) {
@@ -1280,4 +1305,128 @@ export function registerAlpineComponents() {
 
     // Expose globally for RichTextLoader sidebar
     window.editorTemplates = editorTemplatesFactory;
+
+    // Register templateEditor component for editing templates
+    Alpine.data('templateEditor', () => ({
+        showModal: false,
+        template: {
+            id: null,
+            template_id: '',
+            name: '',
+            description: '',
+            category_id: '',
+            category_name: '',
+            html: '',
+            version: '1.0',
+            tags: '',
+            icon: '',
+            thumbnail_url: '',
+            sort_order: 0
+        },
+        loading: false,
+        saving: false,
+        error: null,
+
+        async openTemplate(templateId) {
+            this.loading = true;
+            this.error = null;
+            this.showModal = true;
+
+            try {
+                // Fetch template details from the server
+                const response = await fetch(`/admin/templates/${templateId}/edit_json`);
+                if (!response.ok) {
+                    throw new Error('Failed to load template');
+                }
+
+                const data = await response.json();
+                this.template = {
+                    id: data.id,
+                    template_id: data.template_id,
+                    name: data.name || '',
+                    description: data.description || '',
+                    category_id: data.category_id || '',
+                    category_name: data.category_name || '',
+                    html: data.html || '',
+                    version: data.version || '1.0',
+                    tags: data.tags || '',
+                    icon: data.icon || '',
+                    thumbnail_url: data.thumbnail_url || '',
+                    sort_order: data.sort_order || 0
+                };
+            } catch (error) {
+                console.error('Error loading template:', error);
+                this.error = 'Failed to load template. Please try again.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async saveTemplate() {
+            this.saving = true;
+            this.error = null;
+
+            try {
+                const response = await fetch(`/admin/templates/${this.template.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({
+                        template: {
+                            name: this.template.name,
+                            description: this.template.description,
+                            category_id: this.template.category_id,
+                            category_name: this.template.category_name,
+                            html: this.template.html,
+                            version: this.template.version,
+                            tags: this.template.tags,
+                            icon: this.template.icon,
+                            thumbnail_url: this.template.thumbnail_url,
+                            sort_order: this.template.sort_order
+                        }
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.errors?.join(', ') || 'Failed to save template');
+                }
+
+                // Dispatch event to refresh template list
+                window.dispatchEvent(new CustomEvent('template-updated', {
+                    detail: { template: result.template }
+                }));
+
+                this.closeModal();
+            } catch (error) {
+                console.error('Error saving template:', error);
+                this.error = error.message || 'Failed to save template. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        closeModal() {
+            this.showModal = false;
+            this.error = null;
+            // Reset template data
+            this.template = {
+                id: null,
+                template_id: '',
+                name: '',
+                description: '',
+                category_id: '',
+                category_name: '',
+                html: '',
+                version: '1.0',
+                tags: '',
+                icon: '',
+                thumbnail_url: '',
+                sort_order: 0
+            };
+        }
+    }));
 }

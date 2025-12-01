@@ -159,14 +159,22 @@ export class RemoteLayoutManager {
                 layoutData = layoutModule.default;
             } else {
                 // For remote source, fetch from URL
-                const contentUrl = this._buildUrl(layoutInfo.file);
+                // If file is null/undefined (database-backed templates), construct URL from layoutId
+                let contentUrl;
+                if (layoutInfo.file) {
+                    contentUrl = this._buildUrl(layoutInfo.file);
+                } else {
+                    // Database-backed template: use layoutId + template_json endpoint
+                    contentUrl = this._buildUrl(`${layoutId}/template_json`);
+                }
+
                 console.log(`[RemoteLayoutManager] Loading layout content: ${contentUrl}`);
-                
+
                 const response = await fetch(contentUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 layoutData = await response.json();
             }
             const layout = this._createLayoutObject({

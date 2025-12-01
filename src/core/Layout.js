@@ -132,20 +132,100 @@ class Layout {
         try {
             const categories = await manager.getLayouts();
             const layouts = [];
-            
+
+            // DO NOT eagerly load all templates - just return metadata from index
+            // Individual templates will be loaded on-demand via manager.getLayout()
             for (const category of categories) {
                 for (const layoutInfo of category.layouts) {
-                    try {
-                        const layoutData = await manager.getLayout(layoutInfo.id);
-                        if (layoutData) {
-                            layouts.push(layoutData);
+                    // Create a lazy-loading layout wrapper
+                    layouts.push({
+                        id: layoutInfo.id,
+                        name: layoutInfo.name,
+                        description: layoutInfo.description,
+                        icon: layoutInfo.icon,
+                        tags: layoutInfo.tags || [],
+                        // Store reference to manager for lazy loading
+                        _manager: manager,
+                        // Add lazy getter for content
+                        get html() {
+                            return this._loadedHtml || null;
+                        },
+                        // Method to load content on demand
+                        async loadContent() {
+                            if (!this._loadedHtml) {
+                                try {
+                                    const fullLayout = await this._manager.getLayout(this.id);
+                                    this._loadedHtml = fullLayout.html || fullLayout.content;
+                                } catch (error) {
+                                    console.error(`Failed to load layout ${this.id}:`, error);
+                                    this._loadedHtml = '';
+                                }
+                            }
+                            return this._loadedHtml;
+                        },
+                        extractBlocks() {
+                            // If content not loaded yet, return empty array
+                            if (!this._loadedHtml) {
+                                console.warn(`Template ${this.id} content not loaded yet`);
+                                return [];
+                            }
+
+                            // Inline the block extraction logic (same as Layout.prototype.extractBlocks)
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(this._loadedHtml, 'text/html');
+                            const blocks = [];
+
+                            // Find all elements with data-block attribute
+                            const blockElements = doc.querySelectorAll('[data-block]');
+
+                            blockElements.forEach((element, index) => {
+                                const blockType = element.getAttribute('data-block');
+                                const config = {};
+
+                                // Extract configuration from data attributes
+                                Array.from(element.attributes).forEach(attr => {
+                                    if (attr.name.startsWith('data-config-')) {
+                                        let configKey = attr.name.replace('data-config-', '');
+                                        // Convert kebab-case to camelCase for consistency
+                                        configKey = configKey.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+                                        let value = attr.value;
+
+                                        // Try to parse JSON values and booleans
+                                        if (value.startsWith('[') || value.startsWith('{')) {
+                                            try {
+                                                value = JSON.parse(value);
+                                            } catch (e) {
+                                                // Keep as string if JSON parsing fails
+                                            }
+                                        } else if (value === 'true' || value === 'false') {
+                                            value = value === 'true';
+                                        }
+
+                                        config[configKey] = value;
+                                    }
+                                });
+
+                                // Create block structure
+                                const block = {
+                                    id: `${blockType}-${index}`,
+                                    type: blockType,
+                                    config: config
+                                };
+
+                                // Add any nested content
+                                if (element.innerHTML && !element.innerHTML.includes('data-block')) {
+                                    block.content = element.innerHTML;
+                                }
+
+                                blocks.push(block);
+                            });
+
+                            return blocks;
                         }
-                    } catch (error) {
-                        console.warn(`Failed to load layout ${layoutInfo.id}:`, error.message);
-                    }
+                    });
                 }
             }
-            
+
             return layouts;
         } catch (error) {
             console.warn('Failed to load remote layouts, using static fallback:', error.message);
