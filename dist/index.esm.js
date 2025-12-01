@@ -1071,12 +1071,16 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
         }
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
+        console.log('[Editor initBlock] Initial config for', blockName, ':', config);
+        console.log('[Editor initBlock] window.templateDragData:', window.templateDragData);
         // Check for template drag data and merge it into config
         if (window.templateDragData && window.templateDragData.type === blockName) {
+            console.log('[Editor initBlock] Merging template drag data:', window.templateDragData.config);
             Object.assign(config, window.templateDragData.config);
+            console.log('[Editor initBlock] Config after merge:', config);
             // Clear the template drag data after use
             window.templateDragData = null;
-        }
+        } else console.log('[Editor initBlock] No template drag data to merge');
         const newBlock = new BlockClass({
             id: existingId || (0, $c9716fc55d08135c$export$567fc7097e064344)(),
             updateFunction: this.updateFunction.bind(this),
@@ -1139,8 +1143,10 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
    * @param {string|null} blockId - ID of target block
    */ handleTemplateDrop(template, blockId = null) {
         try {
+            console.log('[Editor] handleTemplateDrop called with template:', template);
             // Use pre-extracted blocks from the drag data
             const blocks = template.blocks;
+            console.log('[Editor] Template blocks:', blocks);
             if (!blocks || blocks.length === 0) {
                 (0, $4c0d28162c26105d$export$153e5dc2c098b35c).warn(`Template ${template.name} has no blocks to add`);
                 return;
@@ -1148,8 +1154,10 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             const newBlocks = [];
             // Create blocks for each template block
             for (const blockData of blocks){
+                console.log('[Editor] Processing block data:', blockData);
                 // Map template block types to AlpineBlocks tool names
                 const toolName = this.mapTemplateBlockToTool(blockData.type);
+                console.log('[Editor] Mapped to tool:', toolName);
                 if (!toolName || !this.toolConfig[toolName]) {
                     (0, $4c0d28162c26105d$export$153e5dc2c098b35c).warn(`Tool ${toolName} not found for template block type ${blockData.type}`);
                     continue;
@@ -1159,6 +1167,7 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
                 const BlockClass = this.toolConfig[toolName].class;
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
+                console.log('[Editor] Merged config for', toolName, ':', mergedConfig);
                 const newBlock = new BlockClass({
                     id: (0, $c9716fc55d08135c$export$567fc7097e064344)(),
                     updateFunction: this.updateFunction.bind(this),
@@ -2591,17 +2600,22 @@ var $a97b0c1be92da308$export$2e2bcd8739ae039 = $a97b0c1be92da308$export$3962e98a
    * Convert HTML content to block structure for compatibility
    */ _convertHtmlToBlocks(htmlContent) {
         // Create a temporary Raw block that contains the HTML
-        return [
+        // Note: LayoutManager.addLayout expects blocks with { type, data } structure
+        // The 'data' field becomes the 'config' in the Raw block constructor
+        console.log('[RemoteLayoutManager] Converting HTML to blocks, content length:', htmlContent?.length);
+        const blocks = [
             {
                 type: 'raw',
                 data: {
-                    content: htmlContent,
+                    content: htmlContent || '',
                     mode: 'html',
                     showPreview: true,
                     validateHtml: false
                 }
             }
         ];
+        console.log('[RemoteLayoutManager] Created blocks:', blocks);
+        return blocks;
     }
     /**
    * Build full URL for remote resources
@@ -3944,7 +3958,8 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             customTools: options.customTools || [],
             className: options.className || 'common-editor-toolbar',
             onCommand: options.onCommand || null,
-            target: options.target || null
+            target: options.target || null,
+            variables: options.variables || [] // Array of {label: 'Customer Name', value: '{{customer_name}}'}
         };
     }
     /**
@@ -3954,13 +3969,13 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ render(targetId = null) {
         const features = this.options.features;
         const customTools = this.options.customTools;
-        let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">`;
+        let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #ccc; background: #fff;">`;
         // Blocks button (special AlpineBlocks feature)
         if (features.blocks) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             toolbarHTML += this.renderBlocksButton();
             toolbarHTML += '</div>';
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         // Undo/Redo group
         if (features.undo || features.redo) {
@@ -3968,7 +3983,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             if (features.undo) toolbarHTML += this.renderButton('undo', 'Undo', this.getIcon('undo'), 'Ctrl+Z');
             if (features.redo) toolbarHTML += this.renderButton('redo', 'Redo', this.getIcon('redo'), 'Ctrl+Y');
             toolbarHTML += '</div>';
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         // Text formatting group
         if (features.bold || features.italic || features.underline || features.strikethrough) {
@@ -3980,7 +3995,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if (features.formatBlock && (features.bold || features.italic || features.underline || features.strikethrough)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if (features.formatBlock && (features.bold || features.italic || features.underline || features.strikethrough)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Format block group
         if (features.formatBlock) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center;">';
@@ -3988,7 +4003,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if (features.lists && features.formatBlock) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if (features.lists && features.formatBlock) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Lists group
         if (features.lists) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -3997,7 +4012,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if (features.links && features.lists) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if (features.links && features.lists) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Links group
         if (features.links) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -4006,7 +4021,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if (features.alignment && features.links) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if (features.alignment && features.links) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Alignment group
         if (features.alignment) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -4017,7 +4032,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if (features.indentation && features.alignment) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if (features.indentation && features.alignment) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Indentation group
         if (features.indentation) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -4026,7 +4041,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if ((features.textColor || features.backgroundColor) && features.indentation) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if ((features.textColor || features.backgroundColor) && features.indentation) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Color group
         if (features.textColor || features.backgroundColor) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
@@ -4035,7 +4050,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             toolbarHTML += '</div>';
         }
         // Separator
-        if ((features.fontSize || features.fontFamily) && (features.textColor || features.backgroundColor)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+        if ((features.fontSize || features.fontFamily) && (features.textColor || features.backgroundColor)) toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         // Font group
         if (features.fontSize || features.fontFamily) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 4px;">';
@@ -4045,16 +4060,23 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
         }
         // Custom tools
         if (customTools.length > 0) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             customTools.forEach((tool)=>{
                 toolbarHTML += this.renderCustomTool(tool);
             });
             toolbarHTML += '</div>';
         }
+        // Variables dropdown
+        if (this.hasVariables()) {
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderVariablesDropdown();
+            toolbarHTML += '</div>';
+        }
         // Code View button (always last, on the right)
         if (features.codeView) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             toolbarHTML += this.renderCodeViewButton();
             toolbarHTML += '</div>';
@@ -4076,7 +4098,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                     @click="handleToolbarCommand('${command}')"
                     title="${tooltipText}"
                     type="button"
-                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 ${icon}
             </button>
         `;
@@ -4090,7 +4114,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             <select class="toolbar-select toolbar-format-block"
                     @change="if ($event.target.value) handleToolbarCommand('formatBlock', $event.target.value)"
                     title="Format"
-                    style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 100px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Format</option>
                 <option value="p">Paragraph</option>
                 <option value="h1">Heading 1</option>
@@ -4109,7 +4135,7 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
    */ renderBlocksButton() {
         return `
             <button class="toolbar-btn toolbar-btn-blocks"
-                    @click="alert('\u{1F9F1} AlpineBlocks Editor Active!')"
+                    @click="handleToolbarCommand('toggleBlocksSidebar')"
                     title="AlpineBlocks Editor"
                     type="button"
                     style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px;">
@@ -4131,6 +4157,140 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                 ${this.getIcon('code')}
             </button>
         `;
+    }
+    /**
+   * Render the variables dropdown/menu
+   * Supports both flat arrays and categorized objects:
+   * - Flat: [{label: 'Name', value: '{{var}}'}] - renders as simple dropdown
+   * - Categorized: {'Category Name': [{label: 'Name', value: '{{var}}'}]} - renders as nested menu
+   * @returns {string} Dropdown/Menu HTML
+   */ renderVariablesDropdown() {
+        const variables = this.options.variables || [];
+        // Check if variables is an object (categorized) or array (flat)
+        if (Array.isArray(variables)) {
+            // Flat array format - use simple select dropdown
+            let optionsHTML = '<option value="">Insert Variable...</option>';
+            variables.forEach((variable)=>{
+                const label = variable.label || variable.value;
+                const value = variable.value || '';
+                optionsHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(label)}</option>`;
+            });
+            return `
+                <select class="toolbar-select toolbar-select-variable"
+                        @change="if ($event.target.value) { handleToolbarCommand('insertHTML', $event.target.value); $event.target.value = ''; }"
+                        title="Insert Variable"
+                        style="height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 13px; cursor: pointer; min-width: 140px;">
+                    ${optionsHTML}
+                </select>
+            `;
+        } else if (typeof variables === 'object') // Categorized format - use nested menu button
+        return this.renderVariablesMenu(variables);
+        return '';
+    }
+    /**
+   * Render a nested menu button for categorized variables
+   * @param {Object} categories - Object with category names as keys and variable arrays as values
+   * @returns {string} Menu button HTML
+   */ renderVariablesMenu(categories) {
+        const menuId = `variables-menu-${Date.now()}`;
+        // Build menu items for each category
+        let categoriesHTML = '';
+        Object.keys(categories).forEach((category)=>{
+            const categoryVars = categories[category];
+            if (Array.isArray(categoryVars) && categoryVars.length > 0) {
+                const submenuId = `submenu-${category.replace(/\s+/g, '-').toLowerCase()}`;
+                // Build submenu items
+                let itemsHTML = '';
+                categoryVars.forEach((variable)=>{
+                    const label = variable.label || variable.value;
+                    const value = variable.value || '';
+                    itemsHTML += `
+                        <div class="menu-item"
+                             @click="handleToolbarCommand('insertHTML', '${this.escapeHtml(value)}'); open = false;"
+                             style="padding: 8px 16px; cursor: pointer; white-space: nowrap; font-size: 14px; color: #333; transition: background-color 0.15s ease;"
+                             @mouseenter="$el.style.backgroundColor='#0969da'; $el.style.color='white';"
+                             @mouseleave="$el.style.backgroundColor='transparent'; $el.style.color='#333';">
+                            ${this.escapeHtml(label)}
+                        </div>
+                    `;
+                });
+                categoriesHTML += `
+                    <div class="menu-category"
+                         x-data="{ submenuOpen: false }"
+                         @mouseenter="submenuOpen = true"
+                         @mouseleave="submenuOpen = false"
+                         style="position: relative;">
+                        <div class="menu-item"
+                             style="padding: 8px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #333; transition: background-color 0.15s ease;"
+                             @mouseenter="$el.style.backgroundColor='#e7f0ff'; submenuOpen = true"
+                             @mouseleave="$el.style.backgroundColor='transparent'">
+                            <span>${this.escapeHtml(category)}</span>
+                            <span style="margin-left: 24px; font-size: 12px; color: #666;">\u{203A}</span>
+                        </div>
+                        <div x-show="submenuOpen"
+                             @mouseenter="submenuOpen = true"
+                             @mouseleave="submenuOpen = false"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             class="submenu"
+                             style="position: absolute; left: 100%; top: -1px; background: white; border: 1px solid #ccc; border-radius: 3px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 200px; z-index: 1002; display: block;"
+                             @click.stop>
+                            ${itemsHTML}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        return `
+            <div x-data="{ open: false }"
+                 @click.away="open = false"
+                 style="position: relative; display: inline-flex;">
+                <button class="variables-dropdown-btn"
+                        @click="open = !open"
+                        title="Available Variables"
+                        type="button"
+                        style="height: 32px !important; width: auto !important; padding: 6px 12px !important; border: none !important; background: transparent !important; border-radius: 3px !important; font-size: 13px !important; color: #333 !important; cursor: pointer !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; white-space: nowrap !important; min-width: auto !important; transition: all 0.15s ease !important; flex-shrink: 0 !important;"
+                        @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                        @mouseleave="if (!open) { $el.style.backgroundColor='transparent'; }"
+                        :style="open && 'background-color: #e7f0ff;'">
+                    <span style="font-size: 13px;">Available Variables</span>
+                    <span style="font-size: 10px; color: #666;">\u{25BE}</span>
+                </button>
+                <div x-show="open"
+                     id="${menuId}"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 transform scale-95"
+                     x-transition:enter-end="opacity-100 transform scale-100"
+                     class="variables-menu"
+                     style="position: absolute; top: 100%; left: 0; margin-top: 2px; background: white; border: 1px solid #ccc; border-radius: 3px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 220px; z-index: 1000; overflow: visible;"
+                     @click.stop>
+                    ${categoriesHTML}
+                </div>
+            </div>
+        `;
+    }
+    /**
+   * Check if variables are defined and non-empty
+   * Handles both array and object formats
+   * @returns {boolean} True if variables exist and have content
+   */ hasVariables() {
+        const variables = this.options.variables;
+        if (!variables) return false;
+        // Array format
+        if (Array.isArray(variables)) return variables.length > 0;
+        // Object format (categorized)
+        if (typeof variables === 'object') return Object.keys(variables).length > 0;
+        return false;
+    }
+    /**
+   * Escape HTML to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */ escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     /**
    * Render the link button with prompt
@@ -4164,7 +4324,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
                         onclick="this.previousElementSibling.click(); return false;"
                         title="${title}"
                         type="button"
-                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
+                        style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; color: #333; transition: all 0.15s ease;"
+                        onmouseenter="this.style.backgroundColor='#e7f0ff';"
+                        onmouseleave="this.style.backgroundColor='transparent';">
                     ${icon}
                 </button>
             </div>
@@ -4178,7 +4340,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             <select class="toolbar-select toolbar-font-family"
                     @change="if ($event.target.value) handleToolbarCommand('fontName', $event.target.value)"
                     title="Font Family"
-                    style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 120px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Font Family</option>
                 <option value="Arial">Arial</option>
                 <option value="Helvetica">Helvetica</option>
@@ -4200,7 +4364,9 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
             <select class="toolbar-select toolbar-font-size"
                     @change="if ($event.target.value) handleToolbarCommand('fontSize', $event.target.value)"
                     title="Font Size"
-                    style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 70px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Size</option>
                 <option value="1">8pt</option>
                 <option value="2">10pt</option>
@@ -6002,6 +6168,7 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
             }
         },
         init (blockId) {
+            console.log('[rawCodeEditor] init called with blockId:', blockId);
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find((b)=>b.id === blockId);
             if (!this.block && window.alpineEditors) // Try finding through alpine editors
@@ -6012,16 +6179,22 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
                     if (this.block) break;
                 }
             }
+            console.log('[rawCodeEditor] Found block:', this.block);
+            console.log('[rawCodeEditor] Block config:', this.block?.config);
+            console.log('[rawCodeEditor] Block config.content:', this.block?.config?.content);
+            console.log('[rawCodeEditor] Block config.content length:', this.block?.config?.content?.length);
             if (this.block) {
                 // Set initial preview mode based on block config, defaulting to true
                 this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
+                console.log('[rawCodeEditor] Set showPreview to:', this.showPreview);
+                console.log('[rawCodeEditor] Set previewContent length:', this.previewContent?.length);
                 // Initialize toolbar for preview mode
                 this.toolbar = new (0, $f30f3148448a183c$export$c4f883ba50227a95)({
                     className: 'raw-preview-toolbar'
                 });
-            }
+            } else console.error('[rawCodeEditor] Block not found for blockId:', blockId);
         },
         handleInput (event) {
         // Do nothing - just let the input happen
@@ -6332,12 +6505,17 @@ if (typeof window !== 'undefined' && !window.rawCodeEditor) window.rawCodeEditor
 class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
+        console.log('[Raw] Constructor called with config:', config);
+        console.log('[Raw] config.content:', config.content);
+        console.log('[Raw] config.content length:', config.content?.length);
         this.config = {
             content: config.content || '',
             mode: config.mode || 'html',
             // html, css, javascript
             showPreview: config.showPreview !== undefined ? config.showPreview : true
         };
+        console.log('[Raw] Final this.config:', this.config);
+        console.log('[Raw] Final this.config.content length:', this.config.content?.length);
         this.settings = [
             {
                 name: 'mode',
@@ -6441,8 +6619,10 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
         }
     }
     editorRender() {
-        return `<div class="raw-block" data-block-id="${this.id}" 
-                     x-data="rawCodeEditor()" 
+        console.log('[Raw] editorRender called, this.config.content length:', this.config.content?.length);
+        console.log('[Raw] editorRender this.config:', this.config);
+        return `<div class="raw-block" data-block-id="${this.id}"
+                     x-data="rawCodeEditor()"
                      x-init="init('${this.id}')">
             <div class="code-editor">
                 <div class="code-header">
@@ -6452,15 +6632,15 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
                         <span x-show="isValid" class="validation-success">\u{2713} Valid</span>
                     </div>
                     <div class="code-header-right">
-                        <button 
-                            class="toggle-btn" 
+                        <button
+                            class="toggle-btn"
                             :class="{ 'active': !showPreview }"
                             @click="showPreview = false"
                             type="button">
                             Code
                         </button>
-                        <button 
-                            class="toggle-btn" 
+                        <button
+                            class="toggle-btn"
                             :class="{ 'active': showPreview }"
                             @click="showPreview = true"
                             type="button">
@@ -6472,7 +6652,7 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
                     x-show="!showPreview"
                     class="code-input"
                     :class="{ 'invalid': !isValid }"
-                    x-init="$el.value = block ? block.config.content : '';"
+                    x-init="console.log('[Raw textarea] Initializing with block:', block); $el.value = block ? block.config.content : ''; console.log('[Raw textarea] Set value to:', $el.value);"
                     @input="handleInput($event)"
                     @blur="if(block) { block.config.content = $event.target.value; }"
                     placeholder="Enter your code here..."
@@ -6922,22 +7102,29 @@ var $ff02aedcfec75f6b$export$2e2bcd8739ae039 = $ff02aedcfec75f6b$var$Button;
 
 
 // Tool modules registry
+// Order determines toolbar display order
 const $54dbff4655f90a4d$export$1c6f616578103705 = {
-    Paragraph: $4672dcc6140b9c43$export$2e2bcd8739ae039,
+    Columns: // Content tools
+    $caf1e97d18e29b9d$export$2e2bcd8739ae039,
     Header: $33963d57131b26df$export$2e2bcd8739ae039,
-    List: $84a8a2891314e8a4$export$2e2bcd8739ae039,
-    Code: $5946ce6f8e5f3f11$export$2e2bcd8739ae039,
-    Image: $89b22059272e1d27$export$2e2bcd8739ae039,
-    Quote: $56e8ed795405fb5c$export$2e2bcd8739ae039,
     WYSIWYG: $806caca8705a7215$export$2e2bcd8739ae039,
-    Alert: $18282cbdca00d23e$export$2e2bcd8739ae039,
+    Button: // Rich text
+    $ff02aedcfec75f6b$export$2e2bcd8739ae039,
+    Quote: $56e8ed795405fb5c$export$2e2bcd8739ae039,
+    Delimiter: $fd39480e8716551f$export$2e2bcd8739ae039,
+    Image: // Media tools
+    $89b22059272e1d27$export$2e2bcd8739ae039,
     VideoPlayer: $1d78d83887e524f6$export$2e2bcd8739ae039,
     AudioPlayer: $b7a015afcd00e44f$export$2e2bcd8739ae039,
-    Carousel: $5158dfa5f71afbd5$export$2e2bcd8739ae039,
-    Columns: $caf1e97d18e29b9d$export$2e2bcd8739ae039,
-    Raw: $08ab3851bf56e43b$export$2e2bcd8739ae039,
-    Delimiter: $fd39480e8716551f$export$2e2bcd8739ae039,
-    Button: $ff02aedcfec75f6b$export$2e2bcd8739ae039
+    Carousel: // Interactive tools
+    $5158dfa5f71afbd5$export$2e2bcd8739ae039,
+    Alert: $18282cbdca00d23e$export$2e2bcd8739ae039,
+    Raw: // Advanced tools
+    $08ab3851bf56e43b$export$2e2bcd8739ae039,
+    Paragraph: // Legacy/hidden tools (not shown in toolbar by default)
+    $4672dcc6140b9c43$export$2e2bcd8739ae039,
+    List: $84a8a2891314e8a4$export$2e2bcd8739ae039,
+    Code: $5946ce6f8e5f3f11$export$2e2bcd8739ae039
 };
 function $54dbff4655f90a4d$export$9040e3cbd6c7ffef() {
     const config = {};
@@ -7013,6 +7200,11 @@ function $54dbff4655f90a4d$export$1a3041f292b9ea5f() {
             media: null
         };
     }
+}
+// Expose toolModules on window.AlpineBlocks for RichTextLoader sidebar
+if (typeof window !== 'undefined') {
+    window.AlpineBlocks = window.AlpineBlocks || {};
+    window.AlpineBlocks.toolModules = $54dbff4655f90a4d$export$1c6f616578103705;
 }
 
 
@@ -8012,8 +8204,10 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
             }
         }));
     // Register editorTemplates component
-    Alpine.data('editorTemplates', ()=>({
+    const editorTemplatesFactory = ()=>({
             templates: [],
+            filteredTemplates: [],
+            selectedCategory: 'all',
             loading: false,
             async init () {
                 this.loading = true;
@@ -8021,12 +8215,21 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
                     const layouts = (0, $aed4abc04f366b75$export$2e2bcd8739ae039).getAll();
                     if (layouts instanceof Promise) this.templates = await layouts;
                     else this.templates = layouts;
+                    // Initialize filtered templates
+                    this.filterTemplates();
                 } catch (error) {
                     console.error('Error loading templates:', error);
                     this.templates = [];
+                    this.filteredTemplates = [];
                 } finally{
                     this.loading = false;
                 }
+            },
+            filterTemplates () {
+                if (this.selectedCategory === 'all') this.filteredTemplates = this.templates;
+                else this.filteredTemplates = this.templates.filter((template)=>{
+                    return template.tags && template.tags.includes(this.selectedCategory);
+                });
             },
             handleTemplateClick (event, template) {
                 event.preventDefault();
@@ -8049,15 +8252,30 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
             // Clean up drag state if needed
             },
             addTemplate (template) {
+                console.log('[editorTemplates] addTemplate called with template:', template);
                 if (window.alpineEditors?.['alpineblocks-editor']) {
-                    const editor = window.alpineEditors['alpineblocks-editor'];
-                    if (editor.editor) {
-                        const layoutManager = new (0, $c77c197c3817ff58$export$2e2bcd8739ae039)(editor.editor);
-                        layoutManager.addLayout(template.id);
-                    }
-                }
+                    const editorWrapper = window.alpineEditors['alpineblocks-editor'];
+                    const editor = editorWrapper.editor;
+                    if (editor) {
+                        console.log('[editorTemplates] Found editor, extracting blocks from template');
+                        // Extract blocks from the template
+                        const blocks = template.extractBlocks();
+                        console.log('[editorTemplates] Extracted blocks:', blocks);
+                        // Add each block using the editor's handleTemplateDrop method
+                        if (blocks && blocks.length > 0) editor.handleTemplateDrop({
+                            id: template.id,
+                            name: template.name,
+                            description: template.description,
+                            blocks: blocks
+                        });
+                        else console.warn('[editorTemplates] No blocks extracted from template');
+                    } else console.error('[editorTemplates] Editor not found in wrapper');
+                } else console.error('[editorTemplates] alpineblocks-editor not found in window.alpineEditors');
             }
-        }));
+        });
+    Alpine.data('editorTemplates', editorTemplatesFactory);
+    // Expose globally for RichTextLoader sidebar
+    window.editorTemplates = editorTemplatesFactory;
 }
 
 
@@ -8413,6 +8631,7 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
 class $9aaf352ee83751f3$var$RichTextLoader {
     constructor(){
         this.instances = new Map();
+        this.alpineBlocksInitialized = false;
         this.defaultConfig = {
             height: 400,
             features: {
@@ -8432,8 +8651,29 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 fontFamily: true
             },
             placeholder: 'Start typing here...',
-            className: 'alpineblocks-richtext-editor'
+            className: 'alpineblocks-richtext-editor',
+            variables: [] // Array [{label: 'Name', value: '{{var}}'}] OR Object {'Category': [{...}]}
         };
+    }
+    /**
+   * Initialize AlpineBlocks globally (only once)
+   * Note: This just ensures the blocks are loaded from the global registry
+   * The actual AlpineBlocks library should already be loaded by the page
+   */ initializeAlpineBlocks() {
+        if (this.alpineBlocksInitialized) return;
+        // Check if AlpineBlocks is already loaded
+        if (window.AlpineBlocks) {
+            this.alpineBlocksInitialized = true;
+            console.log("\u2705 AlpineBlocks already loaded, ready for RichText editors");
+            return;
+        }
+        // If not loaded yet, listen for the alpineblocks:ready event
+        if (typeof window !== 'undefined') window.addEventListener('alpineblocks:ready', ()=>{
+            this.alpineBlocksInitialized = true;
+            console.log("\u2705 AlpineBlocks loaded via event, ready for RichText editors");
+        }, {
+            once: true
+        });
     }
     /**
    * Initialize rich text editor on a selector
@@ -8441,6 +8681,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
    * @param {object} config - Editor configuration options
    * @returns {Promise<Array>} Array of initialized editor instances
    */ async init(selector, config = {}) {
+        // Initialize AlpineBlocks globally (only once)
+        this.initializeAlpineBlocks();
         const finalConfig = {
             ...this.defaultConfig,
             ...config
@@ -8484,7 +8726,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             // Create toolbar
             const toolbar = new (0, $f30f3148448a183c$export$c4f883ba50227a95)({
                 className: config.toolbarClassName || 'richtext-toolbar',
-                features: config.features || this.defaultConfig.features
+                features: config.features || this.defaultConfig.features,
+                variables: config.variables || []
             });
             // Create toolbar container with Alpine x-data
             const toolbarContainer = document.createElement('div');
@@ -8553,6 +8796,158 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 element.value = editorDiv.innerHTML;
                 if (config.onBlur) config.onBlur(editorDiv.innerHTML);
             });
+            // Handle template drops
+            editorDiv.addEventListener('dragover', (e)=>{
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            editorDiv.addEventListener('drop', (e)=>{
+                console.log('[RichText] Drop event triggered');
+                const dragDataText = e.dataTransfer.getData('text/plain');
+                console.log('[RichText] dataTransfer text/plain:', dragDataText);
+                let htmlContent = null;
+                let isTemplateDrop = false;
+                let templateId = null;
+                let templateName = null;
+                // Try to parse as JSON first (AlpineBlocks template format)
+                try {
+                    const dragData = JSON.parse(dragDataText);
+                    if (dragData.type === 'template' && dragData.data && dragData.data.blocks) {
+                        // Extract HTML from template blocks
+                        console.log('[RichText] Detected AlpineBlocks template drop');
+                        isTemplateDrop = true;
+                        templateId = dragData.data.id || null;
+                        templateName = dragData.data.name || null;
+                        // Concatenate HTML from all blocks
+                        htmlContent = dragData.data.blocks.map((block)=>block.data.content || '').join('\n');
+                        console.log('[RichText] Extracted HTML from template blocks, length:', htmlContent.length);
+                        console.log('[RichText] Template ID:', templateId, 'Name:', templateName);
+                    }
+                } catch (parseError) {
+                    // Not JSON, check if it's a simple drag type like 'Raw'
+                    if (dragDataText === 'Raw' && window.templateDragData) {
+                        console.log('[RichText] Detected Raw block drop with window.templateDragData');
+                        isTemplateDrop = true;
+                        htmlContent = window.templateDragData.config.content;
+                        templateId = window.templateDragData.id || null;
+                        templateName = window.templateDragData.name || null;
+                    }
+                }
+                if (isTemplateDrop && htmlContent) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[RichText] Inserting template HTML, length:', htmlContent.length);
+                    // Generate unique ID for this template instance
+                    const instanceId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    // Create wrapper div with tracking attributes
+                    const templateWrapper = document.createElement('div');
+                    templateWrapper.id = instanceId;
+                    templateWrapper.setAttribute('data-template-id', templateId || 'unknown');
+                    templateWrapper.setAttribute('data-template-name', templateName || 'Unknown Template');
+                    templateWrapper.setAttribute('contenteditable', 'true');
+                    templateWrapper.innerHTML = htmlContent;
+                    // Get selection or cursor position
+                    const selection = window.getSelection();
+                    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                    if (range) {
+                        // Delete any selected content
+                        range.deleteContents();
+                        // Check if we're inserting at the very beginning of the editor
+                        const isAtStart = range.startOffset === 0 && (range.startContainer === editorDiv || range.startContainer.nodeType === Node.TEXT_NODE && range.startContainer.parentNode === editorDiv && !range.startContainer.previousSibling || range.startContainer.nodeType === Node.ELEMENT_NODE && range.startContainer.parentNode === editorDiv && !range.startContainer.previousSibling);
+                        // Build the complete insertion fragment with escape paragraphs
+                        const completeFragment = document.createDocumentFragment();
+                        // Add escape paragraph BEFORE if at start
+                        if (isAtStart) {
+                            const escapeParagraphBefore = document.createElement('p');
+                            escapeParagraphBefore.innerHTML = '<br>';
+                            completeFragment.appendChild(escapeParagraphBefore);
+                            console.log('[RichText] Will add escape paragraph before block (at start)');
+                        }
+                        // Add the wrapped template content
+                        completeFragment.appendChild(templateWrapper);
+                        // Add escape paragraph AFTER
+                        const escapeParagraphAfter = document.createElement('p');
+                        escapeParagraphAfter.innerHTML = '<br>';
+                        completeFragment.appendChild(escapeParagraphAfter);
+                        // Insert the complete fragment at once
+                        range.insertNode(completeFragment);
+                        // Move cursor into the escape paragraph after
+                        range.selectNodeContents(escapeParagraphAfter);
+                        range.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
+                    } else {
+                        // No selection, append to end
+                        const isEmpty = editorDiv.innerHTML.trim() === '' || editorDiv.innerHTML === '<p><br></p>' || editorDiv.textContent.trim() === '';
+                        // If editor is empty, add escape paragraph before
+                        if (isEmpty) {
+                            const escapeParagraphBefore = document.createElement('p');
+                            escapeParagraphBefore.innerHTML = '<br>';
+                            editorDiv.innerHTML = ''; // Clear placeholder
+                            editorDiv.appendChild(escapeParagraphBefore);
+                            console.log('[RichText] Added escape paragraph before block (empty editor)');
+                        }
+                        // Add the wrapped template
+                        editorDiv.appendChild(templateWrapper);
+                        // Add escape paragraph at the end
+                        const escapeParagraphAfter = document.createElement('p');
+                        escapeParagraphAfter.innerHTML = '<br>';
+                        editorDiv.appendChild(escapeParagraphAfter);
+                        // Move cursor to the escape paragraph after
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(escapeParagraphAfter);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
+                    }
+                    // Sync to textarea
+                    element.value = editorDiv.innerHTML;
+                    if (config.onChange) config.onChange(editorDiv.innerHTML);
+                    // Clear the template data if it was used
+                    if (window.templateDragData) window.templateDragData = null;
+                    console.log('[RichText] Template HTML inserted successfully');
+                }
+            });
+            // Track template clicks - find nearest template wrapper when clicking in editor
+            editorDiv.addEventListener('click', (e)=>{
+                // Get the element that was clicked
+                const clickedElement = e.target;
+                // Walk up the DOM tree to find a template wrapper
+                let currentElement = clickedElement;
+                while(currentElement && currentElement !== editorDiv){
+                    if (currentElement.hasAttribute && currentElement.hasAttribute('data-template-id')) {
+                        const templateId = currentElement.getAttribute('data-template-id');
+                        const instanceId = currentElement.id;
+                        const templateName = currentElement.getAttribute('data-template-name');
+                        // Get the style attribute of the clicked element (not the wrapper)
+                        const currentElementStyle = clickedElement.getAttribute('style') || '';
+                        const currentElementTag = clickedElement.tagName ? clickedElement.tagName.toLowerCase() : '';
+                        console.log('[RichText] Template clicked:');
+                        console.log('  Instance ID:', instanceId);
+                        console.log('  Template ID:', templateId);
+                        console.log('  Template Name:', templateName);
+                        console.log('  Clicked Element:', currentElementTag);
+                        console.log('  Element Style:', currentElementStyle);
+                        // Dispatch event with current element info
+                        editorDiv.dispatchEvent(new CustomEvent('template-selected', {
+                            detail: {
+                                instanceId: instanceId,
+                                templateId: templateId,
+                                templateName: templateName,
+                                element: currentElement,
+                                currentElementStyle: currentElementStyle,
+                                currentElementTag: currentElementTag,
+                                clickedElement: clickedElement
+                            },
+                            bubbles: true
+                        }));
+                        break;
+                    }
+                    currentElement = currentElement.parentNode;
+                }
+            });
             // Sync code view changes back to textarea
             codeTextarea.addEventListener('input', ()=>{
                 element.value = codeTextarea.value;
@@ -8614,14 +9009,31 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         // Store the last selection
         let savedSelection = null;
         let isCodeViewActive = false;
-        // Save selection when editor loses focus
-        editorDiv.addEventListener('blur', ()=>{
+        let isBlocksSidebarOpen = false;
+        // Function to save current selection
+        const saveCurrentSelection = ()=>{
             const selection = window.getSelection();
-            if (selection.rangeCount > 0) savedSelection = selection.getRangeAt(0);
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0).cloneRange();
+                console.log('[RichText] Selection saved');
+            }
+        };
+        // Save selection when editor loses focus
+        editorDiv.addEventListener('blur', saveCurrentSelection);
+        // Save selection when toolbar buttons/dropdowns are interacted with
+        toolbarContainer.addEventListener('mousedown', (e)=>{
+            // Save selection before any toolbar interaction
+            saveCurrentSelection();
         });
         // Define the command handler function
         const handleToolbarCommand = (command, value = null)=>{
             console.log('[RichText] Executing command:', command, 'value:', value);
+            // Handle toggle blocks sidebar command
+            if (command === 'toggleBlocksSidebar') {
+                this.toggleBlocksSidebar(editorId, !isBlocksSidebarOpen);
+                isBlocksSidebarOpen = !isBlocksSidebarOpen;
+                return;
+            }
             // Handle toggle code view command
             if (command === 'toggleCodeView') {
                 if (isCodeViewActive) {
@@ -8657,11 +9069,14 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             // 1. There's no current selection (rangeCount === 0), OR
             // 2. The current selection is collapsed (just a cursor position)
             // This handles color pickers and dropdowns while preventing overwriting actual text selections
-            if (savedSelection && (selection.rangeCount === 0 || isCollapsed)) {
+            if (savedSelection && (selection.rangeCount === 0 || isCollapsed)) try {
                 selection.removeAllRanges();
-                selection.addRange(savedSelection);
+                selection.addRange(savedSelection.cloneRange());
                 console.log('[RichText] Restored saved selection:', selection.toString());
-            } else console.log('[RichText] Using current selection:', selection.toString());
+            } catch (e) {
+                console.warn('[RichText] Failed to restore selection:', e);
+            }
+            else console.log('[RichText] Using current selection:', selection.toString());
             console.log('[RichText] Selection range count:', selection.rangeCount);
             try {
                 const result = document.execCommand(command, false, value);
@@ -8696,6 +9111,564 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             // This preserves the selection when clicking toolbar buttons
             e.preventDefault();
         });
+    }
+    /**
+   * Create and toggle the blocks sidebar
+   * @param {string} editorId - Editor ID
+   * @param {boolean} show - Whether to show or hide the sidebar
+   */ toggleBlocksSidebar(editorId, show) {
+        const sidebarId = `blocks-sidebar-${editorId}`;
+        let sidebar = document.getElementById(sidebarId);
+        if (show) {
+            // Create sidebar if it doesn't exist
+            if (!sidebar) {
+                sidebar = this.createBlocksSidebar(editorId);
+                document.body.appendChild(sidebar);
+            }
+            // Show sidebar with animation
+            setTimeout(()=>{
+                sidebar.classList.add('active');
+            }, 10);
+        } else // Hide sidebar with animation
+        if (sidebar) {
+            sidebar.classList.remove('active');
+            // Remove from DOM after animation completes
+            setTimeout(()=>{
+                if (sidebar.parentNode) sidebar.parentNode.removeChild(sidebar);
+            }, 300);
+        }
+    }
+    /**
+   * Create the blocks sidebar HTML
+   * @param {string} editorId - Editor ID
+   * @returns {HTMLElement} Sidebar element
+   */ createBlocksSidebar(editorId) {
+        const sidebar = document.createElement('div');
+        sidebar.id = `blocks-sidebar-${editorId}`;
+        sidebar.className = 'alpineblocks-sidebar';
+        // Initialize Alpine components on the sidebar
+        sidebar.setAttribute('x-data', `{
+            activeTab: 'tools',
+            toolbarData: null,
+            templatesData: null,
+            selectedTemplate: null,
+            currentElementStyle: '',
+            currentElementTag: '',
+            cssProperties: {},
+            init() {
+                // Initialize toolbar component
+                if (window.editorToolbar) {
+                    this.toolbarData = window.editorToolbar;
+                }
+                // Initialize templates component
+                if (window.editorTemplatesWithCategories) {
+                    this.templatesData = window.editorTemplatesWithCategories();
+                    if (this.templatesData.init) {
+                        this.templatesData.init.call(this.templatesData);
+                    }
+                } else if (window.editorTemplates) {
+                    this.templatesData = window.editorTemplates();
+                    if (this.templatesData.init) {
+                        this.templatesData.init.call(this.templatesData);
+                    }
+                }
+
+                // Listen for template selection events
+                document.addEventListener('template-selected', (e) => {
+                    this.selectedTemplate = e.detail;
+                    this.currentElementStyle = e.detail.currentElementStyle || '';
+                    this.currentElementTag = e.detail.currentElementTag || '';
+                    this.activeTab = 'properties';
+                    this.parseCSSProperties();
+                });
+            },
+            parseCSSProperties() {
+                // Parse inline style into individual properties
+                const style = this.currentElementStyle || '';
+                const props = {};
+
+                // Split by semicolon and parse each property
+                style.split(';').forEach(prop => {
+                    const [key, value] = prop.split(':').map(s => s.trim());
+                    if (key && value) {
+                        props[key] = value;
+                    }
+                });
+
+                this.cssProperties = props;
+            },
+            updateCSSProperty(property, value) {
+                this.cssProperties[property] = value;
+                this.applyStyles();
+            },
+            applyStyles() {
+                if (!this.selectedTemplate?.clickedElement) return;
+
+                // Build style string from properties
+                const styleString = Object.entries(this.cssProperties)
+                    .filter(([k, v]) => v)
+                    .map(([k, v]) => k + ': ' + v)
+                    .join('; ');
+
+                this.selectedTemplate.clickedElement.setAttribute('style', styleString);
+                this.currentElementStyle = styleString;
+            }
+        }`);
+        sidebar.innerHTML = `
+            <style>
+                .alpineblocks-sidebar {
+                    position: fixed;
+                    top: 0;
+                    left: -280px;
+                    width: 280px;
+                    height: 100vh;
+                    background: white;
+                    border-right: 1px solid #e5e7eb;
+                    z-index: 9999;
+                    transition: left 0.3s ease-in-out;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+                }
+
+                .alpineblocks-sidebar.active {
+                    left: 0;
+                }
+
+                .alpineblocks-sidebar .panel-header {
+                    padding: 1rem 1.25rem;
+                    border-bottom: 1px solid #e5e7eb;
+                    background: #f9fafb;
+                    font-weight: 600;
+                    color: #111827;
+                    font-size: 0.875rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .alpineblocks-sidebar .panel-tabs {
+                    display: flex;
+                    border-bottom: 1px solid #e5e7eb;
+                    background: #f9fafb;
+                }
+
+                .alpineblocks-sidebar .panel-tab {
+                    flex: 1;
+                    padding: 0.75rem;
+                    border: none;
+                    background: transparent;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    color: #6b7280;
+                    border-bottom: 2px solid transparent;
+                }
+
+                .alpineblocks-sidebar .panel-tab.active {
+                    color: #2563eb;
+                    border-bottom-color: #2563eb;
+                    background: white;
+                }
+
+                .alpineblocks-sidebar .panel-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 1rem;
+                }
+
+                .alpineblocks-sidebar .close-btn {
+                    margin-left: auto;
+                    background: transparent;
+                    border: none;
+                    color: #6b7280;
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 0.25rem;
+                    transition: all 0.2s ease;
+                }
+
+                .alpineblocks-sidebar .close-btn:hover {
+                    background: #e5e7eb;
+                    color: #111827;
+                }
+            </style>
+
+            <div class="panel-header">
+                <svg class="size-4" style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+                Options
+                <button class="close-btn" onclick="window.__richTextHandlers['${editorId}']('toggleBlocksSidebar')" type="button">
+                    <svg style="width: 1.25rem; height: 1.25rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="panel-tabs">
+                <button class="panel-tab"
+                        :class="{ 'active': activeTab === 'tools' }"
+                        @click="activeTab = 'tools'"
+                        title="Tools"
+                        type="button">
+                    <svg style="width: 20px; height: 20px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                    </svg>
+                </button>
+                <button class="panel-tab"
+                        :class="{ 'active': activeTab === 'templates' }"
+                        @click="activeTab = 'templates'"
+                        title="Templates"
+                        type="button">
+                    <svg style="width: 20px; height: 20px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path>
+                    </svg>
+                </button>
+                <button class="panel-tab"
+                        :class="{ 'active': activeTab === 'properties' }"
+                        @click="activeTab = 'properties'"
+                        title="Properties"
+                        type="button">
+                    <svg style="width: 20px; height: 20px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="panel-content" style="overflow-y: auto; flex: 1; min-height: 0;">
+                <!-- Tools Tab - Use actual editorToolbar component -->
+                <div id="toolbar-${editorId}"
+                     x-show="activeTab === 'tools'"
+                     x-data="editorToolbar"
+                     x-init="$nextTick(() => {
+                         // Try to find an AlpineBlocks editor on the page
+                         if (window.alpineEditors && Object.keys(window.alpineEditors).length > 0) {
+                             const foundEditorId = Object.keys(window.alpineEditors)[0];
+                             editor = window.alpineEditors[foundEditorId];
+                             editorId = foundEditorId;
+                             // Populate tools from the editor
+                             tools = editor.getToolbar();
+                             console.log('\u{2705} Sidebar toolbar connected to editor:', foundEditorId, 'with', tools.length, 'tools');
+                         } else if (window.AlpineBlocks && window.AlpineBlocks.toolModules) {
+                             // Fallback: No full editor, but we can show tools from toolModules
+                             console.log('\u{26A0}\u{FE0F} No AlpineBlocks editor found. Loading tools from toolModules (drag/drop will not work).');
+                             tools = Object.keys(window.AlpineBlocks.toolModules).map(key => {
+                                 const Block = window.AlpineBlocks.toolModules[key];
+                                 const toolbox = Block.toolbox ? Block.toolbox() : {};
+                                 return {
+                                     name: toolbox.name || key,
+                                     icon: toolbox.icon || '\u{1F527}',
+                                     class: key
+                                 };
+                             });
+                             console.log('Loaded', tools.length, 'tools from toolModules');
+                         } else {
+                             console.error('\u{274C} Neither AlpineBlocks editor nor toolModules found');
+                         }
+                     })"
+                     style="padding: 1.25rem;">
+                    <template x-for="tool in tools" :key="tool.name">
+                        <div class="tool-item"
+                             draggable="true"
+                             @dragstart="handleDragStart($event, tool)"
+                             @dragend="handleDragEnd($event)"
+                             @dblclick="handleClick($event, tool)"
+                             title="Double-click to append to bottom, or drag to position anywhere"
+                             style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; cursor: pointer; margin-bottom: 0.5rem; transition: all 0.2s ease;"
+                             onmouseover="this.style.borderColor='#93c5fd'; this.style.background='#eff6ff'; this.style.transform='translateY(-1px)'"
+                             onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.transform='translateY(0)'">
+                            <div class="tool-icon" x-html="tool.icon" style="font-size: 1.125rem; min-width: 20px; text-align: center;"></div>
+                            <div class="tool-name" x-text="tool.name" style="font-size: 0.875rem; font-weight: 500; color: #374151;"></div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Templates Tab -->
+                <div x-show="activeTab === 'templates'"
+                     x-data="window.editorTemplatesWithCategories ? window.editorTemplatesWithCategories() : (window.editorTemplates ? window.editorTemplates() : {templates: [], filteredTemplates: [], selectedCategory: 'all', loading: false, init: function() {}})"
+                     x-init="init && init()">
+                    <div class="templates-section">
+                        <div class="templates-header" style="margin-bottom: 1rem;">
+                            <div class="templates-filter-section">
+                                <label class="filter-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Category:</label>
+                                <select class="category-filter w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"
+                                        x-model="selectedCategory"
+                                        @change="filterTemplates && filterTemplates()">
+                                    <option value="all">All Templates</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="content">Content</option>
+                                    <option value="interactive">Interactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="templates-grid">
+                            <template x-for="template in filteredTemplates" :key="template.id">
+                                <div class="template-item"
+                                     draggable="true"
+                                     @dragstart="handleTemplateDragStart && handleTemplateDragStart($event, template)"
+                                     @dragend="handleTemplateDragEnd && handleTemplateDragEnd($event)"
+                                     @click="handleTemplateClick && handleTemplateClick($event, template)"
+                                     :data-template="JSON.stringify(template)"
+                                     :title="template.description"
+                                     style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; cursor: pointer; margin-bottom: 0.5rem; transition: all 0.2s ease;"
+                                     onmouseover="this.style.borderColor='#93c5fd'; this.style.background='#eff6ff'; this.style.transform='translateY(-1px)'"
+                                     onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.transform='translateY(0)'">
+                                    <div class="template-preview" style="width: 100%;">
+                                        <div class="template-header" style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <div class="template-icon" x-html="template.icon" style="font-size: 1.125rem; min-width: 20px;"></div>
+                                            <div class="template-name" x-text="template.name" style="font-size: 0.875rem; font-weight: 500; color: #374151;"></div>
+                                        </div>
+                                        <div class="template-description" x-text="template.description" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="filteredTemplates.length === 0" style="text-align: center; padding: 2rem 0; color: #9ca3af;">
+                            <p x-show="loading" style="font-size: 0.875rem;">Loading templates...</p>
+                            <p x-show="!loading && templates.length === 0" style="font-size: 0.875rem;">No templates found. Please check configuration.</p>
+                            <p x-show="!loading && templates.length > 0 && filteredTemplates.length === 0" style="font-size: 0.875rem;">No templates found in this category.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Properties Tab -->
+                <div x-show="activeTab === 'properties'">
+                    <div x-show="!selectedTemplate" style="text-align: center; padding: 3rem 1rem; color: #9ca3af;">
+                        <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; color: #d1d5db;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p style="font-size: 0.875rem; font-weight: 500; color: #6b7280; margin-bottom: 0.5rem;">No template selected</p>
+                        <p style="font-size: 0.75rem; color: #9ca3af;">Click on a template in the editor to view its properties</p>
+                    </div>
+
+                    <div x-show="selectedTemplate">
+                        <!-- CSS Editor Controls -->
+                        <div style="margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: #fafbfc;">
+                            <h3 style="font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 1rem;">Style Controls</h3>
+
+                            <!-- Font Size -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Font Size</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text"
+                                           :value="cssProperties['font-size'] || ''"
+                                           @input="updateCSSProperty('font-size', $event.target.value)"
+                                           placeholder="e.g. 16px, 1rem"
+                                           style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                </div>
+                            </div>
+
+                            <!-- Font Weight -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Font Weight</label>
+                                <select :value="cssProperties['font-weight'] || 'normal'"
+                                        @change="updateCSSProperty('font-weight', $event.target.value)"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                    <option value="normal">Normal</option>
+                                    <option value="bold">Bold</option>
+                                    <option value="100">100 - Thin</option>
+                                    <option value="200">200 - Extra Light</option>
+                                    <option value="300">300 - Light</option>
+                                    <option value="400">400 - Normal</option>
+                                    <option value="500">500 - Medium</option>
+                                    <option value="600">600 - Semibold</option>
+                                    <option value="700">700 - Bold</option>
+                                    <option value="800">800 - Extra Bold</option>
+                                    <option value="900">900 - Black</option>
+                                </select>
+                            </div>
+
+                            <!-- Text Color -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Text Color</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color"
+                                           :value="(cssProperties['color'] || '#000000').startsWith('#') ? cssProperties['color'] : '#000000'"
+                                           @input="updateCSSProperty('color', $event.target.value)"
+                                           style="width: 50px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                                    <input type="text"
+                                           :value="cssProperties['color'] || ''"
+                                           @input="updateCSSProperty('color', $event.target.value)"
+                                           placeholder="#000000 or rgb(0,0,0)"
+                                           style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                </div>
+                            </div>
+
+                            <!-- Background Color/Gradient -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Background</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color"
+                                           :value="((cssProperties['background'] || cssProperties['background-color'] || '#ffffff').match(/#[0-9a-fA-F]{6}/) || ['#ffffff'])[0]"
+                                           @input="updateCSSProperty('background', $event.target.value)"
+                                           style="width: 50px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                                    <input type="text"
+                                           :value="cssProperties['background'] || cssProperties['background-color'] || ''"
+                                           @input="updateCSSProperty('background', $event.target.value)"
+                                           placeholder="Solid color or gradient"
+                                           style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                                </div>
+                            </div>
+
+                            <!-- Text Alignment -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Text Alignment</label>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <button @click="updateCSSProperty('text-align', 'left')"
+                                            :style="'flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer; background: ' + (cssProperties['text-align'] === 'left' ? '#3b82f6' : 'white') + '; color: ' + (cssProperties['text-align'] === 'left' ? 'white' : '#374151')"
+                                            type="button"
+                                            title="Align Left">
+                                        <svg style="width: 16px; height: 16px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h14"></path>
+                                        </svg>
+                                    </button>
+                                    <button @click="updateCSSProperty('text-align', 'center')"
+                                            :style="'flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer; background: ' + (cssProperties['text-align'] === 'center' ? '#3b82f6' : 'white') + '; color: ' + (cssProperties['text-align'] === 'center' ? 'white' : '#374151')"
+                                            type="button"
+                                            title="Align Center">
+                                        <svg style="width: 16px; height: 16px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M5 18h14"></path>
+                                        </svg>
+                                    </button>
+                                    <button @click="updateCSSProperty('text-align', 'right')"
+                                            :style="'flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer; background: ' + (cssProperties['text-align'] === 'right' ? '#3b82f6' : 'white') + '; color: ' + (cssProperties['text-align'] === 'right' ? 'white' : '#374151')"
+                                            type="button"
+                                            title="Align Right">
+                                        <svg style="width: 16px; height: 16px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M10 12h10M6 18h14"></path>
+                                        </svg>
+                                    </button>
+                                    <button @click="updateCSSProperty('text-align', 'justify')"
+                                            :style="'flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer; background: ' + (cssProperties['text-align'] === 'justify' ? '#3b82f6' : 'white') + '; color: ' + (cssProperties['text-align'] === 'justify' ? 'white' : '#374151')"
+                                            type="button"
+                                            title="Justify">
+                                        <svg style="width: 16px; height: 16px; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Padding & Margin (Box Layout) -->
+                            <div style="display: flex; gap: 1rem; margin-bottom: 0;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Padding</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.125rem;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['padding'] || '').split(' ')[0] || cssProperties['padding-top'] || ''"
+                                               @input="updateCSSProperty('padding-top', $event.target.value)"
+                                               placeholder="T"
+                                               title="Padding Top"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['padding'] || '').split(' ')[3] || cssProperties['padding-left'] || ''"
+                                               @input="updateCSSProperty('padding-left', $event.target.value)"
+                                               placeholder="L"
+                                               title="Padding Left"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div style="display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 0.125rem; font-size: 0.5rem; color: #9ca3af;">P</div>
+                                        <input type="text"
+                                               :value="(cssProperties['padding'] || '').split(' ')[1] || cssProperties['padding-right'] || ''"
+                                               @input="updateCSSProperty('padding-right', $event.target.value)"
+                                               placeholder="R"
+                                               title="Padding Right"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['padding'] || '').split(' ')[2] || cssProperties['padding-bottom'] || ''"
+                                               @input="updateCSSProperty('padding-bottom', $event.target.value)"
+                                               placeholder="B"
+                                               title="Padding Bottom"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                    </div>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Margin</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.125rem;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['margin'] || '').split(' ')[0] || cssProperties['margin-top'] || ''"
+                                               @input="updateCSSProperty('margin-top', $event.target.value)"
+                                               placeholder="T"
+                                               title="Margin Top"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['margin'] || '').split(' ')[3] || cssProperties['margin-left'] || ''"
+                                               @input="updateCSSProperty('margin-left', $event.target.value)"
+                                               placeholder="L"
+                                               title="Margin Left"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div style="display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 0.125rem; font-size: 0.5rem; color: #9ca3af;">M</div>
+                                        <input type="text"
+                                               :value="(cssProperties['margin'] || '').split(' ')[1] || cssProperties['margin-right'] || ''"
+                                               @input="updateCSSProperty('margin-right', $event.target.value)"
+                                               placeholder="R"
+                                               title="Margin Right"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                        <input type="text"
+                                               :value="(cssProperties['margin'] || '').split(' ')[2] || cssProperties['margin-bottom'] || ''"
+                                               @input="updateCSSProperty('margin-bottom', $event.target.value)"
+                                               placeholder="B"
+                                               title="Margin Bottom"
+                                               style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                                        <div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inline CSS Editor -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 0.5rem;">Inline CSS</h3>
+                            <textarea
+                                x-model="currentElementStyle"
+                                @input="parseCSSProperties(); applyStyles();"
+                                placeholder="Enter CSS properties (e.g., color: #fff; font-size: 16px;)"
+                                style="width: 100%; min-height: 120px; font-size: 0.75rem; color: #111827; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb; font-family: 'Courier New', monospace; resize: vertical;"></textarea>
+                        </div>
+
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
+                            <h4 style="font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 0.75rem;">Actions</h4>
+                            <button
+                                @click="if(selectedTemplate?.element) { selectedTemplate.element.scrollIntoView({behavior: 'smooth', block: 'center'}); selectedTemplate.element.style.outline = '2px solid #3b82f6'; setTimeout(() => selectedTemplate.element.style.outline = '', 2000); }"
+                                style="width: 100%; background: #f3f4f6; color: #374151; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #d1d5db; cursor: pointer; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; transition: all 0.2s;"
+                                onmouseover="this.style.background='#e5e7eb'"
+                                onmouseout="this.style.background='#f3f4f6'">
+                                Scroll to Template
+                            </button>
+                            <button
+                                @click="if(selectedTemplate?.element) { if(confirm('Delete this template block?')) { selectedTemplate.element.remove(); selectedTemplate = null; } }"
+                                style="width: 100%; background: #fef2f2; color: #dc2626; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #fecaca; cursor: pointer; font-size: 0.875rem; font-weight: 500; margin-bottom: 1rem; transition: all 0.2s;"
+                                onmouseover="this.style.background='#fee2e2'"
+                                onmouseout="this.style.background='#fef2f2'">
+                                Delete Template
+                            </button>
+
+                            <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb;">
+                                <div style="font-size: 0.7rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Template Info</div>
+                                <div style="font-size: 0.75rem; color: #374151; margin-bottom: 0.25rem;">
+                                    <span style="color: #6b7280;">Name:</span> <span x-text="selectedTemplate?.templateName || 'Unknown'"></span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #374151; margin-bottom: 0.25rem;">
+                                    <span style="color: #6b7280;">ID:</span> <span style="font-family: monospace;" x-text="selectedTemplate?.templateId || 'unknown'"></span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #374151;">
+                                    <span style="color: #6b7280;">Instance:</span> <span style="font-family: monospace; word-break: break-all;" x-text="selectedTemplate?.instanceId || 'N/A'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return sidebar;
     }
     /**
    * Setup auto-initialization for elements matching a selector

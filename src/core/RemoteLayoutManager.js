@@ -237,17 +237,22 @@ export class RemoteLayoutManager {
      */
     _convertHtmlToBlocks(htmlContent) {
         // Create a temporary Raw block that contains the HTML
-        return [
+        // Note: LayoutManager.addLayout expects blocks with { type, data } structure
+        // The 'data' field becomes the 'config' in the Raw block constructor
+        console.log('[RemoteLayoutManager] Converting HTML to blocks, content length:', htmlContent?.length);
+        const blocks = [
             {
                 type: 'raw',
                 data: {
-                    content: htmlContent,
+                    content: htmlContent || '',
                     mode: 'html',
                     showPreview: true,
                     validateHtml: false
                 }
             }
         ];
+        console.log('[RemoteLayoutManager] Created blocks:', blocks);
+        return blocks;
     }
 
     /**

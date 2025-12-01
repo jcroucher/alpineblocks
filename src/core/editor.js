@@ -721,11 +721,18 @@ export class Editor {
 
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
 
+        console.log('[Editor initBlock] Initial config for', blockName, ':', config);
+        console.log('[Editor initBlock] window.templateDragData:', window.templateDragData);
+
         // Check for template drag data and merge it into config
         if (window.templateDragData && window.templateDragData.type === blockName) {
+            console.log('[Editor initBlock] Merging template drag data:', window.templateDragData.config);
             Object.assign(config, window.templateDragData.config);
+            console.log('[Editor initBlock] Config after merge:', config);
             // Clear the template drag data after use
             window.templateDragData = null;
+        } else {
+            console.log('[Editor initBlock] No template drag data to merge');
         }
 
         const newBlock = new BlockClass({
@@ -815,31 +822,36 @@ export class Editor {
      */
     handleTemplateDrop(template, blockId = null) {
         try {
+            console.log('[Editor] handleTemplateDrop called with template:', template);
             // Use pre-extracted blocks from the drag data
             const blocks = template.blocks;
-            
+            console.log('[Editor] Template blocks:', blocks);
+
             if (!blocks || blocks.length === 0) {
                 Debug.warn(`Template ${template.name} has no blocks to add`);
                 return;
             }
 
             const newBlocks = [];
-            
+
             // Create blocks for each template block
             for (const blockData of blocks) {
+                console.log('[Editor] Processing block data:', blockData);
                 // Map template block types to AlpineBlocks tool names
                 const toolName = this.mapTemplateBlockToTool(blockData.type);
-                
+                console.log('[Editor] Mapped to tool:', toolName);
+
                 if (!toolName || !this.toolConfig[toolName]) {
                     Debug.warn(`Tool ${toolName} not found for template block type ${blockData.type}`);
                     continue;
                 }
-                
+
                 // For template blocks, we need to merge config before initialization
                 // So we'll create the block without initializing it first
                 const BlockClass = this.toolConfig[toolName].class;
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
+                console.log('[Editor] Merged config for', toolName, ':', mergedConfig);
                 
                 
                 const newBlock = new BlockClass({

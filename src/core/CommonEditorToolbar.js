@@ -28,7 +28,8 @@ export class CommonEditorToolbar {
             customTools: options.customTools || [],
             className: options.className || 'common-editor-toolbar',
             onCommand: options.onCommand || null,
-            target: options.target || null
+            target: options.target || null,
+            variables: options.variables || [] // Array of {label: 'Customer Name', value: '{{customer_name}}'}
         };
     }
 
@@ -41,14 +42,14 @@ export class CommonEditorToolbar {
         const features = this.options.features;
         const customTools = this.options.customTools;
         
-        let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">`;
+        let toolbarHTML = `<div class="${this.options.className}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #ccc; background: #fff;">`;
 
         // Blocks button (special AlpineBlocks feature)
         if (features.blocks) {
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             toolbarHTML += this.renderBlocksButton();
             toolbarHTML += '</div>';
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
 
         // Undo/Redo group
@@ -64,7 +65,7 @@ export class CommonEditorToolbar {
             }
 
             toolbarHTML += '</div>';
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
 
         // Text formatting group
@@ -92,7 +93,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if (features.formatBlock && (features.bold || features.italic || features.underline || features.strikethrough)) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Format block group
@@ -104,7 +105,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if (features.lists && features.formatBlock) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Lists group
@@ -117,7 +118,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if (features.links && features.lists) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Links group
@@ -130,7 +131,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if (features.alignment && features.links) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Alignment group
@@ -145,7 +146,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if (features.indentation && features.alignment) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Indentation group
@@ -158,7 +159,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if ((features.textColor || features.backgroundColor) && features.indentation) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Color group
@@ -178,7 +179,7 @@ export class CommonEditorToolbar {
         
         // Separator
         if ((features.fontSize || features.fontFamily) && (features.textColor || features.backgroundColor)) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
         }
         
         // Font group
@@ -198,7 +199,7 @@ export class CommonEditorToolbar {
         
         // Custom tools
         if (customTools.length > 0) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
 
             customTools.forEach(tool => {
@@ -208,9 +209,17 @@ export class CommonEditorToolbar {
             toolbarHTML += '</div>';
         }
 
+        // Variables dropdown
+        if (this.hasVariables()) {
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
+            toolbarHTML += this.renderVariablesDropdown();
+            toolbarHTML += '</div>';
+        }
+
         // Code View button (always last, on the right)
         if (features.codeView) {
-            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #d1d5db; margin: 0 4px;"></div>';
+            toolbarHTML += '<div class="toolbar-separator" style="width: 1px; height: 20px; background: #ccc; margin: 0 4px;"></div>';
             toolbarHTML += '<div class="toolbar-group" style="display: flex; align-items: center; gap: 2px;">';
             toolbarHTML += this.renderCodeViewButton();
             toolbarHTML += '</div>';
@@ -237,7 +246,9 @@ export class CommonEditorToolbar {
                     @click="handleToolbarCommand('${command}')"
                     title="${tooltipText}"
                     type="button"
-                    style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 ${icon}
             </button>
         `;
@@ -253,7 +264,9 @@ export class CommonEditorToolbar {
             <select class="toolbar-select toolbar-format-block"
                     @change="if ($event.target.value) handleToolbarCommand('formatBlock', $event.target.value)"
                     title="Format"
-                    style="width: 100px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 100px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Format</option>
                 <option value="p">Paragraph</option>
                 <option value="h1">Heading 1</option>
@@ -274,7 +287,7 @@ export class CommonEditorToolbar {
     renderBlocksButton() {
         return `
             <button class="toolbar-btn toolbar-btn-blocks"
-                    @click="alert('🧱 AlpineBlocks Editor Active!')"
+                    @click="handleToolbarCommand('toggleBlocksSidebar')"
                     title="AlpineBlocks Editor"
                     type="button"
                     style="width: auto; min-width: 32px; height: 32px; padding: 6px 12px; border: 1px solid #3b82f6; background: #eff6ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; color: #1d4ed8; font-weight: 500; font-size: 13px;">
@@ -298,6 +311,164 @@ export class CommonEditorToolbar {
                 ${this.getIcon('code')}
             </button>
         `;
+    }
+
+    /**
+     * Render the variables dropdown/menu
+     * Supports both flat arrays and categorized objects:
+     * - Flat: [{label: 'Name', value: '{{var}}'}] - renders as simple dropdown
+     * - Categorized: {'Category Name': [{label: 'Name', value: '{{var}}'}]} - renders as nested menu
+     * @returns {string} Dropdown/Menu HTML
+     */
+    renderVariablesDropdown() {
+        const variables = this.options.variables || [];
+
+        // Check if variables is an object (categorized) or array (flat)
+        if (Array.isArray(variables)) {
+            // Flat array format - use simple select dropdown
+            let optionsHTML = '<option value="">Insert Variable...</option>';
+            variables.forEach(variable => {
+                const label = variable.label || variable.value;
+                const value = variable.value || '';
+                optionsHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(label)}</option>`;
+            });
+
+            return `
+                <select class="toolbar-select toolbar-select-variable"
+                        @change="if ($event.target.value) { handleToolbarCommand('insertHTML', $event.target.value); $event.target.value = ''; }"
+                        title="Insert Variable"
+                        style="height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 13px; cursor: pointer; min-width: 140px;">
+                    ${optionsHTML}
+                </select>
+            `;
+        } else if (typeof variables === 'object') {
+            // Categorized format - use nested menu button
+            return this.renderVariablesMenu(variables);
+        }
+
+        return '';
+    }
+
+    /**
+     * Render a nested menu button for categorized variables
+     * @param {Object} categories - Object with category names as keys and variable arrays as values
+     * @returns {string} Menu button HTML
+     */
+    renderVariablesMenu(categories) {
+        const menuId = `variables-menu-${Date.now()}`;
+
+        // Build menu items for each category
+        let categoriesHTML = '';
+        Object.keys(categories).forEach(category => {
+            const categoryVars = categories[category];
+            if (Array.isArray(categoryVars) && categoryVars.length > 0) {
+                const submenuId = `submenu-${category.replace(/\s+/g, '-').toLowerCase()}`;
+
+                // Build submenu items
+                let itemsHTML = '';
+                categoryVars.forEach(variable => {
+                    const label = variable.label || variable.value;
+                    const value = variable.value || '';
+                    itemsHTML += `
+                        <div class="menu-item"
+                             @click="handleToolbarCommand('insertHTML', '${this.escapeHtml(value)}'); open = false;"
+                             style="padding: 8px 16px; cursor: pointer; white-space: nowrap; font-size: 14px; color: #333; transition: background-color 0.15s ease;"
+                             @mouseenter="$el.style.backgroundColor='#0969da'; $el.style.color='white';"
+                             @mouseleave="$el.style.backgroundColor='transparent'; $el.style.color='#333';">
+                            ${this.escapeHtml(label)}
+                        </div>
+                    `;
+                });
+
+                categoriesHTML += `
+                    <div class="menu-category"
+                         x-data="{ submenuOpen: false }"
+                         @mouseenter="submenuOpen = true"
+                         @mouseleave="submenuOpen = false"
+                         style="position: relative;">
+                        <div class="menu-item"
+                             style="padding: 8px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #333; transition: background-color 0.15s ease;"
+                             @mouseenter="$el.style.backgroundColor='#e7f0ff'; submenuOpen = true"
+                             @mouseleave="$el.style.backgroundColor='transparent'">
+                            <span>${this.escapeHtml(category)}</span>
+                            <span style="margin-left: 24px; font-size: 12px; color: #666;">›</span>
+                        </div>
+                        <div x-show="submenuOpen"
+                             @mouseenter="submenuOpen = true"
+                             @mouseleave="submenuOpen = false"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             class="submenu"
+                             style="position: absolute; left: 100%; top: -1px; background: white; border: 1px solid #ccc; border-radius: 3px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 200px; z-index: 1002; display: block;"
+                             @click.stop>
+                            ${itemsHTML}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        return `
+            <div x-data="{ open: false }"
+                 @click.away="open = false"
+                 style="position: relative; display: inline-flex;">
+                <button class="variables-dropdown-btn"
+                        @click="open = !open"
+                        title="Available Variables"
+                        type="button"
+                        style="height: 32px !important; width: auto !important; padding: 6px 12px !important; border: none !important; background: transparent !important; border-radius: 3px !important; font-size: 13px !important; color: #333 !important; cursor: pointer !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; white-space: nowrap !important; min-width: auto !important; transition: all 0.15s ease !important; flex-shrink: 0 !important;"
+                        @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                        @mouseleave="if (!open) { $el.style.backgroundColor='transparent'; }"
+                        :style="open && 'background-color: #e7f0ff;'">
+                    <span style="font-size: 13px;">Available Variables</span>
+                    <span style="font-size: 10px; color: #666;">▾</span>
+                </button>
+                <div x-show="open"
+                     id="${menuId}"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 transform scale-95"
+                     x-transition:enter-end="opacity-100 transform scale-100"
+                     class="variables-menu"
+                     style="position: absolute; top: 100%; left: 0; margin-top: 2px; background: white; border: 1px solid #ccc; border-radius: 3px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 220px; z-index: 1000; overflow: visible;"
+                     @click.stop>
+                    ${categoriesHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Check if variables are defined and non-empty
+     * Handles both array and object formats
+     * @returns {boolean} True if variables exist and have content
+     */
+    hasVariables() {
+        const variables = this.options.variables;
+        if (!variables) return false;
+
+        // Array format
+        if (Array.isArray(variables)) {
+            return variables.length > 0;
+        }
+
+        // Object format (categorized)
+        if (typeof variables === 'object') {
+            return Object.keys(variables).length > 0;
+        }
+
+        return false;
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**
@@ -335,7 +506,9 @@ export class CommonEditorToolbar {
                         onclick="this.previousElementSibling.click(); return false;"
                         title="${title}"
                         type="button"
-                        style="width: 32px; height: 32px; padding: 6px; border: 1px solid #d1d5db; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
+                        style="width: 32px; height: 32px; padding: 6px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; color: #333; transition: all 0.15s ease;"
+                        onmouseenter="this.style.backgroundColor='#e7f0ff';"
+                        onmouseleave="this.style.backgroundColor='transparent';">
                     ${icon}
                 </button>
             </div>
@@ -351,7 +524,9 @@ export class CommonEditorToolbar {
             <select class="toolbar-select toolbar-font-family"
                     @change="if ($event.target.value) handleToolbarCommand('fontName', $event.target.value)"
                     title="Font Family"
-                    style="width: 120px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 120px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Font Family</option>
                 <option value="Arial">Arial</option>
                 <option value="Helvetica">Helvetica</option>
@@ -375,7 +550,9 @@ export class CommonEditorToolbar {
             <select class="toolbar-select toolbar-font-size"
                     @change="if ($event.target.value) handleToolbarCommand('fontSize', $event.target.value)"
                     title="Font Size"
-                    style="width: 70px; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; background: white; border-radius: 4px; font-size: 12px; flex-shrink: 0;">
+                    style="width: 70px; height: 32px; padding: 4px 8px; border: none; background: transparent; border-radius: 3px; font-size: 12px; flex-shrink: 0; color: #333; transition: all 0.15s ease;"
+                    @mouseenter="$el.style.backgroundColor='#e7f0ff';"
+                    @mouseleave="$el.style.backgroundColor='transparent';">
                 <option value="">Size</option>
                 <option value="1">8pt</option>
                 <option value="2">10pt</option>

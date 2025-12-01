@@ -1185,10 +1185,12 @@ export function registerAlpineComponents() {
     }));
     
     // Register editorTemplates component
-    Alpine.data('editorTemplates', () => ({
+    const editorTemplatesFactory = () => ({
         templates: [],
+        filteredTemplates: [],
+        selectedCategory: 'all',
         loading: false,
-        
+
         async init() {
             this.loading = true;
             try {
@@ -1198,19 +1200,32 @@ export function registerAlpineComponents() {
                 } else {
                     this.templates = layouts;
                 }
+                // Initialize filtered templates
+                this.filterTemplates();
             } catch (error) {
                 console.error('Error loading templates:', error);
                 this.templates = [];
+                this.filteredTemplates = [];
             } finally {
                 this.loading = false;
             }
         },
-        
+
+        filterTemplates() {
+            if (this.selectedCategory === 'all') {
+                this.filteredTemplates = this.templates;
+            } else {
+                this.filteredTemplates = this.templates.filter(template => {
+                    return template.tags && template.tags.includes(this.selectedCategory);
+                });
+            }
+        },
+
         handleTemplateClick(event, template) {
             event.preventDefault();
             this.addTemplate(template);
         },
-        
+
         handleTemplateDragStart(event, template) {
             const extractedBlocks = template.extractBlocks();
             event.dataTransfer.setData('text/plain', JSON.stringify({
@@ -1224,19 +1239,45 @@ export function registerAlpineComponents() {
             }));
             event.dataTransfer.effectAllowed = 'copy';
         },
-        
+
         handleTemplateDragEnd(event) {
             // Clean up drag state if needed
         },
-        
+
         addTemplate(template) {
+            console.log('[editorTemplates] addTemplate called with template:', template);
             if (window.alpineEditors?.['alpineblocks-editor']) {
-                const editor = window.alpineEditors['alpineblocks-editor'];
-                if (editor.editor) {
-                    const layoutManager = new LayoutManager(editor.editor);
-                    layoutManager.addLayout(template.id);
+                const editorWrapper = window.alpineEditors['alpineblocks-editor'];
+                const editor = editorWrapper.editor;
+
+                if (editor) {
+                    console.log('[editorTemplates] Found editor, extracting blocks from template');
+                    // Extract blocks from the template
+                    const blocks = template.extractBlocks();
+                    console.log('[editorTemplates] Extracted blocks:', blocks);
+
+                    // Add each block using the editor's handleTemplateDrop method
+                    if (blocks && blocks.length > 0) {
+                        editor.handleTemplateDrop({
+                            id: template.id,
+                            name: template.name,
+                            description: template.description,
+                            blocks: blocks
+                        });
+                    } else {
+                        console.warn('[editorTemplates] No blocks extracted from template');
+                    }
+                } else {
+                    console.error('[editorTemplates] Editor not found in wrapper');
                 }
+            } else {
+                console.error('[editorTemplates] alpineblocks-editor not found in window.alpineEditors');
             }
         }
-    }));
+    });
+
+    Alpine.data('editorTemplates', editorTemplatesFactory);
+
+    // Expose globally for RichTextLoader sidebar
+    window.editorTemplates = editorTemplatesFactory;
 }

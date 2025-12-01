@@ -124,4 +124,10 @@ export function getEditorConfigFromDOM() {
     }
 }
 
+// Expose toolModules on window.AlpineBlocks for RichTextLoader sidebar
+if (typeof window !== 'undefined') {
+    window.AlpineBlocks = window.AlpineBlocks || {};
+    window.AlpineBlocks.toolModules = toolModules;
+}
+
 export { toolModules };
