@@ -12,6 +12,9 @@ class RichTextLoader {
     constructor() {
         this.instances = new Map();
         this.alpineBlocksInitialized = false;
+        this.turboCleanupRegistered = false;
+        this.autoInitListenersRegistered = false;
+        this.autoInitConfigs = new Map(); // Track selector -> config mappings
         this.defaultConfig = {
             height: 400,
             features: {
@@ -106,6 +109,12 @@ class RichTextLoader {
             element.id = editorId;
         }
 
+        console.log(`🎨 initializeSingleEditor called for: ${editorId}`, {
+            alreadyExists: this.instances.has(element),
+            instanceCount: this.instances.size,
+            stackTrace: new Error().stack
+        });
+
         // Get initial content from textarea or element
         let initialContent = '';
         if (element.tagName === 'TEXTAREA') {
@@ -146,7 +155,14 @@ class RichTextLoader {
             editorDiv.style.outline = 'none';
             editorDiv.style.overflowY = 'auto';
             editorDiv.style.backgroundColor = 'white';
-            editorDiv.innerHTML = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
+
+            // Process initial content to convert <!-- drop --> comments to drop zones
+            let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
+            if (initialContent && initialContent.includes('<!-- drop -->')) {
+                processedContent = this.processDropZones(processedContent, editorId);
+                console.log('[RichText] Processed drop zones in initial content for', editorId);
+            }
+            editorDiv.innerHTML = processedContent;
 
             // Add inline style to ensure formatting tags work
             const styleEl = document.createElement('style');
@@ -197,19 +213,67 @@ class RichTextLoader {
 
             // Sync changes back to textarea
             editorDiv.addEventListener('input', () => {
-                element.value = editorDiv.innerHTML;
+                const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
+                element.value = cleanedHTML;
                 if (config.onChange) {
-                    config.onChange(editorDiv.innerHTML);
+                    config.onChange(cleanedHTML);
                 }
             });
 
             // Handle blur events
             editorDiv.addEventListener('blur', () => {
-                element.value = editorDiv.innerHTML;
+                const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
+                element.value = cleanedHTML;
                 if (config.onBlur) {
-                    config.onBlur(editorDiv.innerHTML);
+                    config.onBlur(cleanedHTML);
                 }
             });
+
+            // Clean content before form submission
+            const form = element.closest('form');
+            if (form) {
+                console.log('[RichText] Form submit handler registered for', editorId);
+                const submitHandler = (e) => {
+                    console.log('[RichText] Form submit event fired for', editorId);
+                    console.log('[RichText] Editor HTML before clean:', editorDiv.innerHTML.substring(0, 200));
+
+                    // Remove drop indicators from the editor itself
+                    const indicators = editorDiv.querySelectorAll('.richtext-drop-indicator');
+                    if (indicators.length > 0) {
+                        console.log('[RichText] Removing', indicators.length, 'drop indicators from editor before submit');
+                        indicators.forEach(ind => ind.remove());
+                    }
+
+                    // Convert EMPTY drop zones back to comments in the live DOM
+                    // Drop zones with content (dropped templates) should be kept as-is
+                    const dropZones = editorDiv.querySelectorAll('.richtext-nested-dropzone');
+                    let emptyZoneCount = 0;
+                    dropZones.forEach(zone => {
+                        const textContent = zone.textContent.trim();
+                        const hasOnlyPlaceholder = textContent === 'Drop template here' || textContent === '';
+                        if (hasOnlyPlaceholder) {
+                            const comment = document.createComment(' drop ');
+                            zone.parentNode.replaceChild(comment, zone);
+                            emptyZoneCount++;
+                        }
+                    });
+                    if (emptyZoneCount > 0) {
+                        console.log('[RichText] Converting', emptyZoneCount, 'empty drop zones back to comments before submit');
+                    }
+
+                    const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
+                    element.value = cleanedHTML;
+                    console.log('[RichText] Textarea value after clean:', element.value.substring(0, 200));
+                };
+                form.addEventListener('submit', submitHandler);
+                // Store handler reference for cleanup
+                if (!form._richTextSubmitHandlers) {
+                    form._richTextSubmitHandlers = [];
+                }
+                form._richTextSubmitHandlers.push(submitHandler);
+            } else {
+                console.warn('[RichText] No parent form found for', editorId);
+            }
 
             // Handle template drops with visual indicator
             let dropIndicator = null;
@@ -353,7 +417,7 @@ class RichTextLoader {
                 }
             });
 
-            editorDiv.addEventListener('drop', async (e) => {
+            const dropHandler = async (e) => {
                 console.log('[RichText] Drop event triggered');
                 const dragDataText = e.dataTransfer.getData('text/plain');
                 console.log('[RichText] dataTransfer text/plain:', dragDataText);
@@ -436,7 +500,10 @@ class RichTextLoader {
                     templateWrapper.setAttribute('data-template-id', templateId || 'unknown');
                     templateWrapper.setAttribute('data-template-name', templateName || 'Unknown Template');
                     templateWrapper.setAttribute('contenteditable', 'true');
-                    templateWrapper.innerHTML = htmlContent;
+
+                    // Process template HTML to convert <!-- drop --> markers into drop zones
+                    const processedHTML = this.processDropZones(htmlContent, instanceId);
+                    templateWrapper.innerHTML = processedHTML;
 
                     // Add escape paragraph AFTER
                     const escapeParagraphAfter = document.createElement('p');
@@ -508,10 +575,11 @@ class RichTextLoader {
                     dropIndicator = null;
                     currentDropTarget = null;
 
-                    // Sync to textarea
-                    element.value = editorDiv.innerHTML;
+                    // Sync to textarea (clean HTML to remove any leftover drop indicators)
+                    const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
+                    element.value = cleanedHTML;
                     if (config.onChange) {
-                        config.onChange(editorDiv.innerHTML);
+                        config.onChange(cleanedHTML);
                     }
 
                     // Clear the template data if it was used
@@ -521,7 +589,13 @@ class RichTextLoader {
 
                     console.log('[RichText] Template HTML inserted successfully');
                 }
-            });
+            };
+
+            // Store reference for manual invocation from layout editor
+            editorDiv._richTextDropHandler = dropHandler;
+
+            // Attach event listener
+            editorDiv.addEventListener('drop', dropHandler);
 
             // Track template clicks - find nearest template wrapper when clicking in editor
             editorDiv.addEventListener('click', (e) => {
@@ -567,6 +641,9 @@ class RichTextLoader {
                 }
             });
 
+            // Setup nested drop zone handlers using event delegation
+            this.setupNestedDropZones(editorDiv, element, config);
+
             // Sync code view changes back to textarea
             codeTextarea.addEventListener('input', () => {
                 element.value = codeTextarea.value;
@@ -589,7 +666,7 @@ class RichTextLoader {
                 codeTextarea: codeTextarea,
                 wrapper: wrapper,
                 toolbar: toolbar,
-                getContent: () => editorDiv.innerHTML,
+                getContent: () => this.cleanHTML(editorDiv.innerHTML),
                 setContent: (content) => {
                     editorDiv.innerHTML = content;
                     codeTextarea.value = content;
@@ -618,7 +695,7 @@ class RichTextLoader {
                 id: editorId,
                 element: element,
                 editorDiv: element,
-                getContent: () => element.innerHTML,
+                getContent: () => this.cleanHTML(element.innerHTML),
                 setContent: (content) => { element.innerHTML = content; },
                 focus: () => element.focus(),
                 remove: () => this.remove(editorId)
@@ -629,6 +706,240 @@ class RichTextLoader {
 
             return instance;
         }
+    }
+
+    /**
+     * Clean HTML by removing temporary elements like drop indicators
+     * and converting drop zones back to comments
+     * @param {string} html - HTML content to clean
+     * @returns {string} Cleaned HTML
+     */
+    cleanHTML(html) {
+        if (!html || typeof html !== 'string') {
+            return html;
+        }
+
+        // Create a temporary div to parse and manipulate the HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // Remove all drop indicators
+        const dropIndicators = tempDiv.querySelectorAll('.richtext-drop-indicator');
+        if (dropIndicators.length > 0) {
+            console.log(`[RichText] cleanHTML: Removing ${dropIndicators.length} drop indicator(s)`);
+        }
+        dropIndicators.forEach(indicator => indicator.remove());
+
+        // Convert EMPTY nested drop zones back to <!-- drop --> comments
+        // Drop zones with content (dropped templates) should be kept as-is
+        const dropZones = tempDiv.querySelectorAll('.richtext-nested-dropzone');
+        let emptyCount = 0;
+        dropZones.forEach(zone => {
+            // Check if drop zone is empty (only has the placeholder text)
+            const textContent = zone.textContent.trim();
+            const hasOnlyPlaceholder = textContent === 'Drop template here' || textContent === '';
+
+            // Only convert to comment if empty
+            if (hasOnlyPlaceholder) {
+                const comment = document.createComment(' drop ');
+                zone.parentNode.replaceChild(comment, zone);
+                emptyCount++;
+            }
+            // If it has content (a dropped template), leave it as-is with all its attributes
+        });
+        if (emptyCount > 0) {
+            console.log(`[RichText] cleanHTML: Converting ${emptyCount} empty drop zone(s) back to comments`);
+        }
+
+        return tempDiv.innerHTML;
+    }
+
+    /**
+     * Process template HTML to convert <!-- drop --> markers into drop zones
+     * @param {string} html - Template HTML content
+     * @param {string} parentId - Parent template instance ID
+     * @returns {string} Processed HTML with drop zones
+     */
+    processDropZones(html, parentId) {
+        if (!html || typeof html !== 'string') {
+            return html;
+        }
+
+        // Find all <!-- drop --> markers
+        const dropMarkerRegex = /<!--\s*drop\s*-->/gi;
+        const matches = [...html.matchAll(dropMarkerRegex)];
+
+        if (matches.length === 0) {
+            return html; // No drop zones, return as-is
+        }
+
+        console.log(`[RichText] Found ${matches.length} drop zone markers in template ${parentId}`);
+
+        // Replace each <!-- drop --> with a styled drop zone div
+        let processedHTML = html;
+        let zoneIndex = 0;
+
+        processedHTML = processedHTML.replace(dropMarkerRegex, () => {
+            const zoneId = `${parentId}-dropzone-${zoneIndex++}`;
+            return `<div class="richtext-nested-dropzone"
+                         data-zone-id="${zoneId}"
+                         data-parent-id="${parentId}"
+                         contenteditable="false"
+                         style="min-height: 80px;
+                                border: 2px dashed #d1d5db;
+                                border-radius: 8px;
+                                margin: 12px 0;
+                                padding: 20px;
+                                text-align: center;
+                                color: #9ca3af;
+                                background: #f9fafb;
+                                transition: all 0.2s ease;
+                                cursor: pointer;
+                                position: relative;">
+                <span style="font-size: 14px; font-weight: 500; pointer-events: none;">Drop template here</span>
+            </div>`;
+        });
+
+        return processedHTML;
+    }
+
+    /**
+     * Setup nested drop zone event handlers using event delegation
+     * @param {HTMLElement} editorDiv - Editor contenteditable div
+     * @param {HTMLElement} element - Original textarea element
+     * @param {Object} config - Editor configuration
+     */
+    setupNestedDropZones(editorDiv, element, config) {
+        // Use event delegation for all drop zones (including dynamically added ones)
+        editorDiv.addEventListener('dragover', (e) => {
+            // Check if we're over a nested drop zone
+            const dropZone = e.target.closest('.richtext-nested-dropzone');
+            if (dropZone) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
+
+                // Highlight the drop zone
+                dropZone.style.borderColor = '#3b82f6';
+                dropZone.style.backgroundColor = '#eff6ff';
+            }
+        }, true); // Use capture phase
+
+        editorDiv.addEventListener('dragleave', (e) => {
+            const dropZone = e.target.closest('.richtext-nested-dropzone');
+            if (dropZone) {
+                // Only reset if we're actually leaving the zone
+                if (!dropZone.contains(e.relatedTarget)) {
+                    dropZone.style.borderColor = '#d1d5db';
+                    dropZone.style.backgroundColor = '#f9fafb';
+                }
+            }
+        }, true);
+
+        editorDiv.addEventListener('drop', async (e) => {
+            const dropZone = e.target.closest('.richtext-nested-dropzone');
+            if (dropZone) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                console.log('[RichText] Nested drop zone drop event');
+
+                // Reset drop zone styling
+                dropZone.style.borderColor = '#d1d5db';
+                dropZone.style.backgroundColor = '#f9fafb';
+
+                const zoneId = dropZone.getAttribute('data-zone-id');
+                const parentId = dropZone.getAttribute('data-parent-id');
+
+                console.log('[RichText] Dropping into zone:', zoneId, 'Parent:', parentId);
+
+                // Parse drag data
+                const dragDataText = e.dataTransfer.getData('text/plain');
+                let htmlContent = null;
+                let isTemplateDrop = false;
+                let templateId = null;
+                let templateName = null;
+
+                // Try to parse as JSON first (AlpineBlocks template format)
+                try {
+                    const dragData = JSON.parse(dragDataText);
+                    if (dragData.type === 'template' && dragData.data) {
+                        // Check if this is a lazy template that needs loading
+                        if (dragData.data._templateRef) {
+                            console.log('[RichText Nested] Detected lazy template drop, loading...');
+
+                            const template = window._alpineTemplates?.draggedTemplate;
+                            if (template) {
+                                if (!template.html && template.loadContent) {
+                                    await template.loadContent();
+                                }
+
+                                isTemplateDrop = true;
+                                templateId = template.id;
+                                templateName = template.name;
+                                htmlContent = template.html;
+                            }
+                        } else if (dragData.data.blocks) {
+                            // Old format with pre-extracted blocks
+                            isTemplateDrop = true;
+                            templateId = dragData.data.id || null;
+                            templateName = dragData.data.name || null;
+                            htmlContent = dragData.data.blocks
+                                .map(block => block.data.content || '')
+                                .join('\n');
+                        }
+                    }
+                } catch (parseError) {
+                    // Not JSON, check if it's a simple drag type like 'Raw'
+                    if (dragDataText === 'Raw' && window.templateDragData) {
+                        isTemplateDrop = true;
+                        htmlContent = window.templateDragData.config.content;
+                        templateId = window.templateDragData.id || null;
+                        templateName = window.templateDragData.name || null;
+                    }
+                }
+
+                if (isTemplateDrop && htmlContent) {
+                    // Generate unique ID for this nested template instance
+                    const instanceId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                    // Create wrapper div with tracking attributes
+                    const templateWrapper = document.createElement('div');
+                    templateWrapper.id = instanceId;
+                    templateWrapper.setAttribute('data-template-id', templateId || 'unknown');
+                    templateWrapper.setAttribute('data-template-name', templateName || 'Nested Template');
+                    templateWrapper.setAttribute('contenteditable', 'true');
+                    templateWrapper.style.margin = '0'; // Reset margin for nested templates
+
+                    // Process template HTML for nested drop zones
+                    const processedHTML = this.processDropZones(htmlContent, instanceId);
+                    templateWrapper.innerHTML = processedHTML;
+
+                    // Replace the drop zone placeholder with the template
+                    // Keep the drop zone but insert the template inside it
+                    dropZone.innerHTML = ''; // Clear placeholder text
+                    dropZone.appendChild(templateWrapper);
+                    dropZone.style.padding = '0'; // Remove padding once filled
+                    dropZone.style.border = 'none'; // Remove border once filled
+                    dropZone.style.background = 'transparent'; // Remove background
+                    dropZone.style.minHeight = 'auto'; // Remove min-height
+
+                    console.log('[RichText] Nested template inserted with ID:', instanceId);
+
+                    // Sync to textarea (clean HTML to remove any drop indicators)
+                    const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
+                    element.value = cleanedHTML;
+                    if (config.onChange) {
+                        config.onChange(cleanedHTML);
+                    }
+
+                    // Clear the template data if it was used
+                    if (window.templateDragData) {
+                        window.templateDragData = null;
+                    }
+                }
+            }
+        }, true);
     }
 
     /**
@@ -1180,15 +1491,20 @@ class RichTextLoader {
                      x-init="init && init()">
                     <div class="templates-section">
                         <div class="templates-header" style="margin-bottom: 1rem;">
+                            <button @click.stop="$dispatch('open-template-editor', 'new')"
+                                    type="button"
+                                    class="w-full mb-3 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                + New Template
+                            </button>
                             <div class="templates-filter-section">
                                 <label class="filter-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Category:</label>
                                 <select class="category-filter w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"
                                         x-model="selectedCategory"
                                         @change="filterTemplates && filterTemplates()">
                                     <option value="all">All Templates</option>
-                                    <option value="marketing">Marketing</option>
-                                    <option value="content">Content</option>
-                                    <option value="interactive">Interactive</option>
+                                    <template x-for="cat in categories" :key="cat.id">
+                                        <option :value="cat.id" x-text="cat.name"></option>
+                                    </template>
                                 </select>
                             </div>
                         </div>
@@ -1597,46 +1913,88 @@ class RichTextLoader {
     }
 
     /**
-     * Setup auto-initialization for elements matching a selector
+     * Register a selector for auto-initialization without immediate init
+     * Used by Rails partials to register editors that will be initialized by Turbo events
      * @param {string} selector - CSS selector for elements to auto-initialize
      * @param {object} config - Editor configuration
      */
-    setupAutoInit(selector, config = {}) {
-        const initEditors = () => {
-            const elements = document.querySelectorAll(selector);
+    register(selector, config = {}) {
+        console.log(`📝 Registering selector: "${selector}" (no immediate init)`);
+
+        // Store or update the config for this selector
+        this.autoInitConfigs.set(selector, config);
+
+        // Define helper functions for initialization
+        const initEditorsForSelector = (sel, cfg) => {
+            console.log(`🔍 initEditorsForSelector: "${sel}"`);
+            const elements = document.querySelectorAll(sel);
+            console.log(`   Found ${elements.length} elements for selector "${sel}"`);
+
             elements.forEach((element) => {
                 // Check if editor is in a hidden accordion
                 const accordion = element.closest('[data-accordion-target="content"]');
                 if (accordion && accordion.classList.contains('hidden')) {
-                    // Skip hidden editors - they'll be initialized when accordion opens
+                    console.log(`   Skipping ${element.id} - in hidden accordion`);
                     return;
                 }
 
-                // Skip if already initialized
+                // Remove any existing editor instance first
                 if (this.instances.has(element)) {
-                    return;
+                    console.log(`   Removing existing instance for ${element.id}`);
+                    this.remove(element);
                 }
 
-                this.init(`#${element.id || 'richtext-' + Date.now()}`, config);
+                console.log(`   Initializing editor for ${element.id}`);
+                this.init(`#${element.id || 'richtext-' + Date.now()}`, cfg);
             });
         };
 
-        // Initialize on various events
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initEditors);
+        // Initialize all registered selectors
+        const initAllEditors = () => {
+            console.log(`🔄 initAllEditors triggered, configs:`, Array.from(this.autoInitConfigs.keys()));
+            this.autoInitConfigs.forEach((cfg, sel) => {
+                initEditorsForSelector(sel, cfg);
+            });
+        };
+
+        // CRITICAL: Only register Turbo event listeners ONCE globally
+        if (!this.autoInitListenersRegistered) {
+            console.log('🔧 Registering Turbo event listeners for RichTextEditor (once)');
+
+            // Initialize on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAllEditors, { once: true });
+            } else {
+                initAllEditors(); // Initialize immediately if DOM already ready
+            }
+
+            // Turbo compatibility - register once per application lifecycle
+            document.addEventListener('turbo:load', initAllEditors);
+            document.addEventListener('turbo:render', initAllEditors);
+
+            // Setup accordion compatibility
+            this.setupAccordionCompatibility(selector, config);
+
+            // Setup Turbo cleanup
+            this.setupTurboCompatibility();
+
+            this.autoInitListenersRegistered = true;
         } else {
-            initEditors();
+            console.log('⚠️  Turbo listeners already registered, config stored, no immediate init');
+            // Do NOT initialize here - let the Turbo events handle it
+            // This prevents double initialization when the partial is re-rendered during Turbo navigation
         }
+    }
 
-        // Turbo compatibility
-        document.addEventListener('turbo:load', initEditors);
-        document.addEventListener('turbo:render', initEditors);
-
-        // Setup accordion compatibility
-        this.setupAccordionCompatibility(selector, config);
-
-        // Setup Turbo cleanup
-        this.setupTurboCompatibility();
+    /**
+     * Setup auto-initialization for elements matching a selector
+     * DEPRECATED: Use register() instead for better Turbo compatibility
+     * @param {string} selector - CSS selector for elements to auto-initialize
+     * @param {object} config - Editor configuration
+     */
+    setupAutoInit(selector, config = {}) {
+        console.log('⚠️  setupAutoInit is deprecated, using register() instead');
+        return this.register(selector, config);
     }
 
     /**

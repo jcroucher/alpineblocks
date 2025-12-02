@@ -9,7 +9,18 @@ import richTextLoader from '../utils/RichTextLoader';
 
 class RichTextEditor {
     /**
+     * Register a selector for auto-initialization (preferred method)
+     * @param {string} selector - CSS selector for textarea(s)
+     * @param {object} config - Editor configuration options
+     */
+    static register(selector, config = {}) {
+        console.log('🎨 AlpineBlocks RichTextEditor register for:', selector);
+        richTextLoader.register(selector, config);
+    }
+
+    /**
      * Setup auto-initialization for editors matching a selector
+     * @deprecated Use register() instead
      * @param {string} selector - CSS selector for textarea(s)
      * @param {object} config - Editor configuration options
      */

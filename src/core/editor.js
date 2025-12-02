@@ -763,6 +763,49 @@ export class Editor {
      * @param {string|null} blockId - ID of target block
      */
     async handleDrop(event, position = 'end', blockId = null) {
+        // Skip if this is a re-dispatched event (prevents infinite loop)
+        if (event._alreadyDispatched) {
+            return;
+        }
+
+        // Check if drop target is a contenteditable element (RichTextEditor)
+        // Walk up DOM tree to see if any parent is contenteditable
+        let target = event.target;
+        let contentEditableTarget = null;
+
+        while (target && target !== this.el) {
+            if (target.contentEditable === 'true' || target.isContentEditable) {
+                contentEditableTarget = target;
+                break;
+            }
+            target = target.parentElement;
+        }
+
+        if (contentEditableTarget) {
+            // Drop is onto a RichTextEditor - call its handler directly
+            console.log('[Editor] Drop target is contenteditable:', contentEditableTarget.id, contentEditableTarget.className);
+
+            // The contenteditable we found might be nested inside the actual RichTextEditor
+            // Search up from this element to find one with _richTextDropHandler
+            let richTextEditor = contentEditableTarget;
+            while (richTextEditor && richTextEditor !== this.el) {
+                if (richTextEditor._richTextDropHandler) {
+                    console.log('[Editor] Found RichTextEditor with handler:', richTextEditor.id);
+                    // Call the handler directly with the event
+                    await richTextEditor._richTextDropHandler(event);
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
+                richTextEditor = richTextEditor.parentElement;
+            }
+
+            console.warn('[Editor] Contenteditable target found but no _richTextDropHandler in parent chain');
+            console.warn('[Editor] Target:', contentEditableTarget.tagName, contentEditableTarget.id, contentEditableTarget.className);
+            // Fall through to allow natural event propagation
+            return;
+        }
+
         event.preventDefault();
 
         this.clearDragTimeouts();

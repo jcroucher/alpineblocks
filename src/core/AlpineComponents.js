@@ -1209,6 +1209,12 @@ export function registerAlpineComponents() {
             } finally {
                 this.loading = false;
             }
+
+            // Listen for reload events from template editor
+            window.addEventListener('reload-template-categories', async () => {
+                console.log('[editorTemplates] Received reload-template-categories event, reloading...');
+                await this.init();
+            });
         },
 
         filterTemplates() {
