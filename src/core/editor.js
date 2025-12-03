@@ -1045,10 +1045,10 @@ export class Editor {
             'audio': 'AudioPlayer',
             'carousel': 'Carousel',
             'columns': 'Columns',
-            'raw': 'Raw',
+            'raw': 'WYSIWYG',
             'wysiwyg': 'WYSIWYG'
         };
-        
+
         return mapping[blockType.toLowerCase()] || null;
     }
 
