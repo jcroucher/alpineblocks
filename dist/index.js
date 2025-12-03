@@ -6168,7 +6168,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
    */ static createRichTextPropertiesHTML() {
         return `
             <!-- CSS Editor Controls -->
-            <div style="margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: #fafbfc;">
+            <div style="margin-bottom: 1.5rem;/* border: 1px solid #e5e7eb; */border-radius: 0.5rem;/* padding: 1rem; */background: #fafbfc;">
                 <h3 style="font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 1rem;">Style Controls</h3>
 
                 <!-- Font Size -->
