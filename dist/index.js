@@ -39,10 +39,7 @@ $parcel$export(module.exports, "default", () => $4fa36e821943b400$export$2e2bcd8
     }
 };
 // Allow runtime configuration in development
-if (typeof window !== 'undefined' && $9a957bb4d57af950$export$f7c1896972d6c454.enabled) {
-    window.AlpineBlocksDebugConfig = $9a957bb4d57af950$export$f7c1896972d6c454;
-    console.log('%c[AlpineBlocks] Debug mode enabled. Use window.AlpineBlocksDebugConfig to modify settings.', $9a957bb4d57af950$export$f7c1896972d6c454.styles.info);
-}
+if (typeof window !== 'undefined' && $9a957bb4d57af950$export$f7c1896972d6c454.enabled) window.AlpineBlocksDebugConfig = $9a957bb4d57af950$export$f7c1896972d6c454;
 
 
 class $7294c730f5636c35$export$153e5dc2c098b35c {
@@ -79,7 +76,7 @@ class $7294c730f5636c35$export$153e5dc2c098b35c {
    * @param {string} message - Warning message
    * @param {...any} args - Additional arguments
    */ static warn(message, ...args) {
-        if ($7294c730f5636c35$export$153e5dc2c098b35c.enabled && $7294c730f5636c35$export$153e5dc2c098b35c.currentLevel >= $7294c730f5636c35$export$153e5dc2c098b35c.levels.WARN) console.warn(`%c[AlpineBlocks WARN] ${message}`, (0, $9a957bb4d57af950$export$f7c1896972d6c454).styles.warn, ...args);
+        $7294c730f5636c35$export$153e5dc2c098b35c.enabled && ($7294c730f5636c35$export$153e5dc2c098b35c.currentLevel, $7294c730f5636c35$export$153e5dc2c098b35c.levels.WARN);
     }
     /**
    * Log an info message
@@ -93,14 +90,13 @@ class $7294c730f5636c35$export$153e5dc2c098b35c {
    * @param {string} message - Debug message
    * @param {...any} args - Additional arguments
    */ static debug(message, ...args) {
-        if ($7294c730f5636c35$export$153e5dc2c098b35c.enabled && $7294c730f5636c35$export$153e5dc2c098b35c.currentLevel >= $7294c730f5636c35$export$153e5dc2c098b35c.levels.DEBUG) console.log(`%c[AlpineBlocks DEBUG] ${message}`, (0, $9a957bb4d57af950$export$f7c1896972d6c454).styles.debug, ...args);
+        $7294c730f5636c35$export$153e5dc2c098b35c.enabled && ($7294c730f5636c35$export$153e5dc2c098b35c.currentLevel, $7294c730f5636c35$export$153e5dc2c098b35c.levels.DEBUG);
     }
     /**
-   * Log a general message (equivalent to console.log)
    * @param {string} message - Message to log
    * @param {...any} args - Additional arguments
    */ static log(message, ...args) {
-        if ($7294c730f5636c35$export$153e5dc2c098b35c.enabled) console.log(`%c[AlpineBlocks] ${message}`, (0, $9a957bb4d57af950$export$f7c1896972d6c454).styles.log, ...args);
+        $7294c730f5636c35$export$153e5dc2c098b35c.enabled;
     }
 }
 // Global access for debugging in development
@@ -459,7 +455,6 @@ class $bc5955414cf94f77$export$a268db361d674bec {
                     this.handleSettings();
                     break;
                 default:
-                    console.warn(`Unknown header toolbar command: ${command}`);
             }
         });
     }
@@ -628,17 +623,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         // Set up keyboard shortcuts
         this.setupKeyboardShortcuts();
         this.$nextTick(()=>{
-            // Log build info for debugging
             const buildId = 'AB-2025-01-17-002';
-            console.log(`AlpineBlocks Editor initialized - Build: ${buildId}, Editor ID: ${this.id}`);
-            console.log('Available methods:', {
-                undo: typeof this.undo,
-                redo: typeof this.redo,
-                toggleCollapse: typeof this.toggleCollapse,
-                preview: typeof this.preview,
-                canUndo: typeof this.canUndo,
-                canRedo: typeof this.canRedo
-            });
             this.$dispatch('editor-ready', {
                 id: this.id,
                 buildId: buildId
@@ -1083,16 +1068,12 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         }
         const BlockClass = this.toolConfig[blockName].class;
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
-        console.log('[Editor initBlock] Initial config for', blockName, ':', config);
-        console.log('[Editor initBlock] window.templateDragData:', window.templateDragData);
         // Check for template drag data and merge it into config
         if (window.templateDragData && window.templateDragData.type === blockName) {
-            console.log('[Editor initBlock] Merging template drag data:', window.templateDragData.config);
             Object.assign(config, window.templateDragData.config);
-            console.log('[Editor initBlock] Config after merge:', config);
             // Clear the template drag data after use
             window.templateDragData = null;
-        } else console.log('[Editor initBlock] No template drag data to merge');
+        }
         const newBlock = new BlockClass({
             id: existingId || (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
             updateFunction: this.updateFunction.bind(this),
@@ -1125,13 +1106,11 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
         }
         if (contentEditableTarget) {
             // Drop is onto a RichTextEditor - call its handler directly
-            console.log('[Editor] Drop target is contenteditable:', contentEditableTarget.id, contentEditableTarget.className);
             // The contenteditable we found might be nested inside the actual RichTextEditor
             // Search up from this element to find one with _richTextDropHandler
             let richTextEditor = contentEditableTarget;
             while(richTextEditor && richTextEditor !== this.el){
                 if (richTextEditor._richTextDropHandler) {
-                    console.log('[Editor] Found RichTextEditor with handler:', richTextEditor.id);
                     // Call the handler directly with the event
                     await richTextEditor._richTextDropHandler(event);
                     event.preventDefault();
@@ -1140,8 +1119,6 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                 }
                 richTextEditor = richTextEditor.parentElement;
             }
-            console.warn('[Editor] Contenteditable target found but no _richTextDropHandler in parent chain');
-            console.warn('[Editor] Target:', contentEditableTarget.tagName, contentEditableTarget.id, contentEditableTarget.className);
             // Fall through to allow natural event propagation
             return;
         }
@@ -1166,15 +1143,10 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                 // Get the template reference from global storage
                 const template = window._alpineTemplates?.draggedTemplate;
                 if (template) {
-                    console.log('[Editor] Loading lazy template:', template.id);
                     // Load template if not already loaded
-                    if (!template.html && template.loadContent) {
-                        console.log('[Editor] Template not loaded yet, loading now...');
-                        await template.loadContent();
-                    }
+                    if (!template.html && template.loadContent) await template.loadContent();
                     // Extract blocks now that template is loaded
                     const blocks = template.extractBlocks();
-                    console.log('[Editor] Extracted blocks:', blocks.length);
                     // Update templateData with blocks
                     templateData = {
                         id: template.id,
@@ -1182,7 +1154,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                         description: template.description,
                         blocks: blocks
                     };
-                } else console.warn('[Editor] Template reference not found in window._alpineTemplates');
+                }
             }
             // Handle template drop (now with blocks loaded)
             this.handleTemplateDrop(templateData, blockId);
@@ -1214,10 +1186,8 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
    * @param {string|null} blockId - ID of target block
    */ handleTemplateDrop(template, blockId = null) {
         try {
-            console.log('[Editor] handleTemplateDrop called with template:', template);
             // Use pre-extracted blocks from the drag data
             const blocks = template.blocks;
-            console.log('[Editor] Template blocks:', blocks);
             if (!blocks || blocks.length === 0) {
                 (0, $7294c730f5636c35$export$153e5dc2c098b35c).warn(`Template ${template.name} has no blocks to add`);
                 return;
@@ -1225,10 +1195,8 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
             const newBlocks = [];
             // Create blocks for each template block
             for (const blockData of blocks){
-                console.log('[Editor] Processing block data:', blockData);
                 // Map template block types to AlpineBlocks tool names
                 const toolName = this.mapTemplateBlockToTool(blockData.type);
-                console.log('[Editor] Mapped to tool:', toolName);
                 if (!toolName || !this.toolConfig[toolName]) {
                     (0, $7294c730f5636c35$export$153e5dc2c098b35c).warn(`Tool ${toolName} not found for template block type ${blockData.type}`);
                     continue;
@@ -1238,7 +1206,6 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
                 const BlockClass = this.toolConfig[toolName].class;
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
-                console.log('[Editor] Merged config for', toolName, ':', mergedConfig);
                 const newBlock = new BlockClass({
                     id: (0, $f5d660d4506b8aa6$export$567fc7097e064344)(),
                     updateFunction: this.updateFunction.bind(this),
@@ -1328,7 +1295,7 @@ class $56b81aadc5b5902e$export$7cda8d932e2f33c0 {
             'audio': 'AudioPlayer',
             'carousel': 'Carousel',
             'columns': 'Columns',
-            'raw': 'Raw',
+            'raw': 'WYSIWYG',
             'wysiwyg': 'WYSIWYG'
         };
         return mapping[blockType.toLowerCase()] || null;
@@ -2207,26 +2174,16 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
    * Handle template element selection from rich text editor
    * @param {Object} detail - Event detail from template-selected event
    */ handleTemplateSelected(detail) {
-        console.log('[Settings] Received template-selected event detail:', detail);
-        console.log('[Settings] detail.currentElement:', detail.currentElement);
-        console.log('[Settings] detail.element:', detail.element);
-        console.log('[Settings] detail.clickedElement:', detail.clickedElement);
         this.currentElement = detail.currentElement || detail.element; // Store the clicked element
-        console.log('[Settings] Stored currentElement:', this.currentElement);
-        console.log('[Settings] Current element tag:', this.currentElement?.tagName);
-        console.log('[Settings] Current element HTML:', this.currentElement?.outerHTML?.substring(0, 200));
-        console.log('[Settings] Current element style attr:', this.currentElement?.getAttribute('style'));
         this.currentBlockId = detail.instanceId; // Use instance ID as block ID
         this.settings = []; // No block settings for template elements
         // Parse CSS from the clicked element (not the wrapper)
         if (this.currentElement && this.currentElement.hasAttribute('style')) {
             const styleString = this.currentElement.getAttribute('style');
             this.cssProperties = (0, $f9488629cc44d2d8$export$27d9ef0ef15a29ab).parseCSSProperties(styleString);
-            console.log('[Settings] Parsed CSS properties:', this.cssProperties);
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).debug('Settings: Parsed CSS from template element', this.cssProperties);
         } else {
             this.cssProperties = {};
-            console.log('[Settings] No styles on element');
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).debug('Settings: No styles on template element');
         }
         // Dispatch update event
@@ -2450,24 +2407,13 @@ class $acadc144a2722177$export$c72f6eaae7b9adff {
             (0, $7294c730f5636c35$export$153e5dc2c098b35c).error('Block not found:', block_id);
             return;
         }
-        console.log('[Settings.trigger] Checking property:', property, 'on block class:', block.class || block.constructor.name);
-        console.log('[Settings.trigger] block[property] type:', typeof block[property]);
-        console.log('[Settings.trigger] prototype[property] type:', typeof block.constructor.prototype[property]);
-        if (typeof block[property] === 'function') {
-            console.log('[Settings.trigger] Calling block[property] directly');
-            block[property](value);
-        } else if (typeof block.constructor.prototype[property] === 'function') {
-            console.log('[Settings.trigger] Calling prototype[property]');
-            block.constructor.prototype[property].call(block, value);
-        } else if (property === 'columnCount' && typeof block.constructor.prototype.updateColumnCount === 'function') {
-            console.log('[Settings.trigger] Calling updateColumnCount fallback');
-            block.constructor.prototype.updateColumnCount.call(block, value);
-        } else if (block.config && block.config.hasOwnProperty(property)) {
-            console.log('[Settings.trigger] Setting config property');
+        if (typeof block[property] === 'function') block[property](value);
+        else if (typeof block.constructor.prototype[property] === 'function') block.constructor.prototype[property].call(block, value);
+        else if (property === 'columnCount' && typeof block.constructor.prototype.updateColumnCount === 'function') block.constructor.prototype.updateColumnCount.call(block, value);
+        else if (block.config && block.config.hasOwnProperty(property)) {
             block.config[property] = value;
             block.triggerRedraw();
         } else {
-            console.log('[Settings.trigger] Setting direct property');
             block[property] = value;
             if (block.triggerRedraw) block.triggerRedraw();
         }
@@ -3202,15 +3148,11 @@ var $d520e56908c10f17$export$2e2bcd8739ae039 = $d520e56908c10f17$export$3962e98a
                 return this.layoutIndex;
             }
             const indexUrl = this._buildUrl(this.config.index);
-            console.log(`[RemoteLayoutManager] Loading layout index from: ${indexUrl}`);
             const response = await fetch(indexUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             this.layoutIndex = await response.json();
-            console.log(`[RemoteLayoutManager] Loaded ${this.layoutIndex.categories?.length || 0} layout categories`);
             return this.layoutIndex;
         } catch (error) {
-            console.warn(`[RemoteLayoutManager] Failed to load remote layouts: ${error.message}`);
-            console.log('[RemoteLayoutManager] Falling back to static layouts');
             // Fallback to static layouts
             this.layoutIndex = this._createStaticIndex();
             return this.layoutIndex;
@@ -3280,7 +3222,6 @@ var $d520e56908c10f17$export$2e2bcd8739ae039 = $d520e56908c10f17$export$3962e98a
                 if (layoutInfo.file) contentUrl = this._buildUrl(layoutInfo.file);
                 else // Database-backed template: use layoutId + template_json endpoint
                 contentUrl = this._buildUrl(`${layoutId}/template_json`);
-                console.log(`[RemoteLayoutManager] Loading layout content: ${contentUrl}`);
                 const response = await fetch(contentUrl);
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 layoutData = await response.json();
@@ -3334,7 +3275,6 @@ var $d520e56908c10f17$export$2e2bcd8739ae039 = $d520e56908c10f17$export$3962e98a
         // Create a temporary Raw block that contains the HTML
         // Note: LayoutManager.addLayout expects blocks with { type, data } structure
         // The 'data' field becomes the 'config' in the Raw block constructor
-        console.log('[RemoteLayoutManager] Converting HTML to blocks, content length:', htmlContent?.length);
         const blocks = [
             {
                 type: 'raw',
@@ -3346,7 +3286,6 @@ var $d520e56908c10f17$export$2e2bcd8739ae039 = $d520e56908c10f17$export$3962e98a
                 }
             }
         ];
-        console.log('[RemoteLayoutManager] Created blocks:', blocks);
         return blocks;
     }
     /**
@@ -3499,10 +3438,7 @@ class $8ebbeef8d21b3552$var$Layout {
                 },
                 extractBlocks () {
                     // If content not loaded yet, return empty array
-                    if (!this._loadedHtml) {
-                        console.warn(`Template ${this.id} content not loaded yet`);
-                        return [];
-                    }
+                    if (!this._loadedHtml) return [];
                     // Inline the block extraction logic (same as Layout.prototype.extractBlocks)
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(this._loadedHtml, 'text/html');
@@ -3544,7 +3480,6 @@ class $8ebbeef8d21b3552$var$Layout {
             });
             return layouts;
         } catch (error) {
-            console.warn('Failed to load remote layouts, using static fallback:', error.message);
             return fallbackLayouts;
         }
     }
@@ -3604,10 +3539,7 @@ class $294ef9f20b3a5b48$var$LayoutManager {
     createCustomLayout(name, description = '') {
         try {
             const blocks = this.editor.save().then((outputData)=>{
-                if (!outputData.blocks || outputData.blocks.length === 0) {
-                    console.warn('No blocks found to create layout');
-                    return null;
-                }
+                if (!outputData.blocks || outputData.blocks.length === 0) return null;
                 // Convert blocks to HTML representation
                 let html = '<div class="custom-layout">';
                 outputData.blocks.forEach((block)=>{
@@ -5179,7 +5111,6 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
    * @param {Object} tool - Custom tool configuration
    * @returns {string} Tool HTML
    */ renderCustomTool(tool) {
-        const clickHandler = tool.callback || 'console.log("Custom tool clicked")';
         return `
             <button @click="${clickHandler}"
                     title="${tool.title || tool.name}"
@@ -5229,19 +5160,14 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
         if (target) target.focus();
         try {
             document.execCommand(command, false, value);
-        } catch (error) {
-            console.warn('Command execution failed:', command, error);
-        }
+        } catch (error) {}
         if (this.options.onCommand) this.options.onCommand(command, value);
     }
     /**
    * Add a custom tool to the toolbar
    * @param {Object} tool - Tool configuration
    */ addCustomTool(tool) {
-        if (!tool.name || !tool.callback) {
-            console.warn('Custom tool requires name and callback properties');
-            return;
-        }
+        if (!tool.name || !tool.callback) return;
         this.options.customTools.push({
             name: tool.name,
             title: tool.title || tool.name,
@@ -5313,13 +5239,11 @@ class $937888ae7cc593aa$var$RichTextLoader {
         // Check if AlpineBlocks is already loaded
         if (window.AlpineBlocks) {
             this.alpineBlocksInitialized = true;
-            console.log("\u2705 AlpineBlocks already loaded, ready for RichText editors");
             return;
         }
         // If not loaded yet, listen for the alpineblocks:ready event
         if (typeof window !== 'undefined') window.addEventListener('alpineblocks:ready', ()=>{
             this.alpineBlocksInitialized = true;
-            console.log("\u2705 AlpineBlocks loaded via event, ready for RichText editors");
         }, {
             once: true
         });
@@ -5357,11 +5281,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
    */ initializeSingleEditor(element, config) {
         const editorId = element.id || `richtext-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         if (!element.id) element.id = editorId;
-        console.log(`\u{1F3A8} initializeSingleEditor called for: ${editorId}`, {
-            alreadyExists: this.instances.has(element),
-            instanceCount: this.instances.size,
-            stackTrace: new Error().stack
-        });
         // Get initial content from textarea or element
         let initialContent = '';
         if (element.tagName === 'TEXTAREA') {
@@ -5399,10 +5318,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
             editorDiv.style.backgroundColor = 'white';
             // Process initial content to convert <!-- drop --> comments to drop zones
             let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
-            if (initialContent && initialContent.includes('<!-- drop -->')) {
-                processedContent = this.processDropZones(processedContent, editorId);
-                console.log('[RichText] Processed drop zones in initial content for', editorId);
-            }
+            if (initialContent && initialContent.includes('<!-- drop -->')) processedContent = this.processDropZones(processedContent, editorId);
             editorDiv.innerHTML = processedContent;
             // Add inline style to ensure formatting tags work
             const styleEl = document.createElement('style');
@@ -5442,7 +5358,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
                 // but we explicitly set it here for clarity
                 editorDiv.contentEditable = 'true';
             } catch (e) {
-                console.warn('Could not configure execCommand settings:', e);
+            // Silently ignore execCommand configuration errors
             }
             // Setup Alpine.js event handlers for toolbar
             this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId);
@@ -5461,39 +5377,29 @@ class $937888ae7cc593aa$var$RichTextLoader {
             // Clean content before form submission
             const form = element.closest('form');
             if (form) {
-                console.log('[RichText] Form submit handler registered for', editorId);
                 const submitHandler = (e)=>{
-                    console.log('[RichText] Form submit event fired for', editorId);
-                    console.log('[RichText] Editor HTML before clean:', editorDiv.innerHTML.substring(0, 200));
                     // Remove drop indicators from the editor itself
                     const indicators = editorDiv.querySelectorAll('.richtext-drop-indicator');
-                    if (indicators.length > 0) {
-                        console.log('[RichText] Removing', indicators.length, 'drop indicators from editor before submit');
-                        indicators.forEach((ind)=>ind.remove());
-                    }
+                    if (indicators.length > 0) indicators.forEach((ind)=>ind.remove());
                     // Convert EMPTY drop zones back to comments in the live DOM
                     // Drop zones with content (dropped templates) should be kept as-is
                     const dropZones = editorDiv.querySelectorAll('.richtext-nested-dropzone');
-                    let emptyZoneCount = 0;
                     dropZones.forEach((zone)=>{
                         const textContent = zone.textContent.trim();
                         const hasOnlyPlaceholder = textContent === 'Drop template here' || textContent === '';
                         if (hasOnlyPlaceholder) {
                             const comment = document.createComment(' drop ');
                             zone.parentNode.replaceChild(comment, zone);
-                            emptyZoneCount++;
                         }
                     });
-                    if (emptyZoneCount > 0) console.log('[RichText] Converting', emptyZoneCount, 'empty drop zones back to comments before submit');
                     const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                     element.value = cleanedHTML;
-                    console.log('[RichText] Textarea value after clean:', element.value.substring(0, 200));
                 };
                 form.addEventListener('submit', submitHandler);
                 // Store handler reference for cleanup
                 if (!form._richTextSubmitHandlers) form._richTextSubmitHandlers = [];
                 form._richTextSubmitHandlers.push(submitHandler);
-            } else console.warn('[RichText] No parent form found for', editorId);
+            }
             // Handle template drops with visual indicator
             let dropIndicator = null;
             let currentDropTarget = null;
@@ -5609,9 +5515,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
                 }
             });
             const dropHandler = async (e)=>{
-                console.log('[RichText] Drop event triggered');
                 const dragDataText = e.dataTransfer.getData('text/plain');
-                console.log('[RichText] dataTransfer text/plain:', dragDataText);
                 let htmlContent = null;
                 let isTemplateDrop = false;
                 let templateId = null;
@@ -5622,39 +5526,29 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     if (dragData.type === 'template' && dragData.data) {
                         // Check if this is a lazy template that needs loading
                         if (dragData.data._templateRef) {
-                            console.log('[RichText] Detected lazy template drop, loading...');
                             // Get the template reference from global storage
                             const template = window._alpineTemplates?.draggedTemplate;
                             if (template) {
-                                console.log('[RichText] Found template reference:', template.id);
                                 // Load template if not already loaded
-                                if (!template.html && template.loadContent) {
-                                    console.log('[RichText] Loading template content...');
-                                    await template.loadContent();
-                                }
+                                if (!template.html && template.loadContent) await template.loadContent();
                                 // Use the raw HTML directly for RichText editor
                                 isTemplateDrop = true;
                                 templateId = template.id;
                                 templateName = template.name;
                                 htmlContent = template.html;
-                                console.log('[RichText] Loaded template HTML, length:', htmlContent?.length || 0);
-                            } else console.warn('[RichText] Template reference not found in window._alpineTemplates');
+                            }
                         } else if (dragData.data.blocks) {
                             // Old format with pre-extracted blocks
-                            console.log('[RichText] Detected AlpineBlocks template drop');
                             isTemplateDrop = true;
                             templateId = dragData.data.id || null;
                             templateName = dragData.data.name || null;
                             // Concatenate HTML from all blocks
                             htmlContent = dragData.data.blocks.map((block)=>block.data.content || '').join('\n');
-                            console.log('[RichText] Extracted HTML from template blocks, length:', htmlContent.length);
-                            console.log('[RichText] Template ID:', templateId, 'Name:', templateName);
                         }
                     }
                 } catch (parseError) {
                     // Not JSON, check if it's a simple drag type like 'Raw'
                     if (dragDataText === 'Raw' && window.templateDragData) {
-                        console.log('[RichText] Detected Raw block drop with window.templateDragData');
                         isTemplateDrop = true;
                         htmlContent = window.templateDragData.config.content;
                         templateId = window.templateDragData.id || null;
@@ -5664,8 +5558,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                 if (isTemplateDrop && htmlContent) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[RichText] Inserting template HTML, length:', htmlContent.length);
-                    console.log('[RichText] Drop target:', currentDropTarget, 'Insert before:', insertBefore);
                     // Generate unique ID for this template instance
                     const instanceId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                     // Create wrapper div with tracking attributes
@@ -5682,7 +5574,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     escapeParagraphAfter.innerHTML = '<br>';
                     // Use the drop indicator position to insert content
                     if (currentDropTarget) {
-                        console.log('[RichText] Inserting at drop indicator position');
                         // Check if we're inserting at the very beginning
                         const isAtStart = insertBefore && !currentDropTarget.previousSibling;
                         // Add escape paragraph BEFORE if at start
@@ -5690,7 +5581,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                             const escapeParagraphBefore = document.createElement('p');
                             escapeParagraphBefore.innerHTML = '<br>';
                             editorDiv.insertBefore(escapeParagraphBefore, currentDropTarget);
-                            console.log('[RichText] Added escape paragraph before block (at start)');
                         }
                         // Insert the template wrapper
                         if (insertBefore) currentDropTarget.parentNode.insertBefore(templateWrapper, currentDropTarget);
@@ -5699,10 +5589,8 @@ class $937888ae7cc593aa$var$RichTextLoader {
                         // Insert escape paragraph after the template
                         if (templateWrapper.nextSibling) editorDiv.insertBefore(escapeParagraphAfter, templateWrapper.nextSibling);
                         else editorDiv.appendChild(escapeParagraphAfter);
-                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     } else {
                         // No drop target (empty editor or fallback)
-                        console.log('[RichText] No drop target, appending to end');
                         const isEmpty = editorDiv.innerHTML.trim() === '' || editorDiv.innerHTML === '<p><br></p>' || editorDiv.textContent.trim() === '';
                         // If editor is empty, add escape paragraph before
                         if (isEmpty) {
@@ -5710,13 +5598,11 @@ class $937888ae7cc593aa$var$RichTextLoader {
                             escapeParagraphBefore.innerHTML = '<br>';
                             editorDiv.innerHTML = ''; // Clear placeholder
                             editorDiv.appendChild(escapeParagraphBefore);
-                            console.log('[RichText] Added escape paragraph before block (empty editor)');
                         }
                         // Add the wrapped template
                         editorDiv.appendChild(templateWrapper);
                         // Add escape paragraph at the end
                         editorDiv.appendChild(escapeParagraphAfter);
-                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     }
                     // Remove drop indicator and reset state
                     if (dropIndicator && dropIndicator.parentElement) dropIndicator.remove();
@@ -5728,7 +5614,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     if (config.onChange) config.onChange(cleanedHTML);
                     // Clear the template data if it was used
                     if (window.templateDragData) window.templateDragData = null;
-                    console.log('[RichText] Template HTML inserted successfully');
                 }
             };
             // Store reference for manual invocation from layout editor
@@ -5737,20 +5622,14 @@ class $937888ae7cc593aa$var$RichTextLoader {
             editorDiv.addEventListener('drop', dropHandler);
             // Track template clicks - find nearest template wrapper when clicking in editor
             editorDiv.addEventListener('click', (e)=>{
-                console.log('[RichText] Click event received on editor:', editorDiv.id);
-                console.log('[RichText] Event target:', e.target);
-                console.log('[RichText] Event bubbles:', e.bubbles);
-                console.log('[RichText] Event propagation stopped:', e.cancelBubble);
                 // Get the element that was clicked
                 const clickedElement = e.target;
                 // Walk up the DOM tree to find a template wrapper
                 let currentElement = clickedElement;
-                console.log('[RichText] Walking up DOM tree from:', clickedElement);
                 while(currentElement && currentElement !== editorDiv){
                     // Check for template by data-template-id attribute OR by ID pattern (template-{timestamp}-{random})
                     const hasTemplateAttribute = currentElement.hasAttribute && currentElement.hasAttribute('data-template-id');
                     const hasTemplateId = currentElement.id && currentElement.id.startsWith('template-');
-                    console.log('[RichText] Checking element:', currentElement.tagName, currentElement.id, 'has data-template-id?', hasTemplateAttribute, 'has template ID pattern?', hasTemplateId);
                     if (hasTemplateAttribute || hasTemplateId) {
                         const templateId = currentElement.getAttribute('data-template-id') || 'legacy-template';
                         const instanceId = currentElement.id;
@@ -5758,16 +5637,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                         // Get the style attribute of the clicked element (not the wrapper)
                         const currentElementStyle = clickedElement.getAttribute('style') || '';
                         const currentElementTag = clickedElement.tagName ? clickedElement.tagName.toLowerCase() : '';
-                        console.log('[RichText] Template clicked:');
-                        console.log('  Instance ID:', instanceId);
-                        console.log('  Template ID:', templateId);
-                        console.log('  Template Name:', templateName);
-                        console.log('  Clicked Element Tag:', currentElementTag);
-                        console.log('  Clicked Element:', clickedElement);
-                        console.log('  Clicked Element HTML:', clickedElement.outerHTML?.substring(0, 200));
-                        console.log('  Element Style:', currentElementStyle);
-                        console.log('  Template Wrapper (currentElement):', currentElement);
-                        console.log('  Template Wrapper HTML:', currentElement.outerHTML?.substring(0, 200));
                         // Dispatch event with current element info
                         editorDiv.dispatchEvent(new CustomEvent('template-selected', {
                             detail: {
@@ -5816,7 +5685,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
             };
             this.instances.set(element, instance);
             this.instances.set(editorId, instance);
-            console.log("\u2705 AlpineBlocks RichText editor initialized:", editorId);
             if (config.onInit) config.onInit(instance);
             return instance;
         } else {
@@ -5851,7 +5719,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
         tempDiv.innerHTML = html;
         // Remove all drop indicators
         const dropIndicators = tempDiv.querySelectorAll('.richtext-drop-indicator');
-        if (dropIndicators.length > 0) console.log(`[RichText] cleanHTML: Removing ${dropIndicators.length} drop indicator(s)`);
+        dropIndicators.length;
         dropIndicators.forEach((indicator)=>indicator.remove());
         // Convert EMPTY nested drop zones back to <!-- drop --> comments
         // Drop zones with content (dropped templates) should be kept as-is
@@ -5869,7 +5737,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
             }
         // If it has content (a dropped template), leave it as-is with all its attributes
         });
-        if (emptyCount > 0) console.log(`[RichText] cleanHTML: Converting ${emptyCount} empty drop zone(s) back to comments`);
+        emptyCount;
         return tempDiv.innerHTML;
     }
     /**
@@ -5885,7 +5753,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
             ...html.matchAll(dropMarkerRegex)
         ];
         if (matches.length === 0) return html; // No drop zones, return as-is
-        console.log(`[RichText] Found ${matches.length} drop zone markers in template ${parentId}`);
         // Replace each <!-- drop --> with a styled drop zone div
         let processedHTML = html;
         let zoneIndex = 0;
@@ -5945,13 +5812,11 @@ class $937888ae7cc593aa$var$RichTextLoader {
             if (dropZone) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[RichText] Nested drop zone drop event');
                 // Reset drop zone styling
                 dropZone.style.borderColor = '#d1d5db';
                 dropZone.style.backgroundColor = '#f9fafb';
                 const zoneId = dropZone.getAttribute('data-zone-id');
                 const parentId = dropZone.getAttribute('data-parent-id');
-                console.log('[RichText] Dropping into zone:', zoneId, 'Parent:', parentId);
                 // Parse drag data
                 const dragDataText = e.dataTransfer.getData('text/plain');
                 let htmlContent = null;
@@ -5964,7 +5829,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     if (dragData.type === 'template' && dragData.data) {
                         // Check if this is a lazy template that needs loading
                         if (dragData.data._templateRef) {
-                            console.log('[RichText Nested] Detected lazy template drop, loading...');
                             const template = window._alpineTemplates?.draggedTemplate;
                             if (template) {
                                 if (!template.html && template.loadContent) await template.loadContent();
@@ -6011,7 +5875,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     dropZone.style.border = 'none'; // Remove border once filled
                     dropZone.style.background = 'transparent'; // Remove background
                     dropZone.style.minHeight = 'auto'; // Remove min-height
-                    console.log('[RichText] Nested template inserted with ID:', instanceId);
                     // Sync to textarea (clean HTML to remove any drop indicators)
                     const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                     element.value = cleanedHTML;
@@ -6037,10 +5900,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
         // Function to save current selection
         const saveCurrentSelection = ()=>{
             const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                savedSelection = selection.getRangeAt(0).cloneRange();
-                console.log('[RichText] Selection saved');
-            }
+            if (selection.rangeCount > 0) savedSelection = selection.getRangeAt(0).cloneRange();
         };
         // Save selection when editor loses focus
         editorDiv.addEventListener('blur', saveCurrentSelection);
@@ -6051,7 +5911,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
         });
         // Define the command handler function
         const handleToolbarCommand = (command, value = null)=>{
-            console.log('[RichText] Executing command:', command, 'value:', value);
             // Handle toggle blocks sidebar command
             if (command === 'toggleBlocksSidebar') {
                 this.toggleBlocksSidebar(editorId, !isBlocksSidebarOpen);
@@ -6066,7 +5925,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     editorDiv.style.display = '';
                     codeTextarea.style.display = 'none';
                     isCodeViewActive = false;
-                    console.log('[RichText] Switched to WYSIWYG view');
                 } else {
                     // Switch from WYSIWYG to code view
                     codeTextarea.value = editorDiv.innerHTML;
@@ -6074,15 +5932,11 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     codeTextarea.style.display = 'block';
                     isCodeViewActive = true;
                     codeTextarea.focus();
-                    console.log('[RichText] Switched to code view');
                 }
                 return;
             }
             // For all other commands, ensure we're in WYSIWYG mode
-            if (isCodeViewActive) {
-                console.warn('[RichText] Cannot execute formatting commands in code view');
-                return;
-            }
+            if (isCodeViewActive) return;
             // Focus the editor
             editorDiv.focus();
             // Get current selection
@@ -6096,22 +5950,13 @@ class $937888ae7cc593aa$var$RichTextLoader {
             if (savedSelection && (selection.rangeCount === 0 || isCollapsed)) try {
                 selection.removeAllRanges();
                 selection.addRange(savedSelection.cloneRange());
-                console.log('[RichText] Restored saved selection:', selection.toString());
-            } catch (e) {
-                console.warn('[RichText] Failed to restore selection:', e);
-            }
-            else console.log('[RichText] Using current selection:', selection.toString());
-            console.log('[RichText] Selection range count:', selection.rangeCount);
+            } catch (e) {}
             try {
                 const result = document.execCommand(command, false, value);
-                console.log('[RichText] execCommand result:', result);
                 // Log the HTML after command to see what changed
-                console.log('[RichText] Editor HTML after command:', editorDiv.innerHTML);
                 // Save the new selection
                 if (selection.rangeCount > 0) savedSelection = selection.getRangeAt(0);
-            } catch (error) {
-                console.warn('[RichText] Command execution failed:', command, error);
-            }
+            } catch (error) {}
         };
         // Store the handler in a global registry that Alpine can access
         if (!window.__richTextHandlers) window.__richTextHandlers = {};
@@ -6124,7 +5969,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
         }`);
         // Set the toolbar HTML
         toolbarContainer.innerHTML = toolbar.render(editorId);
-        console.log('[RichText] Toolbar initialized with global handler for:', editorId);
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e)=>{
             // Don't prevent default on select elements - they need to open
@@ -6435,49 +6279,38 @@ class $937888ae7cc593aa$var$RichTextLoader {
                 const style = this.currentElementStyle || '';
                 const props = {};
 
-                console.log('[parseCSSProperties] Input style:', style);
 
                 // Split by semicolon and parse each property
                 style.split(';').forEach(prop => {
-                    console.log('[parseCSSProperties] Processing prop:', JSON.stringify(prop));
                     const colonIndex = prop.indexOf(':');
                     if (colonIndex === -1) return;
 
                     const key = prop.substring(0, colonIndex).trim();
                     const value = prop.substring(colonIndex + 1).trim();
-                    console.log('[parseCSSProperties] key:', JSON.stringify(key), 'value:', JSON.stringify(value));
 
                     if (key && value) {
                         // Handle shorthand border property: "2px solid #3b82f6"
                         if (key === 'border') {
-                            console.log('[parseCSSProperties] Found border shorthand:', value);
                             // Use simple space split instead of regex - works better
                             const parts = value.split(' ').filter(p => p);
-                            console.log('[parseCSSProperties] Border parts:', parts);
                             // Try to identify width, style, and color from the parts
                             parts.forEach(part => {
-                                console.log('[parseCSSProperties] Checking part:', part);
 
                                 // Check if it's a border style first (most specific)
                                 if (['solid', 'dashed', 'dotted', 'double', 'none', 'hidden', 'groove', 'ridge', 'inset', 'outset'].includes(part)) {
                                     props['border-style'] = part;
-                                    console.log('[parseCSSProperties] Set border-style:', part);
                                 }
                                 // Check if it's a color
                                 else if (part.startsWith('#') || part.startsWith('rgb') || part.startsWith('hsl')) {
                                     props['border-color'] = part;
-                                    console.log('[parseCSSProperties] Set border-color:', part);
                                 }
                                 // Check if it's a width - must end with a unit or be 0
                                 else {
                                     const widthRegex = new RegExp('^[0-9]+\\.?[0-9]*(px|em|rem|pt|%|vh|vw|vmin|vmax|ch|ex)$');
                                     const isWidth = widthRegex.test(part);
-                                    console.log('[parseCSSProperties] Width regex test for "' + part + '":', isWidth);
                                     if (isWidth || part === '0') {
                                         props['border-width'] = part;
-                                        console.log('[parseCSSProperties] Set border-width:', part);
                                     } else {
-                                        console.log('[parseCSSProperties] Part did not match any pattern:', part);
                                     }
                                 }
                             });
@@ -6550,7 +6383,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                     }
                 });
 
-                console.log('[parseCSSProperties] Final cssProperties:', props);
                 this.cssProperties = props;
             },
             updateCSSProperty(property, value) {
@@ -6708,10 +6540,8 @@ class $937888ae7cc593aa$var$RichTextLoader {
                              editorId = foundEditorId;
                              // Populate tools from the editor
                              tools = editor.getToolbar();
-                             console.log('\u{2705} Sidebar toolbar connected to editor:', foundEditorId, 'with', tools.length, 'tools');
                          } else if (window.AlpineBlocks && window.AlpineBlocks.toolModules) {
                              // Fallback: No full editor, but we can show tools from toolModules
-                             console.log('\u{26A0}\u{FE0F} No AlpineBlocks editor found. Loading tools from toolModules (drag/drop will not work).');
                              tools = Object.keys(window.AlpineBlocks.toolModules).map(key => {
                                  const Block = window.AlpineBlocks.toolModules[key];
                                  const toolbox = Block.toolbox ? Block.toolbox() : {};
@@ -6721,7 +6551,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
                                      class: key
                                  };
                              });
-                             console.log('Loaded', tools.length, 'tools from toolModules');
                          } else {
                              console.error('\u{274C} Neither AlpineBlocks editor nor toolModules found');
                          }
@@ -7174,40 +7003,28 @@ class $937888ae7cc593aa$var$RichTextLoader {
    * @param {string} selector - CSS selector for elements to auto-initialize
    * @param {object} config - Editor configuration
    */ register(selector, config = {}) {
-        console.log(`\u{1F4DD} Registering selector: "${selector}" (no immediate init)`);
         // Store or update the config for this selector
         this.autoInitConfigs.set(selector, config);
         // Define helper functions for initialization
         const initEditorsForSelector = (sel, cfg)=>{
-            console.log(`\u{1F50D} initEditorsForSelector: "${sel}"`);
             const elements = document.querySelectorAll(sel);
-            console.log(`   Found ${elements.length} elements for selector "${sel}"`);
             elements.forEach((element)=>{
                 // Check if editor is in a hidden accordion
                 const accordion = element.closest('[data-accordion-target="content"]');
-                if (accordion && accordion.classList.contains('hidden')) {
-                    console.log(`   Skipping ${element.id} - in hidden accordion`);
-                    return;
-                }
+                if (accordion && accordion.classList.contains('hidden')) return;
                 // Remove any existing editor instance first
-                if (this.instances.has(element)) {
-                    console.log(`   Removing existing instance for ${element.id}`);
-                    this.remove(element);
-                }
-                console.log(`   Initializing editor for ${element.id}`);
+                if (this.instances.has(element)) this.remove(element);
                 this.init(`#${element.id || 'richtext-' + Date.now()}`, cfg);
             });
         };
         // Initialize all registered selectors
         const initAllEditors = ()=>{
-            console.log(`\u{1F504} initAllEditors triggered, configs:`, Array.from(this.autoInitConfigs.keys()));
             this.autoInitConfigs.forEach((cfg, sel)=>{
                 initEditorsForSelector(sel, cfg);
             });
         };
         // CRITICAL: Only register Turbo event listeners ONCE globally
         if (!this.autoInitListenersRegistered) {
-            console.log("\uD83D\uDD27 Registering Turbo event listeners for RichTextEditor (once)");
             // Initialize on page load
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAllEditors, {
                 once: true
@@ -7221,7 +7038,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
             // Setup Turbo cleanup
             this.setupTurboCompatibility();
             this.autoInitListenersRegistered = true;
-        } else console.log("\u26A0\uFE0F  Turbo listeners already registered, config stored, no immediate init");
+        }
     }
     /**
    * Setup auto-initialization for elements matching a selector
@@ -7229,7 +7046,6 @@ class $937888ae7cc593aa$var$RichTextLoader {
    * @param {string} selector - CSS selector for elements to auto-initialize
    * @param {object} config - Editor configuration
    */ setupAutoInit(selector, config = {}) {
-        console.log("\u26A0\uFE0F  setupAutoInit is deprecated, using register() instead");
         return this.register(selector, config);
     }
     /**
@@ -7413,7 +7229,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                 }
             `;
             document.head.appendChild(style);
-            console.log('[WYSIWYG] Drop animation styles injected');
         }
     }
     /**
@@ -7429,7 +7244,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
             ...html.matchAll(dropMarkerRegex)
         ];
         if (matches.length === 0) return html; // No drop zones, return as-is
-        console.log(`[WYSIWYG] Found ${matches.length} drop zone markers in template ${parentId}`);
         // Replace each <!-- drop --> with a styled drop zone div
         let processedHTML = html;
         let zoneIndex = 0;
@@ -7464,7 +7278,7 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
         tempDiv.innerHTML = html;
         // Remove all drop indicators
         const dropIndicators = tempDiv.querySelectorAll('.richtext-drop-indicator');
-        if (dropIndicators.length > 0) console.log(`[WYSIWYG] cleanHTML: Removing ${dropIndicators.length} drop indicator(s)`);
+        dropIndicators.length;
         dropIndicators.forEach((indicator)=>indicator.remove());
         // Convert EMPTY nested drop zones back to <!-- drop --> comments
         const dropZones = tempDiv.querySelectorAll('.richtext-nested-dropzone');
@@ -7481,7 +7295,7 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
             }
         // If zone has content (dropped templates), keep it as-is
         });
-        if (emptyCount > 0) console.log(`[WYSIWYG] cleanHTML: Converting ${emptyCount} empty drop zone(s) back to comments`);
+        emptyCount;
         return tempDiv.innerHTML;
     }
     editorRender() {
@@ -7518,7 +7332,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                      }
                                  });
 
-                                 console.log('[WYSIWYG] RichTextEditor initialized for', textareaId);
                              } else {
                                  console.error('[WYSIWYG] window.AlpineBlocks.RichTextEditor not available');
                              }
@@ -7531,10 +7344,7 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
     editorRenderOld() {
         // Process initial content for drop zones
         let processedContent = this.config.content;
-        if (processedContent && processedContent.includes('<!-- drop -->')) {
-            processedContent = $56ed62fe01aa8034$var$WYSIWYG.processDropZones(processedContent, this.editorId);
-            console.log('[WYSIWYG] Processed drop zones in initial content for', this.editorId);
-        }
+        if (processedContent && processedContent.includes('<!-- drop -->')) processedContent = $56ed62fe01aa8034$var$WYSIWYG.processDropZones(processedContent, this.editorId);
         // Return editor with toolbar
         return `<div class="wysiwyg-editor-wrapper-old"
                      style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;"
@@ -7556,13 +7366,11 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                 try {
                                     document.execCommand(command, false, value);
                                 } catch (error) {
-                                    console.warn('Command execution failed:', command, error);
                                 }
                             };
 
                             // Template drop handler
                             editor._richTextDropHandler = async (e) => {
-                                console.log('[WYSIWYG] Drop event triggered');
                                 const dragDataText = e.dataTransfer.getData('text/plain');
 
                                 try {
@@ -7570,7 +7378,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                     if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
                                         const template = window._alpineTemplates?.draggedTemplate;
                                         if (template) {
-                                            console.log('[WYSIWYG] Loading template:', template.id);
                                             if (!template.html && template.loadContent) {
                                                 await template.loadContent();
                                             }
@@ -7579,7 +7386,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                                 e.preventDefault();
                                                 e.stopPropagation();
 
-                                                console.log('[WYSIWYG] Inserting template HTML');
 
                                                 // Generate unique ID for this template instance
                                                 const instanceId = 'template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -7619,12 +7425,10 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                                     block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
                                                 }
 
-                                                console.log('[WYSIWYG] Template inserted successfully');
                                             }
                                         }
                                     }
                                 } catch (error) {
-                                    console.warn('[WYSIWYG] Drop handling error:', error);
                                 }
                             };
 
@@ -7745,7 +7549,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                     e.preventDefault();
                                     e.stopPropagation();
 
-                                    console.log('[WYSIWYG] Nested drop zone drop event');
 
                                     // Reset drop zone styling
                                     dropZone.style.borderColor = '#d1d5db';
@@ -7758,7 +7561,6 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                         if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
                                             const template = window._alpineTemplates?.draggedTemplate;
                                             if (template) {
-                                                console.log('[WYSIWYG] Loading nested template:', template.id);
                                                 if (!template.html && template.loadContent) {
                                                     await template.loadContent();
                                                 }
@@ -7786,12 +7588,10 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
                                                         block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
                                                     }
 
-                                                    console.log('[WYSIWYG] Nested template inserted successfully');
                                                 }
                                             }
                                         }
                                     } catch (error) {
-                                        console.warn('[WYSIWYG] Nested drop handling error:', error);
                                     }
                                 }
                             }, true);
@@ -9424,7 +9224,6 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
             }
         },
         init (blockId) {
-            console.log('[rawCodeEditor] init called with blockId:', blockId);
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find((b)=>b.id === blockId);
             if (!this.block && window.alpineEditors) // Try finding through alpine editors
@@ -9435,17 +9234,11 @@ function $dbf99af480fb2d13$var$rawCodeEditor() {
                     if (this.block) break;
                 }
             }
-            console.log('[rawCodeEditor] Found block:', this.block);
-            console.log('[rawCodeEditor] Block config:', this.block?.config);
-            console.log('[rawCodeEditor] Block config.content:', this.block?.config?.content);
-            console.log('[rawCodeEditor] Block config.content length:', this.block?.config?.content?.length);
             if (this.block) {
                 // Set initial preview mode based on block config, defaulting to true
                 this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
-                console.log('[rawCodeEditor] Set showPreview to:', this.showPreview);
-                console.log('[rawCodeEditor] Set previewContent length:', this.previewContent?.length);
                 // Initialize toolbar for preview mode
                 this.toolbar = new (0, $4070b2c197de59da$export$c4f883ba50227a95)({
                     className: 'raw-preview-toolbar'
@@ -9761,17 +9554,12 @@ if (typeof window !== 'undefined' && !window.rawCodeEditor) window.rawCodeEditor
 class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739ae039) {
     constructor({ id: id, updateFunction: updateFunction, config: config }){
         super(id, updateFunction, config);
-        console.log('[Raw] Constructor called with config:', config);
-        console.log('[Raw] config.content:', config.content);
-        console.log('[Raw] config.content length:', config.content?.length);
         this.config = {
             content: config.content || '',
             mode: config.mode || 'html',
             // html, css, javascript
             showPreview: config.showPreview !== undefined ? config.showPreview : true
         };
-        console.log('[Raw] Final this.config:', this.config);
-        console.log('[Raw] Final this.config.content length:', this.config.content?.length);
         this.settings = [
             {
                 name: 'mode',
@@ -9875,8 +9663,6 @@ class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739a
         }
     }
     editorRender() {
-        console.log('[Raw] editorRender called, this.config.content length:', this.config.content?.length);
-        console.log('[Raw] editorRender this.config:', this.config);
         return `<div class="raw-block" data-block-id="${this.id}"
                      x-data="rawCodeEditor()"
                      x-init="init('${this.id}')">
@@ -9908,7 +9694,6 @@ class $dbf99af480fb2d13$var$Raw extends (0, $3e6ce1da8d004c46$export$2e2bcd8739a
                     x-show="!showPreview"
                     class="code-input"
                     :class="{ 'invalid': !isValid }"
-                    x-init="console.log('[Raw textarea] Initializing with block:', block); $el.value = block ? block.config.content : ''; console.log('[Raw textarea] Set value to:', $el.value);"
                     @input="handleInput($event)"
                     @blur="if(block) { block.config.content = $event.target.value; }"
                     placeholder="Enter your code here..."
@@ -10513,14 +10298,11 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
             cssProperties: {},
             init () {
                 // Debug: Log the editor ID and check if editor exists
-                console.log('Settings initialized for editor:', editorId);
-                console.log('Available editors:', Object.keys(window.alpineEditors || {}));
                 // Wait for the editor to be ready before initializing settings
                 const initializeSettings = ()=>{
                     if (window.alpineEditors && window.alpineEditors[editorId]) {
                         this.settingsInstance = new (0, $acadc144a2722177$export$c72f6eaae7b9adff)(editorId, this.settings);
                         this.settingsInstance.init();
-                        console.log('Settings instance created for editor:', editorId);
                     } else // Try again after a short delay
                     setTimeout(initializeSettings, 50);
                 };
@@ -10695,10 +10477,8 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                     });
                     // Listen for clear selection events
                     document.addEventListener('editor-clear-selection', ()=>{
-                        console.log('Clearing selection - before:', this.selectedBlock);
                         this.selectedBlock = null;
                         if (this.editor) this.editor.selectedBlock = null;
-                        console.log('Clearing selection - after:', this.selectedBlock);
                         // Force Alpine to completely re-evaluate by triggering multiple reactive updates
                         this.$nextTick(()=>{
                             this.selectedBlock = null;
@@ -11027,16 +10807,12 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                 if (savedPages) try {
                     this.pages = JSON.parse(savedPages);
                     this.currentPageId = this.pages[0]?.id || 'page-1';
-                } catch (e) {
-                    console.warn('Failed to load saved pages:', e);
-                }
+                } catch (e) {}
                 // Load project settings
                 const savedSettings = localStorage.getItem('alpineblocks-project-settings');
                 if (savedSettings) try {
                     this.projectSettings = JSON.parse(savedSettings);
-                } catch (e) {
-                    console.warn('Failed to load project settings:', e);
-                }
+                } catch (e) {}
                 // Listen for editor changes to update current page blocks
                 document.addEventListener('editor-changed', ()=>{
                     this.updateCurrentPageBlocks();
@@ -11183,7 +10959,6 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                             this.savePagesToStorage();
                             resolve();
                         } catch (error) {
-                            console.warn('Error saving page content:', error);
                             resolve();
                         }
                     } else resolve();
@@ -11212,9 +10987,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                             }));
                             document.dispatchEvent(new CustomEvent('editor-changed'));
                         }, 100);
-                    } catch (error) {
-                        console.warn('Error loading page content:', error);
-                    }
+                    } catch (error) {}
                 }
             },
             savePagesToStorage () {
@@ -11253,9 +11026,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                             currentPage.blocks = blocksData || [];
                             this.savePagesToStorage();
                         }
-                    } catch (error) {
-                        console.warn('Error updating page blocks:', error);
-                    }
+                    } catch (error) {}
                 }
             },
             refreshCurrentPageBlocks () {
@@ -11373,9 +11144,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                                 }
                             }));
                         }
-                    } catch (e) {
-                        console.warn('Could not select block:', e);
-                    }
+                    } catch (e) {}
                 }
             },
             moveBlockUp (blockIndex) {
@@ -11396,9 +11165,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                                 document.dispatchEvent(new CustomEvent('editor-changed'));
                             }, 100);
                         }
-                    } catch (e) {
-                        console.warn('Could not move block up:', e);
-                    }
+                    } catch (e) {}
                 }
             },
             moveBlockDown (blockIndex) {
@@ -11420,9 +11187,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                                 document.dispatchEvent(new CustomEvent('editor-changed'));
                             }, 100);
                         }
-                    } catch (e) {
-                        console.warn('Could not move block down:', e);
-                    }
+                    } catch (e) {}
                 }
             },
             deleteBlock (blockIndex) {
@@ -11456,9 +11221,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                                 document.dispatchEvent(new CustomEvent('editor-changed'));
                             }, 100);
                         }
-                    } catch (e) {
-                        console.warn('Could not delete block:', e);
-                    }
+                    } catch (e) {}
                 }
             },
             setPageImage (pageId) {
@@ -11516,7 +11279,6 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                 }
                 // Listen for reload events from template editor
                 window.addEventListener('reload-template-categories', async ()=>{
-                    console.log('[editorTemplates] Received reload-template-categories event, reloading...');
                     await this.init();
                 });
             },
@@ -11534,10 +11296,8 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                 // Start loading template on mousedown
                 if (template.loadContent && !template.html && !template._loading) {
                     template._loading = true;
-                    console.log(`[editorTemplates] Loading template ${template.id} on mousedown...`);
                     try {
                         await template.loadContent();
-                        console.log(`[editorTemplates] Template ${template.id} loaded, HTML length: ${template.html?.length || 0}`);
                     } catch (error) {
                         console.error(`[editorTemplates] Failed to load template ${template.id}:`, error);
                     } finally{
@@ -11562,21 +11322,17 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                 // Store reference globally for drop handler to access
                 if (!window._alpineTemplates) window._alpineTemplates = {};
                 window._alpineTemplates.draggedTemplate = template;
-                console.log('[editorTemplates] Stored template reference globally:', template.id);
             },
             handleTemplateDragEnd (event) {
             // Clean up drag state if needed
             },
             addTemplate (template) {
-                console.log('[editorTemplates] addTemplate called with template:', template);
                 if (window.alpineEditors?.['alpineblocks-editor']) {
                     const editorWrapper = window.alpineEditors['alpineblocks-editor'];
                     const editor = editorWrapper.editor;
                     if (editor) {
-                        console.log('[editorTemplates] Found editor, extracting blocks from template');
                         // Extract blocks from the template
                         const blocks = template.extractBlocks();
-                        console.log('[editorTemplates] Extracted blocks:', blocks);
                         // Add each block using the editor's handleTemplateDrop method
                         if (blocks && blocks.length > 0) editor.handleTemplateDrop({
                             id: template.id,
@@ -11584,7 +11340,6 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
                             description: template.description,
                             blocks: blocks
                         });
-                        else console.warn('[editorTemplates] No blocks extracted from template');
                     } else console.error('[editorTemplates] Editor not found in wrapper');
                 } else console.error('[editorTemplates] alpineblocks-editor not found in window.alpineEditors');
             }
@@ -11713,10 +11468,7 @@ function $f2dd32d6a32695db$export$cb57fc1addf981be() {
 window.openMediaLibrary = function(blockId, mediaType = 'all') {
     // Get the media picker from the first available editor
     const firstEditor = Object.values(window.alpineEditors || {})[0];
-    if (!firstEditor || !firstEditor.mediaPicker) {
-        console.warn('Media picker not available. Please configure media settings in your editor initialization.');
-        return;
-    }
+    if (!firstEditor || !firstEditor.mediaPicker) return;
     const mediaPicker = firstEditor.mediaPicker;
     // Configure the media picker for this selection
     mediaPicker.open({
@@ -12055,7 +11807,6 @@ class $ab556ecd40f801b9$var$RichTextEditor {
    * @param {string} selector - CSS selector for textarea(s)
    * @param {object} config - Editor configuration options
    */ static register(selector, config = {}) {
-        console.log("\uD83C\uDFA8 AlpineBlocks RichTextEditor register for:", selector);
         (0, $937888ae7cc593aa$export$2e2bcd8739ae039).register(selector, config);
     }
     /**
@@ -12064,7 +11815,6 @@ class $ab556ecd40f801b9$var$RichTextEditor {
    * @param {string} selector - CSS selector for textarea(s)
    * @param {object} config - Editor configuration options
    */ static setupAutoInit(selector, config = {}) {
-        console.log("\uD83C\uDFA8 AlpineBlocks RichTextEditor auto-init for:", selector);
         (0, $937888ae7cc593aa$export$2e2bcd8739ae039).setupAutoInit(selector, config);
     }
     /**
@@ -12253,7 +12003,6 @@ window.AlpineBlocks.buildId = $4fa36e821943b400$var$BUILD_ID;
 window.AlpineBlocks.version = '1.0.0';
 // Expose RichTextEditor
 window.AlpineBlocks.RichTextEditor = (0, $ab556ecd40f801b9$export$2e2bcd8739ae039);
-console.log(`AlpineBlocks loaded - Build: ${$4fa36e821943b400$var$BUILD_ID}`);
 // Dispatch custom event to notify when AlpineBlocks is ready
 window.dispatchEvent(new CustomEvent('alpineblocks:ready', {
     detail: {
@@ -12267,7 +12016,7 @@ window.dispatchEvent(new CustomEvent('alpineblocks:ready', {
 // Setup global API
 (0, $ac02ad38c8cbbc50$export$e140ea7c56d973fa)();
 // Debug: Log that components are registered
-if (typeof window !== 'undefined' && window.console) console.log('[AlpineBlocks] All components registered, ready for Alpine.js to start');
+typeof window !== 'undefined' && window.console;
 var $4fa36e821943b400$export$2e2bcd8739ae039 // Components are registered immediately when the registerAllAlpineComponents function is defined
  // Alpine.js will be started externally after all components are registered
  = (0, $bb8a38ad45d670a8$export$2e2bcd8739ae039);

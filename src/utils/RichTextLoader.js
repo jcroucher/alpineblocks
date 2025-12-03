@@ -52,7 +52,6 @@ class RichTextLoader {
         // Check if AlpineBlocks is already loaded
         if (window.AlpineBlocks) {
             this.alpineBlocksInitialized = true;
-            console.log('✅ AlpineBlocks already loaded, ready for RichText editors');
             return;
         }
 
@@ -60,7 +59,6 @@ class RichTextLoader {
         if (typeof window !== 'undefined') {
             window.addEventListener('alpineblocks:ready', () => {
                 this.alpineBlocksInitialized = true;
-                console.log('✅ AlpineBlocks loaded via event, ready for RichText editors');
             }, { once: true });
         }
     }
@@ -109,12 +107,6 @@ class RichTextLoader {
             element.id = editorId;
         }
 
-        console.log(`🎨 initializeSingleEditor called for: ${editorId}`, {
-            alreadyExists: this.instances.has(element),
-            instanceCount: this.instances.size,
-            stackTrace: new Error().stack
-        });
-
         // Get initial content from textarea or element
         let initialContent = '';
         if (element.tagName === 'TEXTAREA') {
@@ -160,7 +152,6 @@ class RichTextLoader {
             let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
             if (initialContent && initialContent.includes('<!-- drop -->')) {
                 processedContent = this.processDropZones(processedContent, editorId);
-                console.log('[RichText] Processed drop zones in initial content for', editorId);
             }
             editorDiv.innerHTML = processedContent;
 
@@ -205,7 +196,7 @@ class RichTextLoader {
                 // but we explicitly set it here for clarity
                 editorDiv.contentEditable = 'true';
             } catch (e) {
-                console.warn('Could not configure execCommand settings:', e);
+                // Silently ignore execCommand configuration errors
             }
 
             // Setup Alpine.js event handlers for toolbar
@@ -232,38 +223,27 @@ class RichTextLoader {
             // Clean content before form submission
             const form = element.closest('form');
             if (form) {
-                console.log('[RichText] Form submit handler registered for', editorId);
                 const submitHandler = (e) => {
-                    console.log('[RichText] Form submit event fired for', editorId);
-                    console.log('[RichText] Editor HTML before clean:', editorDiv.innerHTML.substring(0, 200));
-
                     // Remove drop indicators from the editor itself
                     const indicators = editorDiv.querySelectorAll('.richtext-drop-indicator');
                     if (indicators.length > 0) {
-                        console.log('[RichText] Removing', indicators.length, 'drop indicators from editor before submit');
                         indicators.forEach(ind => ind.remove());
                     }
 
                     // Convert EMPTY drop zones back to comments in the live DOM
                     // Drop zones with content (dropped templates) should be kept as-is
                     const dropZones = editorDiv.querySelectorAll('.richtext-nested-dropzone');
-                    let emptyZoneCount = 0;
                     dropZones.forEach(zone => {
                         const textContent = zone.textContent.trim();
                         const hasOnlyPlaceholder = textContent === 'Drop template here' || textContent === '';
                         if (hasOnlyPlaceholder) {
                             const comment = document.createComment(' drop ');
                             zone.parentNode.replaceChild(comment, zone);
-                            emptyZoneCount++;
                         }
                     });
-                    if (emptyZoneCount > 0) {
-                        console.log('[RichText] Converting', emptyZoneCount, 'empty drop zones back to comments before submit');
-                    }
 
                     const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                     element.value = cleanedHTML;
-                    console.log('[RichText] Textarea value after clean:', element.value.substring(0, 200));
                 };
                 form.addEventListener('submit', submitHandler);
                 // Store handler reference for cleanup
@@ -271,8 +251,6 @@ class RichTextLoader {
                     form._richTextSubmitHandlers = [];
                 }
                 form._richTextSubmitHandlers.push(submitHandler);
-            } else {
-                console.warn('[RichText] No parent form found for', editorId);
             }
 
             // Handle template drops with visual indicator
@@ -418,9 +396,7 @@ class RichTextLoader {
             });
 
             const dropHandler = async (e) => {
-                console.log('[RichText] Drop event triggered');
                 const dragDataText = e.dataTransfer.getData('text/plain');
-                console.log('[RichText] dataTransfer text/plain:', dragDataText);
 
                 let htmlContent = null;
                 let isTemplateDrop = false;
@@ -433,17 +409,14 @@ class RichTextLoader {
                     if (dragData.type === 'template' && dragData.data) {
                         // Check if this is a lazy template that needs loading
                         if (dragData.data._templateRef) {
-                            console.log('[RichText] Detected lazy template drop, loading...');
 
                             // Get the template reference from global storage
                             const template = window._alpineTemplates?.draggedTemplate;
 
                             if (template) {
-                                console.log('[RichText] Found template reference:', template.id);
 
                                 // Load template if not already loaded
                                 if (!template.html && template.loadContent) {
-                                    console.log('[RichText] Loading template content...');
                                     await template.loadContent();
                                 }
 
@@ -453,13 +426,10 @@ class RichTextLoader {
                                 templateName = template.name;
                                 htmlContent = template.html;
 
-                                console.log('[RichText] Loaded template HTML, length:', htmlContent?.length || 0);
                             } else {
-                                console.warn('[RichText] Template reference not found in window._alpineTemplates');
                             }
                         } else if (dragData.data.blocks) {
                             // Old format with pre-extracted blocks
-                            console.log('[RichText] Detected AlpineBlocks template drop');
                             isTemplateDrop = true;
                             templateId = dragData.data.id || null;
                             templateName = dragData.data.name || null;
@@ -469,14 +439,11 @@ class RichTextLoader {
                                 .map(block => block.data.content || '')
                                 .join('\n');
 
-                            console.log('[RichText] Extracted HTML from template blocks, length:', htmlContent.length);
-                            console.log('[RichText] Template ID:', templateId, 'Name:', templateName);
                         }
                     }
                 } catch (parseError) {
                     // Not JSON, check if it's a simple drag type like 'Raw'
                     if (dragDataText === 'Raw' && window.templateDragData) {
-                        console.log('[RichText] Detected Raw block drop with window.templateDragData');
                         isTemplateDrop = true;
                         htmlContent = window.templateDragData.config.content;
                         templateId = window.templateDragData.id || null;
@@ -488,8 +455,6 @@ class RichTextLoader {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    console.log('[RichText] Inserting template HTML, length:', htmlContent.length);
-                    console.log('[RichText] Drop target:', currentDropTarget, 'Insert before:', insertBefore);
 
                     // Generate unique ID for this template instance
                     const instanceId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -511,7 +476,6 @@ class RichTextLoader {
 
                     // Use the drop indicator position to insert content
                     if (currentDropTarget) {
-                        console.log('[RichText] Inserting at drop indicator position');
 
                         // Check if we're inserting at the very beginning
                         const isAtStart = insertBefore && !currentDropTarget.previousSibling;
@@ -521,7 +485,6 @@ class RichTextLoader {
                             const escapeParagraphBefore = document.createElement('p');
                             escapeParagraphBefore.innerHTML = '<br>';
                             editorDiv.insertBefore(escapeParagraphBefore, currentDropTarget);
-                            console.log('[RichText] Added escape paragraph before block (at start)');
                         }
 
                         // Insert the template wrapper
@@ -542,10 +505,8 @@ class RichTextLoader {
                             editorDiv.appendChild(escapeParagraphAfter);
                         }
 
-                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     } else {
                         // No drop target (empty editor or fallback)
-                        console.log('[RichText] No drop target, appending to end');
                         const isEmpty = editorDiv.innerHTML.trim() === '' ||
                                        editorDiv.innerHTML === '<p><br></p>' ||
                                        editorDiv.textContent.trim() === '';
@@ -556,7 +517,6 @@ class RichTextLoader {
                             escapeParagraphBefore.innerHTML = '<br>';
                             editorDiv.innerHTML = ''; // Clear placeholder
                             editorDiv.appendChild(escapeParagraphBefore);
-                            console.log('[RichText] Added escape paragraph before block (empty editor)');
                         }
 
                         // Add the wrapped template
@@ -565,7 +525,6 @@ class RichTextLoader {
                         // Add escape paragraph at the end
                         editorDiv.appendChild(escapeParagraphAfter);
 
-                        console.log('[RichText] Added template with ID:', instanceId, 'Template ID:', templateId);
                     }
 
                     // Remove drop indicator and reset state
@@ -587,7 +546,6 @@ class RichTextLoader {
                         window.templateDragData = null;
                     }
 
-                    console.log('[RichText] Template HTML inserted successfully');
                 }
             };
 
@@ -599,25 +557,16 @@ class RichTextLoader {
 
             // Track template clicks - find nearest template wrapper when clicking in editor
             editorDiv.addEventListener('click', (e) => {
-                console.log('[RichText] Click event received on editor:', editorDiv.id);
-                console.log('[RichText] Event target:', e.target);
-                console.log('[RichText] Event bubbles:', e.bubbles);
-                console.log('[RichText] Event propagation stopped:', e.cancelBubble);
 
                 // Get the element that was clicked
                 const clickedElement = e.target;
 
                 // Walk up the DOM tree to find a template wrapper
                 let currentElement = clickedElement;
-                console.log('[RichText] Walking up DOM tree from:', clickedElement);
                 while (currentElement && currentElement !== editorDiv) {
                     // Check for template by data-template-id attribute OR by ID pattern (template-{timestamp}-{random})
                     const hasTemplateAttribute = currentElement.hasAttribute && currentElement.hasAttribute('data-template-id');
                     const hasTemplateId = currentElement.id && currentElement.id.startsWith('template-');
-
-                    console.log('[RichText] Checking element:', currentElement.tagName, currentElement.id,
-                                'has data-template-id?', hasTemplateAttribute,
-                                'has template ID pattern?', hasTemplateId);
 
                     if (hasTemplateAttribute || hasTemplateId) {
                         const templateId = currentElement.getAttribute('data-template-id') || 'legacy-template';
@@ -628,16 +577,6 @@ class RichTextLoader {
                         const currentElementStyle = clickedElement.getAttribute('style') || '';
                         const currentElementTag = clickedElement.tagName ? clickedElement.tagName.toLowerCase() : '';
 
-                        console.log('[RichText] Template clicked:');
-                        console.log('  Instance ID:', instanceId);
-                        console.log('  Template ID:', templateId);
-                        console.log('  Template Name:', templateName);
-                        console.log('  Clicked Element Tag:', currentElementTag);
-                        console.log('  Clicked Element:', clickedElement);
-                        console.log('  Clicked Element HTML:', clickedElement.outerHTML?.substring(0, 200));
-                        console.log('  Element Style:', currentElementStyle);
-                        console.log('  Template Wrapper (currentElement):', currentElement);
-                        console.log('  Template Wrapper HTML:', currentElement.outerHTML?.substring(0, 200));
 
                         // Dispatch event with current element info
                         editorDiv.dispatchEvent(new CustomEvent('template-selected', {
@@ -698,7 +637,6 @@ class RichTextLoader {
             this.instances.set(element, instance);
             this.instances.set(editorId, instance);
 
-            console.log('✅ AlpineBlocks RichText editor initialized:', editorId);
 
             if (config.onInit) {
                 config.onInit(instance);
@@ -745,7 +683,6 @@ class RichTextLoader {
         // Remove all drop indicators
         const dropIndicators = tempDiv.querySelectorAll('.richtext-drop-indicator');
         if (dropIndicators.length > 0) {
-            console.log(`[RichText] cleanHTML: Removing ${dropIndicators.length} drop indicator(s)`);
         }
         dropIndicators.forEach(indicator => indicator.remove());
 
@@ -767,7 +704,6 @@ class RichTextLoader {
             // If it has content (a dropped template), leave it as-is with all its attributes
         });
         if (emptyCount > 0) {
-            console.log(`[RichText] cleanHTML: Converting ${emptyCount} empty drop zone(s) back to comments`);
         }
 
         return tempDiv.innerHTML;
@@ -792,7 +728,6 @@ class RichTextLoader {
             return html; // No drop zones, return as-is
         }
 
-        console.log(`[RichText] Found ${matches.length} drop zone markers in template ${parentId}`);
 
         // Replace each <!-- drop --> with a styled drop zone div
         let processedHTML = html;
@@ -861,7 +796,6 @@ class RichTextLoader {
                 e.preventDefault();
                 e.stopPropagation();
 
-                console.log('[RichText] Nested drop zone drop event');
 
                 // Reset drop zone styling
                 dropZone.style.borderColor = '#d1d5db';
@@ -870,7 +804,6 @@ class RichTextLoader {
                 const zoneId = dropZone.getAttribute('data-zone-id');
                 const parentId = dropZone.getAttribute('data-parent-id');
 
-                console.log('[RichText] Dropping into zone:', zoneId, 'Parent:', parentId);
 
                 // Parse drag data
                 const dragDataText = e.dataTransfer.getData('text/plain');
@@ -885,7 +818,6 @@ class RichTextLoader {
                     if (dragData.type === 'template' && dragData.data) {
                         // Check if this is a lazy template that needs loading
                         if (dragData.data._templateRef) {
-                            console.log('[RichText Nested] Detected lazy template drop, loading...');
 
                             const template = window._alpineTemplates?.draggedTemplate;
                             if (template) {
@@ -943,7 +875,6 @@ class RichTextLoader {
                     dropZone.style.background = 'transparent'; // Remove background
                     dropZone.style.minHeight = 'auto'; // Remove min-height
 
-                    console.log('[RichText] Nested template inserted with ID:', instanceId);
 
                     // Sync to textarea (clean HTML to remove any drop indicators)
                     const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
@@ -980,7 +911,6 @@ class RichTextLoader {
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
                 savedSelection = selection.getRangeAt(0).cloneRange();
-                console.log('[RichText] Selection saved');
             }
         };
 
@@ -995,7 +925,6 @@ class RichTextLoader {
 
         // Define the command handler function
         const handleToolbarCommand = (command, value = null) => {
-            console.log('[RichText] Executing command:', command, 'value:', value);
 
             // Handle toggle blocks sidebar command
             if (command === 'toggleBlocksSidebar') {
@@ -1012,7 +941,6 @@ class RichTextLoader {
                     editorDiv.style.display = '';
                     codeTextarea.style.display = 'none';
                     isCodeViewActive = false;
-                    console.log('[RichText] Switched to WYSIWYG view');
                 } else {
                     // Switch from WYSIWYG to code view
                     codeTextarea.value = editorDiv.innerHTML;
@@ -1020,14 +948,12 @@ class RichTextLoader {
                     codeTextarea.style.display = 'block';
                     isCodeViewActive = true;
                     codeTextarea.focus();
-                    console.log('[RichText] Switched to code view');
                 }
                 return;
             }
 
             // For all other commands, ensure we're in WYSIWYG mode
             if (isCodeViewActive) {
-                console.warn('[RichText] Cannot execute formatting commands in code view');
                 return;
             }
 
@@ -1048,29 +974,22 @@ class RichTextLoader {
                 try {
                     selection.removeAllRanges();
                     selection.addRange(savedSelection.cloneRange());
-                    console.log('[RichText] Restored saved selection:', selection.toString());
                 } catch (e) {
-                    console.warn('[RichText] Failed to restore selection:', e);
                 }
             } else {
-                console.log('[RichText] Using current selection:', selection.toString());
             }
 
-            console.log('[RichText] Selection range count:', selection.rangeCount);
 
             try {
                 const result = document.execCommand(command, false, value);
-                console.log('[RichText] execCommand result:', result);
 
                 // Log the HTML after command to see what changed
-                console.log('[RichText] Editor HTML after command:', editorDiv.innerHTML);
 
                 // Save the new selection
                 if (selection.rangeCount > 0) {
                     savedSelection = selection.getRangeAt(0);
                 }
             } catch (error) {
-                console.warn('[RichText] Command execution failed:', command, error);
             }
         };
 
@@ -1090,7 +1009,6 @@ class RichTextLoader {
         // Set the toolbar HTML
         toolbarContainer.innerHTML = toolbar.render(editorId);
 
-        console.log('[RichText] Toolbar initialized with global handler for:', editorId);
 
         // Prevent toolbar mousedown from stealing focus from editor
         toolbarContainer.addEventListener('mousedown', (e) => {
@@ -1421,49 +1339,38 @@ class RichTextLoader {
                 const style = this.currentElementStyle || '';
                 const props = {};
 
-                console.log('[parseCSSProperties] Input style:', style);
 
                 // Split by semicolon and parse each property
                 style.split(';').forEach(prop => {
-                    console.log('[parseCSSProperties] Processing prop:', JSON.stringify(prop));
                     const colonIndex = prop.indexOf(':');
                     if (colonIndex === -1) return;
 
                     const key = prop.substring(0, colonIndex).trim();
                     const value = prop.substring(colonIndex + 1).trim();
-                    console.log('[parseCSSProperties] key:', JSON.stringify(key), 'value:', JSON.stringify(value));
 
                     if (key && value) {
                         // Handle shorthand border property: "2px solid #3b82f6"
                         if (key === 'border') {
-                            console.log('[parseCSSProperties] Found border shorthand:', value);
                             // Use simple space split instead of regex - works better
                             const parts = value.split(' ').filter(p => p);
-                            console.log('[parseCSSProperties] Border parts:', parts);
                             // Try to identify width, style, and color from the parts
                             parts.forEach(part => {
-                                console.log('[parseCSSProperties] Checking part:', part);
 
                                 // Check if it's a border style first (most specific)
                                 if (['solid', 'dashed', 'dotted', 'double', 'none', 'hidden', 'groove', 'ridge', 'inset', 'outset'].includes(part)) {
                                     props['border-style'] = part;
-                                    console.log('[parseCSSProperties] Set border-style:', part);
                                 }
                                 // Check if it's a color
                                 else if (part.startsWith('#') || part.startsWith('rgb') || part.startsWith('hsl')) {
                                     props['border-color'] = part;
-                                    console.log('[parseCSSProperties] Set border-color:', part);
                                 }
                                 // Check if it's a width - must end with a unit or be 0
                                 else {
                                     const widthRegex = new RegExp('^[0-9]+\\.?[0-9]*(px|em|rem|pt|%|vh|vw|vmin|vmax|ch|ex)$');
                                     const isWidth = widthRegex.test(part);
-                                    console.log('[parseCSSProperties] Width regex test for "' + part + '":', isWidth);
                                     if (isWidth || part === '0') {
                                         props['border-width'] = part;
-                                        console.log('[parseCSSProperties] Set border-width:', part);
                                     } else {
-                                        console.log('[parseCSSProperties] Part did not match any pattern:', part);
                                     }
                                 }
                             });
@@ -1536,7 +1443,6 @@ class RichTextLoader {
                     }
                 });
 
-                console.log('[parseCSSProperties] Final cssProperties:', props);
                 this.cssProperties = props;
             },
             updateCSSProperty(property, value) {
@@ -1695,10 +1601,8 @@ class RichTextLoader {
                              editorId = foundEditorId;
                              // Populate tools from the editor
                              tools = editor.getToolbar();
-                             console.log('✅ Sidebar toolbar connected to editor:', foundEditorId, 'with', tools.length, 'tools');
                          } else if (window.AlpineBlocks && window.AlpineBlocks.toolModules) {
                              // Fallback: No full editor, but we can show tools from toolModules
-                             console.log('⚠️ No AlpineBlocks editor found. Loading tools from toolModules (drag/drop will not work).');
                              tools = Object.keys(window.AlpineBlocks.toolModules).map(key => {
                                  const Block = window.AlpineBlocks.toolModules[key];
                                  const toolbox = Block.toolbox ? Block.toolbox() : {};
@@ -1708,7 +1612,6 @@ class RichTextLoader {
                                      class: key
                                  };
                              });
-                             console.log('Loaded', tools.length, 'tools from toolModules');
                          } else {
                              console.error('❌ Neither AlpineBlocks editor nor toolModules found');
                          }
@@ -2164,39 +2067,32 @@ class RichTextLoader {
      * @param {object} config - Editor configuration
      */
     register(selector, config = {}) {
-        console.log(`📝 Registering selector: "${selector}" (no immediate init)`);
 
         // Store or update the config for this selector
         this.autoInitConfigs.set(selector, config);
 
         // Define helper functions for initialization
         const initEditorsForSelector = (sel, cfg) => {
-            console.log(`🔍 initEditorsForSelector: "${sel}"`);
             const elements = document.querySelectorAll(sel);
-            console.log(`   Found ${elements.length} elements for selector "${sel}"`);
 
             elements.forEach((element) => {
                 // Check if editor is in a hidden accordion
                 const accordion = element.closest('[data-accordion-target="content"]');
                 if (accordion && accordion.classList.contains('hidden')) {
-                    console.log(`   Skipping ${element.id} - in hidden accordion`);
                     return;
                 }
 
                 // Remove any existing editor instance first
                 if (this.instances.has(element)) {
-                    console.log(`   Removing existing instance for ${element.id}`);
                     this.remove(element);
                 }
 
-                console.log(`   Initializing editor for ${element.id}`);
                 this.init(`#${element.id || 'richtext-' + Date.now()}`, cfg);
             });
         };
 
         // Initialize all registered selectors
         const initAllEditors = () => {
-            console.log(`🔄 initAllEditors triggered, configs:`, Array.from(this.autoInitConfigs.keys()));
             this.autoInitConfigs.forEach((cfg, sel) => {
                 initEditorsForSelector(sel, cfg);
             });
@@ -2204,7 +2100,6 @@ class RichTextLoader {
 
         // CRITICAL: Only register Turbo event listeners ONCE globally
         if (!this.autoInitListenersRegistered) {
-            console.log('🔧 Registering Turbo event listeners for RichTextEditor (once)');
 
             // Initialize on page load
             if (document.readyState === 'loading') {
@@ -2225,7 +2120,6 @@ class RichTextLoader {
 
             this.autoInitListenersRegistered = true;
         } else {
-            console.log('⚠️  Turbo listeners already registered, config stored, no immediate init');
             // Do NOT initialize here - let the Turbo events handle it
             // This prevents double initialization when the partial is re-rendered during Turbo navigation
         }
@@ -2238,7 +2132,6 @@ class RichTextLoader {
      * @param {object} config - Editor configuration
      */
     setupAutoInit(selector, config = {}) {
-        console.log('⚠️  setupAutoInit is deprecated, using register() instead');
         return this.register(selector, config);
     }
 

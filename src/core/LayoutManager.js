@@ -54,7 +54,6 @@ class LayoutManager {
         try {
             const blocks = this.editor.save().then(outputData => {
                 if (!outputData.blocks || outputData.blocks.length === 0) {
-                    console.warn('No blocks found to create layout');
                     return null;
                 }
 

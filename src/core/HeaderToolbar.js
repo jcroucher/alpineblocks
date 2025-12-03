@@ -92,7 +92,6 @@ export class HeaderToolbar {
                     this.handleSettings();
                     break;
                 default:
-                    console.warn(`Unknown header toolbar command: ${command}`);
             }
         });
     }

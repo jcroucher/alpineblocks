@@ -84,18 +84,8 @@ export class Editor {
         this.setupKeyboardShortcuts();
 
         this.$nextTick(() => {
-            // Log build info for debugging
             const buildId = 'AB-2025-01-17-002';
-            console.log(`AlpineBlocks Editor initialized - Build: ${buildId}, Editor ID: ${this.id}`);
-            console.log('Available methods:', {
-                undo: typeof this.undo,
-                redo: typeof this.redo,
-                toggleCollapse: typeof this.toggleCollapse,
-                preview: typeof this.preview,
-                canUndo: typeof this.canUndo,
-                canRedo: typeof this.canRedo
-            });
-            
+
             this.$dispatch('editor-ready', { id: this.id, buildId });
             // Also dispatch globally
             document.dispatchEvent(new CustomEvent('editor-ready', {
@@ -721,18 +711,11 @@ export class Editor {
 
         const config = JSON.parse(JSON.stringify(this.toolConfig[blockName].config));
 
-        console.log('[Editor initBlock] Initial config for', blockName, ':', config);
-        console.log('[Editor initBlock] window.templateDragData:', window.templateDragData);
-
         // Check for template drag data and merge it into config
         if (window.templateDragData && window.templateDragData.type === blockName) {
-            console.log('[Editor initBlock] Merging template drag data:', window.templateDragData.config);
             Object.assign(config, window.templateDragData.config);
-            console.log('[Editor initBlock] Config after merge:', config);
             // Clear the template drag data after use
             window.templateDragData = null;
-        } else {
-            console.log('[Editor initBlock] No template drag data to merge');
         }
 
         const newBlock = new BlockClass({
@@ -783,14 +766,11 @@ export class Editor {
 
         if (contentEditableTarget) {
             // Drop is onto a RichTextEditor - call its handler directly
-            console.log('[Editor] Drop target is contenteditable:', contentEditableTarget.id, contentEditableTarget.className);
-
             // The contenteditable we found might be nested inside the actual RichTextEditor
             // Search up from this element to find one with _richTextDropHandler
             let richTextEditor = contentEditableTarget;
             while (richTextEditor && richTextEditor !== this.el) {
                 if (richTextEditor._richTextDropHandler) {
-                    console.log('[Editor] Found RichTextEditor with handler:', richTextEditor.id);
                     // Call the handler directly with the event
                     await richTextEditor._richTextDropHandler(event);
                     event.preventDefault();
@@ -800,8 +780,6 @@ export class Editor {
                 richTextEditor = richTextEditor.parentElement;
             }
 
-            console.warn('[Editor] Contenteditable target found but no _richTextDropHandler in parent chain');
-            console.warn('[Editor] Target:', contentEditableTarget.tagName, contentEditableTarget.id, contentEditableTarget.className);
             // Fall through to allow natural event propagation
             return;
         }
@@ -832,17 +810,13 @@ export class Editor {
                 const template = window._alpineTemplates?.draggedTemplate;
 
                 if (template) {
-                    console.log('[Editor] Loading lazy template:', template.id);
-
                     // Load template if not already loaded
                     if (!template.html && template.loadContent) {
-                        console.log('[Editor] Template not loaded yet, loading now...');
                         await template.loadContent();
                     }
 
                     // Extract blocks now that template is loaded
                     const blocks = template.extractBlocks();
-                    console.log('[Editor] Extracted blocks:', blocks.length);
 
                     // Update templateData with blocks
                     templateData = {
@@ -851,8 +825,6 @@ export class Editor {
                         description: template.description,
                         blocks: blocks
                     };
-                } else {
-                    console.warn('[Editor] Template reference not found in window._alpineTemplates');
                 }
             }
 
@@ -895,10 +867,8 @@ export class Editor {
      */
     handleTemplateDrop(template, blockId = null) {
         try {
-            console.log('[Editor] handleTemplateDrop called with template:', template);
             // Use pre-extracted blocks from the drag data
             const blocks = template.blocks;
-            console.log('[Editor] Template blocks:', blocks);
 
             if (!blocks || blocks.length === 0) {
                 Debug.warn(`Template ${template.name} has no blocks to add`);
@@ -909,10 +879,8 @@ export class Editor {
 
             // Create blocks for each template block
             for (const blockData of blocks) {
-                console.log('[Editor] Processing block data:', blockData);
                 // Map template block types to AlpineBlocks tool names
                 const toolName = this.mapTemplateBlockToTool(blockData.type);
-                console.log('[Editor] Mapped to tool:', toolName);
 
                 if (!toolName || !this.toolConfig[toolName]) {
                     Debug.warn(`Tool ${toolName} not found for template block type ${blockData.type}`);
@@ -924,7 +892,6 @@ export class Editor {
                 const BlockClass = this.toolConfig[toolName].class;
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
-                console.log('[Editor] Merged config for', toolName, ':', mergedConfig);
                 
                 
                 const newBlock = new BlockClass({

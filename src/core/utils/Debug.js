@@ -49,7 +49,6 @@ export class Debug {
      */
     static warn(message, ...args) {
         if (Debug.enabled && Debug.currentLevel >= Debug.levels.WARN) {
-            console.warn(`%c[AlpineBlocks WARN] ${message}`, DebugConfig.styles.warn, ...args);
         }
     }
 
@@ -71,18 +70,15 @@ export class Debug {
      */
     static debug(message, ...args) {
         if (Debug.enabled && Debug.currentLevel >= Debug.levels.DEBUG) {
-            console.log(`%c[AlpineBlocks DEBUG] ${message}`, DebugConfig.styles.debug, ...args);
         }
     }
 
     /**
-     * Log a general message (equivalent to console.log)
      * @param {string} message - Message to log
      * @param {...any} args - Additional arguments
      */
     static log(message, ...args) {
         if (Debug.enabled) {
-            console.log(`%c[AlpineBlocks] ${message}`, DebugConfig.styles.log, ...args);
         }
     }
 }

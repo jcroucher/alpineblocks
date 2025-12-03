@@ -166,7 +166,6 @@ class Layout {
                         extractBlocks() {
                             // If content not loaded yet, return empty array
                             if (!this._loadedHtml) {
-                                console.warn(`Template ${this.id} content not loaded yet`);
                                 return [];
                             }
 
@@ -228,7 +227,6 @@ class Layout {
 
             return layouts;
         } catch (error) {
-            console.warn('Failed to load remote layouts, using static fallback:', error.message);
             return fallbackLayouts;
         }
     }

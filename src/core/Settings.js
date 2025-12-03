@@ -97,17 +97,9 @@ export class Settings {
      * @param {Object} detail - Event detail from template-selected event
      */
     handleTemplateSelected(detail) {
-        console.log('[Settings] Received template-selected event detail:', detail);
-        console.log('[Settings] detail.currentElement:', detail.currentElement);
-        console.log('[Settings] detail.element:', detail.element);
-        console.log('[Settings] detail.clickedElement:', detail.clickedElement);
 
         this.currentElement = detail.currentElement || detail.element;  // Store the clicked element
 
-        console.log('[Settings] Stored currentElement:', this.currentElement);
-        console.log('[Settings] Current element tag:', this.currentElement?.tagName);
-        console.log('[Settings] Current element HTML:', this.currentElement?.outerHTML?.substring(0, 200));
-        console.log('[Settings] Current element style attr:', this.currentElement?.getAttribute('style'));
 
         this.currentBlockId = detail.instanceId;  // Use instance ID as block ID
         this.settings = [];  // No block settings for template elements
@@ -116,11 +108,9 @@ export class Settings {
         if (this.currentElement && this.currentElement.hasAttribute('style')) {
             const styleString = this.currentElement.getAttribute('style');
             this.cssProperties = StyleControls.parseCSSProperties(styleString);
-            console.log('[Settings] Parsed CSS properties:', this.cssProperties);
             Debug.debug('Settings: Parsed CSS from template element', this.cssProperties);
         } else {
             this.cssProperties = {};
-            console.log('[Settings] No styles on element');
             Debug.debug('Settings: No styles on template element');
         }
 
@@ -417,25 +407,17 @@ export class Settings {
             return;
         }
 
-        console.log('[Settings.trigger] Checking property:', property, 'on block class:', block.class || block.constructor.name);
-        console.log('[Settings.trigger] block[property] type:', typeof block[property]);
-        console.log('[Settings.trigger] prototype[property] type:', typeof block.constructor.prototype[property]);
 
         if (typeof block[property] === 'function') {
-            console.log('[Settings.trigger] Calling block[property] directly');
             block[property](value);
         } else if (typeof block.constructor.prototype[property] === 'function') {
-            console.log('[Settings.trigger] Calling prototype[property]');
             block.constructor.prototype[property].call(block, value);
         } else if (property === 'columnCount' && typeof block.constructor.prototype.updateColumnCount === 'function') {
-            console.log('[Settings.trigger] Calling updateColumnCount fallback');
             block.constructor.prototype.updateColumnCount.call(block, value);
         } else if (block.config && block.config.hasOwnProperty(property)) {
-            console.log('[Settings.trigger] Setting config property');
             block.config[property] = value;
             block.triggerRedraw();
         } else {
-            console.log('[Settings.trigger] Setting direct property');
             block[property] = value;
             if (block.triggerRedraw) {
                 block.triggerRedraw();

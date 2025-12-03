@@ -133,7 +133,6 @@ class WYSIWYG extends Tool {
                 }
             `;
             document.head.appendChild(style);
-            console.log('[WYSIWYG] Drop animation styles injected');
         }
     }
 
@@ -156,7 +155,6 @@ class WYSIWYG extends Tool {
             return html; // No drop zones, return as-is
         }
 
-        console.log(`[WYSIWYG] Found ${matches.length} drop zone markers in template ${parentId}`);
 
         // Replace each <!-- drop --> with a styled drop zone div
         let processedHTML = html;
@@ -198,7 +196,6 @@ class WYSIWYG extends Tool {
         // Remove all drop indicators
         const dropIndicators = tempDiv.querySelectorAll('.richtext-drop-indicator');
         if (dropIndicators.length > 0) {
-            console.log(`[WYSIWYG] cleanHTML: Removing ${dropIndicators.length} drop indicator(s)`);
         }
         dropIndicators.forEach(indicator => indicator.remove());
 
@@ -221,7 +218,6 @@ class WYSIWYG extends Tool {
         });
 
         if (emptyCount > 0) {
-            console.log(`[WYSIWYG] cleanHTML: Converting ${emptyCount} empty drop zone(s) back to comments`);
         }
 
         return tempDiv.innerHTML;
@@ -265,7 +261,6 @@ class WYSIWYG extends Tool {
                                      }
                                  });
 
-                                 console.log('[WYSIWYG] RichTextEditor initialized for', textareaId);
                              } else {
                                  console.error('[WYSIWYG] window.AlpineBlocks.RichTextEditor not available');
                              }
@@ -281,7 +276,6 @@ class WYSIWYG extends Tool {
         let processedContent = this.config.content;
         if (processedContent && processedContent.includes('<!-- drop -->')) {
             processedContent = WYSIWYG.processDropZones(processedContent, this.editorId);
-            console.log('[WYSIWYG] Processed drop zones in initial content for', this.editorId);
         }
 
         // Return editor with toolbar
@@ -305,13 +299,11 @@ class WYSIWYG extends Tool {
                                 try {
                                     document.execCommand(command, false, value);
                                 } catch (error) {
-                                    console.warn('Command execution failed:', command, error);
                                 }
                             };
 
                             // Template drop handler
                             editor._richTextDropHandler = async (e) => {
-                                console.log('[WYSIWYG] Drop event triggered');
                                 const dragDataText = e.dataTransfer.getData('text/plain');
 
                                 try {
@@ -319,7 +311,6 @@ class WYSIWYG extends Tool {
                                     if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
                                         const template = window._alpineTemplates?.draggedTemplate;
                                         if (template) {
-                                            console.log('[WYSIWYG] Loading template:', template.id);
                                             if (!template.html && template.loadContent) {
                                                 await template.loadContent();
                                             }
@@ -328,7 +319,6 @@ class WYSIWYG extends Tool {
                                                 e.preventDefault();
                                                 e.stopPropagation();
 
-                                                console.log('[WYSIWYG] Inserting template HTML');
 
                                                 // Generate unique ID for this template instance
                                                 const instanceId = 'template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -368,12 +358,10 @@ class WYSIWYG extends Tool {
                                                     block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
                                                 }
 
-                                                console.log('[WYSIWYG] Template inserted successfully');
                                             }
                                         }
                                     }
                                 } catch (error) {
-                                    console.warn('[WYSIWYG] Drop handling error:', error);
                                 }
                             };
 
@@ -494,7 +482,6 @@ class WYSIWYG extends Tool {
                                     e.preventDefault();
                                     e.stopPropagation();
 
-                                    console.log('[WYSIWYG] Nested drop zone drop event');
 
                                     // Reset drop zone styling
                                     dropZone.style.borderColor = '#d1d5db';
@@ -507,7 +494,6 @@ class WYSIWYG extends Tool {
                                         if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
                                             const template = window._alpineTemplates?.draggedTemplate;
                                             if (template) {
-                                                console.log('[WYSIWYG] Loading nested template:', template.id);
                                                 if (!template.html && template.loadContent) {
                                                     await template.loadContent();
                                                 }
@@ -535,12 +521,10 @@ class WYSIWYG extends Tool {
                                                         block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
                                                     }
 
-                                                    console.log('[WYSIWYG] Nested template inserted successfully');
                                                 }
                                             }
                                         }
                                     } catch (error) {
-                                        console.warn('[WYSIWYG] Nested drop handling error:', error);
                                     }
                                 }
                             }, true);

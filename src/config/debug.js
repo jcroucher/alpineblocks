@@ -33,6 +33,4 @@ export const DebugConfig = {
 // Allow runtime configuration in development
 if (typeof window !== 'undefined' && DebugConfig.enabled) {
     window.AlpineBlocksDebugConfig = DebugConfig;
-    console.log('%c[AlpineBlocks] Debug mode enabled. Use window.AlpineBlocksDebugConfig to modify settings.', 
-                DebugConfig.styles.info);
 }

@@ -572,7 +572,6 @@ export class CommonEditorToolbar {
      * @returns {string} Tool HTML
      */
     renderCustomTool(tool) {
-        const clickHandler = tool.callback || 'console.log("Custom tool clicked")';
 
         return `
             <button @click="${clickHandler}"
@@ -632,7 +631,6 @@ export class CommonEditorToolbar {
         try {
             document.execCommand(command, false, value);
         } catch (error) {
-            console.warn('Command execution failed:', command, error);
         }
         
         if (this.options.onCommand) {
@@ -646,7 +644,6 @@ export class CommonEditorToolbar {
      */
     addCustomTool(tool) {
         if (!tool.name || !tool.callback) {
-            console.warn('Custom tool requires name and callback properties');
             return;
         }
         

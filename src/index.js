@@ -27,7 +27,6 @@ window.AlpineBlocks.version = '1.0.0';
 // Expose RichTextEditor
 window.AlpineBlocks.RichTextEditor = RichTextEditor;
 
-console.log(`AlpineBlocks loaded - Build: ${BUILD_ID}`);
 
 // Dispatch custom event to notify when AlpineBlocks is ready
 window.dispatchEvent(new CustomEvent('alpineblocks:ready', {
@@ -44,7 +43,6 @@ setupGlobalAPI();
 
 // Debug: Log that components are registered
 if (typeof window !== 'undefined' && window.console) {
-    console.log('[AlpineBlocks] All components registered, ready for Alpine.js to start');
 }
 
 // Export AlpineBlocks class for external usage

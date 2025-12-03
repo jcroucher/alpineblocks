@@ -87,15 +87,12 @@ export function registerAlpineComponents() {
 
         init() {
             // Debug: Log the editor ID and check if editor exists
-            console.log('Settings initialized for editor:', editorId);
-            console.log('Available editors:', Object.keys(window.alpineEditors || {}));
 
             // Wait for the editor to be ready before initializing settings
             const initializeSettings = () => {
                 if (window.alpineEditors && window.alpineEditors[editorId]) {
                     this.settingsInstance = new Settings(editorId, this.settings);
                     this.settingsInstance.init();
-                    console.log('Settings instance created for editor:', editorId);
                 } else {
                     // Try again after a short delay
                     setTimeout(initializeSettings, 50);
@@ -321,12 +318,10 @@ export function registerAlpineComponents() {
                 
                 // Listen for clear selection events
                 document.addEventListener('editor-clear-selection', () => {
-                    console.log('Clearing selection - before:', this.selectedBlock);
                     this.selectedBlock = null;
                     if (this.editor) {
                         this.editor.selectedBlock = null;
                     }
-                    console.log('Clearing selection - after:', this.selectedBlock);
                     
                     // Force Alpine to completely re-evaluate by triggering multiple reactive updates
                     this.$nextTick(() => {
@@ -687,7 +682,6 @@ export function registerAlpineComponents() {
                     this.pages = JSON.parse(savedPages);
                     this.currentPageId = this.pages[0]?.id || 'page-1';
                 } catch (e) {
-                    console.warn('Failed to load saved pages:', e);
                 }
             }
             
@@ -697,7 +691,6 @@ export function registerAlpineComponents() {
                 try {
                     this.projectSettings = JSON.parse(savedSettings);
                 } catch (e) {
-                    console.warn('Failed to load project settings:', e);
                 }
             }
             
@@ -868,7 +861,6 @@ export function registerAlpineComponents() {
                         this.savePagesToStorage();
                         resolve();
                     } catch (error) {
-                        console.warn('Error saving page content:', error);
                         resolve();
                     }
                 } else {
@@ -908,7 +900,6 @@ export function registerAlpineComponents() {
                         document.dispatchEvent(new CustomEvent('editor-changed'));
                     }, 100);
                 } catch (error) {
-                    console.warn('Error loading page content:', error);
                 }
             }
         },
@@ -952,7 +943,6 @@ export function registerAlpineComponents() {
                         this.savePagesToStorage();
                     }
                 } catch (error) {
-                    console.warn('Error updating page blocks:', error);
                 }
             }
         },
@@ -1085,7 +1075,6 @@ export function registerAlpineComponents() {
                         }));
                     }
                 } catch (e) {
-                    console.warn('Could not select block:', e);
                 }
             }
         },
@@ -1108,7 +1097,6 @@ export function registerAlpineComponents() {
                         }, 100);
                     }
                 } catch (e) {
-                    console.warn('Could not move block up:', e);
                 }
             }
         },
@@ -1132,7 +1120,6 @@ export function registerAlpineComponents() {
                         }, 100);
                     }
                 } catch (e) {
-                    console.warn('Could not move block down:', e);
                 }
             }
         },
@@ -1176,7 +1163,6 @@ export function registerAlpineComponents() {
                         }, 100);
                     }
                 } catch (e) {
-                    console.warn('Could not delete block:', e);
                 }
             }
         },
@@ -1253,7 +1239,6 @@ export function registerAlpineComponents() {
 
             // Listen for reload events from template editor
             window.addEventListener('reload-template-categories', async () => {
-                console.log('[editorTemplates] Received reload-template-categories event, reloading...');
                 await this.init();
             });
         },
@@ -1277,10 +1262,8 @@ export function registerAlpineComponents() {
             // Start loading template on mousedown
             if (template.loadContent && !template.html && !template._loading) {
                 template._loading = true;
-                console.log(`[editorTemplates] Loading template ${template.id} on mousedown...`);
                 try {
                     await template.loadContent();
-                    console.log(`[editorTemplates] Template ${template.id} loaded, HTML length: ${template.html?.length || 0}`);
                 } catch (error) {
                     console.error(`[editorTemplates] Failed to load template ${template.id}:`, error);
                 } finally {
@@ -1309,7 +1292,6 @@ export function registerAlpineComponents() {
                 window._alpineTemplates = {};
             }
             window._alpineTemplates.draggedTemplate = template;
-            console.log('[editorTemplates] Stored template reference globally:', template.id);
         },
 
         handleTemplateDragEnd(event) {
@@ -1317,16 +1299,13 @@ export function registerAlpineComponents() {
         },
 
         addTemplate(template) {
-            console.log('[editorTemplates] addTemplate called with template:', template);
             if (window.alpineEditors?.['alpineblocks-editor']) {
                 const editorWrapper = window.alpineEditors['alpineblocks-editor'];
                 const editor = editorWrapper.editor;
 
                 if (editor) {
-                    console.log('[editorTemplates] Found editor, extracting blocks from template');
                     // Extract blocks from the template
                     const blocks = template.extractBlocks();
-                    console.log('[editorTemplates] Extracted blocks:', blocks);
 
                     // Add each block using the editor's handleTemplateDrop method
                     if (blocks && blocks.length > 0) {
@@ -1337,7 +1316,6 @@ export function registerAlpineComponents() {
                             blocks: blocks
                         });
                     } else {
-                        console.warn('[editorTemplates] No blocks extracted from template');
                     }
                 } else {
                     console.error('[editorTemplates] Editor not found in wrapper');

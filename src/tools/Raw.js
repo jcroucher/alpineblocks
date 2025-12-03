@@ -23,7 +23,6 @@ function rawCodeEditor() {
         },
         
         init(blockId) {
-            console.log('[rawCodeEditor] init called with blockId:', blockId);
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find(b => b.id === blockId);
 
@@ -38,10 +37,6 @@ function rawCodeEditor() {
                 }
             }
 
-            console.log('[rawCodeEditor] Found block:', this.block);
-            console.log('[rawCodeEditor] Block config:', this.block?.config);
-            console.log('[rawCodeEditor] Block config.content:', this.block?.config?.content);
-            console.log('[rawCodeEditor] Block config.content length:', this.block?.config?.content?.length);
 
             if (this.block) {
                 // Set initial preview mode based on block config, defaulting to true
@@ -49,8 +44,6 @@ function rawCodeEditor() {
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
 
-                console.log('[rawCodeEditor] Set showPreview to:', this.showPreview);
-                console.log('[rawCodeEditor] Set previewContent length:', this.previewContent?.length);
 
                 // Initialize toolbar for preview mode
                 this.toolbar = new CommonEditorToolbar({
@@ -445,9 +438,6 @@ class Raw extends Tool {
     constructor({id, updateFunction, config}) {
         super(id, updateFunction, config);
 
-        console.log('[Raw] Constructor called with config:', config);
-        console.log('[Raw] config.content:', config.content);
-        console.log('[Raw] config.content length:', config.content?.length);
 
         this.config = {
             content: config.content || '',
@@ -455,8 +445,6 @@ class Raw extends Tool {
             showPreview: config.showPreview !== undefined ? config.showPreview : true
         };
 
-        console.log('[Raw] Final this.config:', this.config);
-        console.log('[Raw] Final this.config.content length:', this.config.content?.length);
 
 
         this.settings = [
@@ -571,8 +559,6 @@ class Raw extends Tool {
     }
 
     editorRender() {
-        console.log('[Raw] editorRender called, this.config.content length:', this.config.content?.length);
-        console.log('[Raw] editorRender this.config:', this.config);
         return `<div class="raw-block" data-block-id="${this.id}"
                      x-data="rawCodeEditor()"
                      x-init="init('${this.id}')">
@@ -604,7 +590,6 @@ class Raw extends Tool {
                     x-show="!showPreview"
                     class="code-input"
                     :class="{ 'invalid': !isValid }"
-                    x-init="console.log('[Raw textarea] Initializing with block:', block); $el.value = block ? block.config.content : ''; console.log('[Raw textarea] Set value to:', $el.value);"
                     @input="handleInput($event)"
                     @blur="if(block) { block.config.content = $event.target.value; }"
                     placeholder="Enter your code here..."

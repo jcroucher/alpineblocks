@@ -56,7 +56,6 @@ export class RemoteLayoutManager {
             }
 
             const indexUrl = this._buildUrl(this.config.index);
-            console.log(`[RemoteLayoutManager] Loading layout index from: ${indexUrl}`);
             
             const response = await fetch(indexUrl);
             if (!response.ok) {
@@ -64,13 +63,10 @@ export class RemoteLayoutManager {
             }
             
             this.layoutIndex = await response.json();
-            console.log(`[RemoteLayoutManager] Loaded ${this.layoutIndex.categories?.length || 0} layout categories`);
             
             return this.layoutIndex;
             
         } catch (error) {
-            console.warn(`[RemoteLayoutManager] Failed to load remote layouts: ${error.message}`);
-            console.log('[RemoteLayoutManager] Falling back to static layouts');
             
             // Fallback to static layouts
             this.layoutIndex = this._createStaticIndex();
@@ -168,7 +164,6 @@ export class RemoteLayoutManager {
                     contentUrl = this._buildUrl(`${layoutId}/template_json`);
                 }
 
-                console.log(`[RemoteLayoutManager] Loading layout content: ${contentUrl}`);
 
                 const response = await fetch(contentUrl);
                 if (!response.ok) {
@@ -247,7 +242,6 @@ export class RemoteLayoutManager {
         // Create a temporary Raw block that contains the HTML
         // Note: LayoutManager.addLayout expects blocks with { type, data } structure
         // The 'data' field becomes the 'config' in the Raw block constructor
-        console.log('[RemoteLayoutManager] Converting HTML to blocks, content length:', htmlContent?.length);
         const blocks = [
             {
                 type: 'raw',
@@ -259,7 +253,6 @@ export class RemoteLayoutManager {
                 }
             }
         ];
-        console.log('[RemoteLayoutManager] Created blocks:', blocks);
         return blocks;
     }
 

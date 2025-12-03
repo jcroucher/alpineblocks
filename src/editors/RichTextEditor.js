@@ -14,7 +14,6 @@ class RichTextEditor {
      * @param {object} config - Editor configuration options
      */
     static register(selector, config = {}) {
-        console.log('🎨 AlpineBlocks RichTextEditor register for:', selector);
         richTextLoader.register(selector, config);
     }
 
@@ -25,7 +24,6 @@ class RichTextEditor {
      * @param {object} config - Editor configuration options
      */
     static setupAutoInit(selector, config = {}) {
-        console.log('🎨 AlpineBlocks RichTextEditor auto-init for:', selector);
         richTextLoader.setupAutoInit(selector, config);
     }
 

@@ -8,7 +8,6 @@ window.openMediaLibrary = function(blockId, mediaType = 'all') {
     // Get the media picker from the first available editor
     const firstEditor = Object.values(window.alpineEditors || {})[0];
     if (!firstEditor || !firstEditor.mediaPicker) {
-        console.warn('Media picker not available. Please configure media settings in your editor initialization.');
         return;
     }
     
