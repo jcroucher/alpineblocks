@@ -4657,6 +4657,12 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
 
 
 /**
+ * RichText Loader Utility
+ * Centralized rich text editor loading and initialization for AlpineBlocks
+ *
+ * This provides a custom contenteditable-based WYSIWYG editor as the primary solution.
+ * No TinyMCE dependencies - this is a standalone rich text editor.
+ */ /**
  * CommonEditorToolbar - A reusable rich text editing toolbar
  * Extracted from WYSIWYG tool to be used across multiple components
  */ class $4070b2c197de59da$export$c4f883ba50227a95 {
@@ -5193,13 +5199,6 @@ var $3c596c9f1e11bbb7$export$2e2bcd8739ae039 = $3c596c9f1e11bbb7$var$Quote;
 }
 
 
-/**
- * RichText Loader Utility
- * Centralized rich text editor loading and initialization for AlpineBlocks
- *
- * This provides a custom contenteditable-based WYSIWYG editor as the primary solution.
- * No TinyMCE dependencies - this is a standalone rich text editor.
- */ 
 class $937888ae7cc593aa$var$RichTextLoader {
     constructor(){
         this.instances = new Map();
@@ -5316,6 +5315,7 @@ class $937888ae7cc593aa$var$RichTextLoader {
             editorDiv.style.outline = 'none';
             editorDiv.style.overflowY = 'auto';
             editorDiv.style.backgroundColor = 'white';
+            console.log('[RichTextLoader] Created contenteditable div:', editorDiv.id);
             // Process initial content to convert <!-- drop --> comments to drop zones
             let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
             if (initialContent && initialContent.includes('<!-- drop -->')) processedContent = this.processDropZones(processedContent, editorId);
@@ -5364,15 +5364,25 @@ class $937888ae7cc593aa$var$RichTextLoader {
             this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId);
             // Sync changes back to textarea
             editorDiv.addEventListener('input', ()=>{
+                console.log('[RichTextLoader] input event fired, editorId:', editorId);
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
-                if (config.onChange) config.onChange(cleanedHTML);
+                console.log('[RichTextLoader] textarea value updated, has onChange:', !!config.onChange);
+                if (config.onChange) {
+                    console.log('[RichTextLoader] calling onChange callback');
+                    config.onChange(cleanedHTML);
+                }
             });
             // Handle blur events
             editorDiv.addEventListener('blur', ()=>{
+                console.log('[RichTextLoader] blur event on contenteditable');
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
                 if (config.onBlur) config.onBlur(cleanedHTML);
+            });
+            // Add focus logging
+            editorDiv.addEventListener('focus', ()=>{
+                console.log('[RichTextLoader] focus event on contenteditable');
             });
             // Clean content before form submission
             const form = element.closest('form');
@@ -7154,19 +7164,21 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
             allowRawPreview: false
         };
     }
-    init() {
-        // Initialize toolbar
-        this.toolbar = new (0, $4070b2c197de59da$export$c4f883ba50227a95)({
-            className: 'wysiwyg-toolbar',
-            features: this.config.features
+    init(editor) {
+        // Call parent init
+        super.init(editor);
+        // Initialize RichTextLoader on the textarea once it's in the DOM
+        if (editor && editor.$nextTick) editor.$nextTick(()=>{
+            const textarea = document.getElementById(this.editorId);
+            if (textarea) (0, $937888ae7cc593aa$export$2e2bcd8739ae039).init(`#${this.editorId}`, {
+                features: this.config.features,
+                height: 200,
+                onChange: (content)=>{
+                    // Update block config when content changes
+                    if (this.config) this.config.content = content;
+                }
+            });
         });
-        // Inject drop animation styles (once per page load)
-        $56ed62fe01aa8034$var$WYSIWYG.injectDropStyles();
-        // Export static methods globally (once)
-        if (!window.WYSIWYGTool) window.WYSIWYGTool = {
-            processDropZones: $56ed62fe01aa8034$var$WYSIWYG.processDropZones,
-            cleanHTML: $56ed62fe01aa8034$var$WYSIWYG.cleanHTML
-        };
     }
     /**
    * Inject CSS styles for drop indicators and animations
@@ -7299,322 +7311,15 @@ class $56ed62fe01aa8034$var$WYSIWYG extends (0, $3e6ce1da8d004c46$export$2e2bcd8
         return tempDiv.innerHTML;
     }
     editorRender() {
-        // Create a hidden textarea that RichTextLoader will convert to a rich text editor
-        // This ensures we use the same RichTextLoader implementation everywhere
-        const textareaId = `wysiwyg-textarea-${this.id}`;
-        // Store features config globally so x-init can access it
-        const featuresConfigKey = `wysiwyg_features_${this.id}`;
-        if (typeof window !== 'undefined') window[featuresConfigKey] = this.config.features;
-        // Return a simple textarea that will be converted by RichTextLoader
-        return `<div class="wysiwyg-editor-wrapper"
-                     x-data="{
-                         textareaId: '${textareaId}',
-                         editorInitialized: false,
-                         featuresConfigKey: '${featuresConfigKey}'
-                     }"
-                     x-init="
-                         $nextTick(async () => {
-                             if (editorInitialized) return;
-                             editorInitialized = true;
-
-                             const textarea = document.getElementById(textareaId);
-                             if (!textarea) return;
-
-                             // Initialize RichTextLoader on this textarea
-                             if (window.AlpineBlocks && window.AlpineBlocks.RichTextEditor) {
-                                 await window.AlpineBlocks.RichTextEditor.init('#' + textareaId, {
-                                     height: 200,
-                                     features: window[featuresConfigKey],
-                                     onChange: (content) => {
-                                         if (block) {
-                                             block.config.content = content;
-                                         }
-                                     }
-                                 });
-
-                             } else {
-                                 console.error('[WYSIWYG] window.AlpineBlocks.RichTextEditor not available');
-                             }
-                         });
-                     ">
-            <textarea id="${textareaId}" style="display: none;">${this.config.content || '<p>Start typing here...</p>'}</textarea>
-        </div>`;
-    }
-    // Old implementation kept for reference - can be removed once new version is tested
-    editorRenderOld() {
-        // Process initial content for drop zones
-        let processedContent = this.config.content;
-        if (processedContent && processedContent.includes('<!-- drop -->')) processedContent = $56ed62fe01aa8034$var$WYSIWYG.processDropZones(processedContent, this.editorId);
-        // Return editor with toolbar
-        return `<div class="wysiwyg-editor-wrapper-old"
-                     style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;"
-                     x-data="{
-                        editorId: '${this.editorId}',
-                        dropIndicator: null,
-                        currentDropTarget: null,
-                        insertBefore: true
-                     }"
-                     x-init="
-                        // Setup toolbar command handler and drop handling
-                        $nextTick(() => {
-                            const editor = document.getElementById('${this.editorId}');
-                            if (!editor) return;
-
-                            // Toolbar command handler
-                            $el.handleToolbarCommand = (command, value) => {
-                                editor.focus();
-                                try {
-                                    document.execCommand(command, false, value);
-                                } catch (error) {
-                                }
-                            };
-
-                            // Template drop handler
-                            editor._richTextDropHandler = async (e) => {
-                                const dragDataText = e.dataTransfer.getData('text/plain');
-
-                                try {
-                                    const dragData = JSON.parse(dragDataText);
-                                    if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
-                                        const template = window._alpineTemplates?.draggedTemplate;
-                                        if (template) {
-                                            if (!template.html && template.loadContent) {
-                                                await template.loadContent();
-                                            }
-
-                                            if (template.html) {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-
-
-                                                // Generate unique ID for this template instance
-                                                const instanceId = 'template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
-                                                // Process template HTML for nested drop zones
-                                                const processedHTML = window.WYSIWYGTool.processDropZones(template.html, instanceId);
-
-                                                // Insert at smart position if we have drop indicator
-                                                if ($data.dropIndicator && $data.currentDropTarget) {
-                                                    const tempDiv = document.createElement('div');
-                                                    tempDiv.innerHTML = processedHTML;
-
-                                                    if ($data.insertBefore) {
-                                                        $data.currentDropTarget.parentNode.insertBefore(tempDiv.firstChild, $data.currentDropTarget);
-                                                    } else {
-                                                        if ($data.currentDropTarget.nextSibling) {
-                                                            $data.currentDropTarget.parentNode.insertBefore(tempDiv.firstChild, $data.currentDropTarget.nextSibling);
-                                                        } else {
-                                                            $data.currentDropTarget.parentNode.appendChild(tempDiv.firstChild);
-                                                        }
-                                                    }
-                                                } else {
-                                                    // Fallback: insert at cursor
-                                                    editor.focus();
-                                                    document.execCommand('insertHTML', false, processedHTML);
-                                                }
-
-                                                // Remove drop indicator
-                                                if ($data.dropIndicator && $data.dropIndicator.parentElement) {
-                                                    $data.dropIndicator.remove();
-                                                }
-                                                $data.dropIndicator = null;
-                                                $data.currentDropTarget = null;
-
-                                                // Update block config with cleaned HTML
-                                                if (block) {
-                                                    block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
-                                                }
-
-                                            }
-                                        }
-                                    }
-                                } catch (error) {
-                                }
-                            };
-
-                            // Dragover handler - show drop indicator
-                            editor.addEventListener('dragover', (e) => {
-                                e.preventDefault();
-                                e.dataTransfer.dropEffect = 'copy';
-
-                                // Find which element we're closest to
-                                const y = e.clientY;
-                                const children = Array.from(editor.children).filter(child =>
-                                    !child.classList.contains('richtext-drop-indicator') &&
-                                    !child.classList.contains('richtext-nested-dropzone')
-                                );
-
-                                let closestElement = null;
-                                let closestDistance = Infinity;
-                                let shouldInsertBefore = true;
-
-                                children.forEach(child => {
-                                    const rect = child.getBoundingClientRect();
-
-                                    // Distance to top edge
-                                    const distanceToTop = Math.abs(y - rect.top);
-                                    // Distance to bottom edge
-                                    const distanceToBottom = Math.abs(y - rect.bottom);
-
-                                    if (distanceToTop < closestDistance) {
-                                        closestDistance = distanceToTop;
-                                        closestElement = child;
-                                        shouldInsertBefore = true;
-                                    }
-
-                                    if (distanceToBottom < closestDistance) {
-                                        closestDistance = distanceToBottom;
-                                        closestElement = child;
-                                        shouldInsertBefore = false;
-                                    }
-                                });
-
-                                // Create drop indicator if needed
-                                if (!$data.dropIndicator) {
-                                    $data.dropIndicator = document.createElement('div');
-                                    $data.dropIndicator.className = 'richtext-drop-indicator';
-                                    $data.dropIndicator.contentEditable = 'false';
-                                }
-
-                                // Position the indicator
-                                if (closestElement) {
-                                    // Remove indicator from current position
-                                    if ($data.dropIndicator.parentElement) {
-                                        $data.dropIndicator.remove();
-                                    }
-
-                                    // Insert indicator at the new position
-                                    if (shouldInsertBefore) {
-                                        closestElement.parentNode.insertBefore($data.dropIndicator, closestElement);
-                                    } else {
-                                        if (closestElement.nextSibling) {
-                                            closestElement.parentNode.insertBefore($data.dropIndicator, closestElement.nextSibling);
-                                        } else {
-                                            closestElement.parentNode.appendChild($data.dropIndicator);
-                                        }
-                                    }
-
-                                    $data.currentDropTarget = closestElement;
-                                    $data.insertBefore = shouldInsertBefore;
-                                } else if (children.length === 0) {
-                                    // Empty editor - just append
-                                    if (!$data.dropIndicator.parentElement) {
-                                        editor.appendChild($data.dropIndicator);
-                                    }
-                                    $data.currentDropTarget = null;
-                                    $data.insertBefore = true;
-                                }
-                            });
-
-                            // Dragleave handler - remove drop indicator
-                            editor.addEventListener('dragleave', (e) => {
-                                // Only remove if we're leaving the editor completely
-                                const relatedTarget = e.relatedTarget;
-                                if (!editor.contains(relatedTarget)) {
-                                    if ($data.dropIndicator && $data.dropIndicator.parentElement) {
-                                        $data.dropIndicator.remove();
-                                    }
-                                    $data.currentDropTarget = null;
-                                }
-                            });
-
-                            // Setup nested drop zones using event delegation
-                            editor.addEventListener('dragover', (e) => {
-                                const dropZone = e.target.closest('.richtext-nested-dropzone');
-                                if (dropZone) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    e.dataTransfer.dropEffect = 'copy';
-
-                                    // Highlight the drop zone
-                                    dropZone.style.borderColor = '#3b82f6';
-                                    dropZone.style.backgroundColor = '#eff6ff';
-                                }
-                            }, true);
-
-                            editor.addEventListener('dragleave', (e) => {
-                                const dropZone = e.target.closest('.richtext-nested-dropzone');
-                                if (dropZone) {
-                                    // Only reset if we're actually leaving the zone
-                                    if (!dropZone.contains(e.relatedTarget)) {
-                                        dropZone.style.borderColor = '#d1d5db';
-                                        dropZone.style.backgroundColor = '#f9fafb';
-                                    }
-                                }
-                            }, true);
-
-                            editor.addEventListener('drop', async (e) => {
-                                const dropZone = e.target.closest('.richtext-nested-dropzone');
-                                if (dropZone) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-
-
-                                    // Reset drop zone styling
-                                    dropZone.style.borderColor = '#d1d5db';
-                                    dropZone.style.backgroundColor = '#f9fafb';
-
-                                    const dragDataText = e.dataTransfer.getData('text/plain');
-
-                                    try {
-                                        const dragData = JSON.parse(dragDataText);
-                                        if (dragData.type === 'template' && dragData.data && dragData.data._templateRef) {
-                                            const template = window._alpineTemplates?.draggedTemplate;
-                                            if (template) {
-                                                if (!template.html && template.loadContent) {
-                                                    await template.loadContent();
-                                                }
-
-                                                if (template.html) {
-                                                    const instanceId = 'template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-                                                    const processedHTML = window.WYSIWYGTool.processDropZones(template.html, instanceId);
-
-                                                    // Create wrapper with contenteditable
-                                                    const templateWrapper = document.createElement('div');
-                                                    templateWrapper.id = instanceId;
-                                                    templateWrapper.setAttribute('contenteditable', 'true');
-                                                    templateWrapper.innerHTML = processedHTML;
-
-                                                    // Replace the drop zone placeholder with the template
-                                                    dropZone.innerHTML = '';
-                                                    dropZone.appendChild(templateWrapper);
-                                                    dropZone.style.padding = '0';
-                                                    dropZone.style.border = 'none';
-                                                    dropZone.style.background = 'transparent';
-                                                    dropZone.style.minHeight = 'auto';
-
-                                                    // Update block config
-                                                    if (block) {
-                                                        block.config.content = window.WYSIWYGTool.cleanHTML(editor.innerHTML);
-                                                    }
-
-                                                }
-                                            }
-                                        }
-                                    } catch (error) {
-                                    }
-                                }
-                            }, true);
-                        });
-                     ">
-            <!-- Toolbar -->
-            <div class="wysiwyg-toolbar-container">
-                ${this.toolbar ? this.toolbar.render(this.editorId) : ''}
-            </div>
-
-            <!-- Editor -->
-            <div id="${this.editorId}"
-                 class="wysiwyg-content"
-                 contenteditable="true"
-                 @blur="if(block) { block.config.content = window.WYSIWYGTool.cleanHTML($el.innerHTML); }"
-                 @input="if(block) { block.config.content = window.WYSIWYGTool.cleanHTML($el.innerHTML); }"
-                 style="min-height: 200px; padding: 12px; outline: none; background: white;">${processedContent}</div>
-        </div>`;
+        // Return a simple textarea - RichTextLoader will convert it to a full editor
+        // Escape HTML entities for textarea content
+        const escapedContent = (this.config.content || '<p>Start typing here...</p>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        return `<textarea id="${this.editorId}"
+                          style="width: 100%; min-height: 200px; display: none;">${escapedContent}</textarea>`;
     }
     render() {
-        // Clean HTML before rendering
-        const cleanContent = $56ed62fe01aa8034$var$WYSIWYG.cleanHTML(this.config.content);
-        return `<${this.config.format} class="wysiwyg-content">${cleanContent}</${this.config.format}>`;
+        // For output rendering, just return the content wrapped in the configured format
+        return `<${this.config.format} class="wysiwyg-content">${this.config.content}</${this.config.format}>`;
     }
 }
 var $56ed62fe01aa8034$export$2e2bcd8739ae039 = $56ed62fe01aa8034$var$WYSIWYG;

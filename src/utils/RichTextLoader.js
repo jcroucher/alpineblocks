@@ -147,6 +147,7 @@ class RichTextLoader {
             editorDiv.style.outline = 'none';
             editorDiv.style.overflowY = 'auto';
             editorDiv.style.backgroundColor = 'white';
+            console.log('[RichTextLoader] Created contenteditable div:', editorDiv.id);
 
             // Process initial content to convert <!-- drop --> comments to drop zones
             let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
@@ -204,20 +205,29 @@ class RichTextLoader {
 
             // Sync changes back to textarea
             editorDiv.addEventListener('input', () => {
+                console.log('[RichTextLoader] input event fired, editorId:', editorId);
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
+                console.log('[RichTextLoader] textarea value updated, has onChange:', !!config.onChange);
                 if (config.onChange) {
+                    console.log('[RichTextLoader] calling onChange callback');
                     config.onChange(cleanedHTML);
                 }
             });
 
             // Handle blur events
             editorDiv.addEventListener('blur', () => {
+                console.log('[RichTextLoader] blur event on contenteditable');
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
                 if (config.onBlur) {
                     config.onBlur(cleanedHTML);
                 }
+            });
+
+            // Add focus logging
+            editorDiv.addEventListener('focus', () => {
+                console.log('[RichTextLoader] focus event on contenteditable');
             });
 
             // Clean content before form submission
