@@ -78,6 +78,15 @@ class RichTextEditor {
     static setupAccordionCompatibility(selector, config = {}) {
         richTextLoader.setupAccordionCompatibility(selector, config);
     }
+
+    /**
+     * Create Rich Text Editor properties HTML (for injection into external properties panels)
+     * @returns {string} Properties HTML string
+     */
+    static createRichTextPropertiesHTML() {
+        // Delegate to RichTextLoader class (access via constructor)
+        return richTextLoader.constructor.createRichTextPropertiesHTML();
+    }
 }
 
 export default RichTextEditor;

@@ -1,5 +1,6 @@
 import Tool from '../core/Tool';
 import { CommonEditorToolbar } from '../core/CommonEditorToolbar';
+import richTextLoader from '../utils/RichTextLoader';
 
 class WYSIWYG extends Tool {
     constructor({id, updateFunction, config}) {
@@ -227,6 +228,55 @@ class WYSIWYG extends Tool {
     }
 
     editorRender() {
+        // Create a hidden textarea that RichTextLoader will convert to a rich text editor
+        // This ensures we use the same RichTextLoader implementation everywhere
+        const textareaId = `wysiwyg-textarea-${this.id}`;
+
+        // Store features config globally so x-init can access it
+        const featuresConfigKey = `wysiwyg_features_${this.id}`;
+        if (typeof window !== 'undefined') {
+            window[featuresConfigKey] = this.config.features;
+        }
+
+        // Return a simple textarea that will be converted by RichTextLoader
+        return `<div class="wysiwyg-editor-wrapper"
+                     x-data="{
+                         textareaId: '${textareaId}',
+                         editorInitialized: false,
+                         featuresConfigKey: '${featuresConfigKey}'
+                     }"
+                     x-init="
+                         $nextTick(async () => {
+                             if (editorInitialized) return;
+                             editorInitialized = true;
+
+                             const textarea = document.getElementById(textareaId);
+                             if (!textarea) return;
+
+                             // Initialize RichTextLoader on this textarea
+                             if (window.AlpineBlocks && window.AlpineBlocks.RichTextEditor) {
+                                 await window.AlpineBlocks.RichTextEditor.init('#' + textareaId, {
+                                     height: 200,
+                                     features: window[featuresConfigKey],
+                                     onChange: (content) => {
+                                         if (block) {
+                                             block.config.content = content;
+                                         }
+                                     }
+                                 });
+
+                                 console.log('[WYSIWYG] RichTextEditor initialized for', textareaId);
+                             } else {
+                                 console.error('[WYSIWYG] window.AlpineBlocks.RichTextEditor not available');
+                             }
+                         });
+                     ">
+            <textarea id="${textareaId}" style="display: none;">${this.config.content || '<p>Start typing here...</p>'}</textarea>
+        </div>`;
+    }
+
+    // Old implementation kept for reference - can be removed once new version is tested
+    editorRenderOld() {
         // Process initial content for drop zones
         let processedContent = this.config.content;
         if (processedContent && processedContent.includes('<!-- drop -->')) {
@@ -235,7 +285,7 @@ class WYSIWYG extends Tool {
         }
 
         // Return editor with toolbar
-        return `<div class="wysiwyg-editor-wrapper"
+        return `<div class="wysiwyg-editor-wrapper-old"
                      style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;"
                      x-data="{
                         editorId: '${this.editorId}',

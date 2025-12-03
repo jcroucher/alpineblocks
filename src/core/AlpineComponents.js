@@ -83,12 +83,13 @@ export function registerAlpineComponents() {
         settingsInstance: null,
         settings: initialSettings || [],
         currentBlockId: null,
-        
+        cssProperties: {},
+
         init() {
             // Debug: Log the editor ID and check if editor exists
             console.log('Settings initialized for editor:', editorId);
             console.log('Available editors:', Object.keys(window.alpineEditors || {}));
-            
+
             // Wait for the editor to be ready before initializing settings
             const initializeSettings = () => {
                 if (window.alpineEditors && window.alpineEditors[editorId]) {
@@ -100,22 +101,62 @@ export function registerAlpineComponents() {
                     setTimeout(initializeSettings, 50);
                 }
             };
-            
+
             initializeSettings();
-            
+
             // Listen for settings updates
             document.addEventListener('settings-updated', (event) => {
                 if (event.detail.editorId === editorId) {
                     this.settings = event.detail.settings || [];
                     this.currentBlockId = event.detail.blockId;
+                    this.cssProperties = event.detail.cssProperties || {};
                 }
             });
         },
-        
+
         trigger(blockId, property, value) {
             if (this.settingsInstance) {
                 this.settingsInstance.trigger(blockId, property, value);
             }
+        },
+
+        updateCSSProperty(property, value) {
+            if (this.settingsInstance) {
+                this.settingsInstance.updateCSSProperty(property, value);
+                // Update local cssProperties for reactivity
+                this.cssProperties[property] = value;
+            }
+        },
+
+        // Helper method to safely get CSS property value
+        getCSSProperty(property, defaultValue = '') {
+            return (this.cssProperties && this.cssProperties[property]) || defaultValue;
+        },
+
+        // Helper for color input - ensures we return a valid hex color
+        getColorValue(property, defaultColor = '#000000') {
+            const value = this.getCSSProperty(property);
+            if (value && value.startsWith('#')) {
+                return value;
+            }
+            return defaultColor;
+        },
+
+        // Helper for background color - extracts hex color from various formats
+        getBackgroundColorValue() {
+            const bg = this.getCSSProperty('background') || this.getCSSProperty('background-color') || '#ffffff';
+            const match = bg.match(/#[0-9a-fA-F]{6}/);
+            return match ? match[0] : '#ffffff';
+        },
+
+        // Helper for padding/margin shorthand properties
+        getPaddingMarginValue(property, index, specificProperty) {
+            const shorthand = this.getCSSProperty(property);
+            if (shorthand) {
+                const parts = shorthand.split(' ');
+                return parts[index] || '';
+            }
+            return this.getCSSProperty(specificProperty);
         },
         
         doCallback(callback) {

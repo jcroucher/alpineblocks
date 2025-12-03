@@ -599,16 +599,30 @@ class RichTextLoader {
 
             // Track template clicks - find nearest template wrapper when clicking in editor
             editorDiv.addEventListener('click', (e) => {
+                console.log('[RichText] Click event received on editor:', editorDiv.id);
+                console.log('[RichText] Event target:', e.target);
+                console.log('[RichText] Event bubbles:', e.bubbles);
+                console.log('[RichText] Event propagation stopped:', e.cancelBubble);
+
                 // Get the element that was clicked
                 const clickedElement = e.target;
 
                 // Walk up the DOM tree to find a template wrapper
                 let currentElement = clickedElement;
+                console.log('[RichText] Walking up DOM tree from:', clickedElement);
                 while (currentElement && currentElement !== editorDiv) {
-                    if (currentElement.hasAttribute && currentElement.hasAttribute('data-template-id')) {
-                        const templateId = currentElement.getAttribute('data-template-id');
+                    // Check for template by data-template-id attribute OR by ID pattern (template-{timestamp}-{random})
+                    const hasTemplateAttribute = currentElement.hasAttribute && currentElement.hasAttribute('data-template-id');
+                    const hasTemplateId = currentElement.id && currentElement.id.startsWith('template-');
+
+                    console.log('[RichText] Checking element:', currentElement.tagName, currentElement.id,
+                                'has data-template-id?', hasTemplateAttribute,
+                                'has template ID pattern?', hasTemplateId);
+
+                    if (hasTemplateAttribute || hasTemplateId) {
+                        const templateId = currentElement.getAttribute('data-template-id') || 'legacy-template';
                         const instanceId = currentElement.id;
-                        const templateName = currentElement.getAttribute('data-template-name');
+                        const templateName = currentElement.getAttribute('data-template-name') || 'Template';
 
                         // Get the style attribute of the clicked element (not the wrapper)
                         const currentElementStyle = clickedElement.getAttribute('style') || '';
@@ -618,8 +632,12 @@ class RichTextLoader {
                         console.log('  Instance ID:', instanceId);
                         console.log('  Template ID:', templateId);
                         console.log('  Template Name:', templateName);
-                        console.log('  Clicked Element:', currentElementTag);
+                        console.log('  Clicked Element Tag:', currentElementTag);
+                        console.log('  Clicked Element:', clickedElement);
+                        console.log('  Clicked Element HTML:', clickedElement.outerHTML?.substring(0, 200));
                         console.log('  Element Style:', currentElementStyle);
+                        console.log('  Template Wrapper (currentElement):', currentElement);
+                        console.log('  Template Wrapper HTML:', currentElement.outerHTML?.substring(0, 200));
 
                         // Dispatch event with current element info
                         editorDiv.dispatchEvent(new CustomEvent('template-selected', {
@@ -627,7 +645,8 @@ class RichTextLoader {
                                 instanceId: instanceId,
                                 templateId: templateId,
                                 templateName: templateName,
-                                element: currentElement,
+                                element: clickedElement,
+                                currentElement: clickedElement,
                                 currentElementStyle: currentElementStyle,
                                 currentElementTag: currentElementTag,
                                 clickedElement: clickedElement
@@ -1123,6 +1142,232 @@ class RichTextLoader {
                 }, 300);
             }
         }
+    }
+
+    /**
+     * Create Rich Text Editor properties HTML (for injection into external properties panels)
+     * @returns {string} Properties HTML string
+     */
+    static createRichTextPropertiesHTML() {
+        return `
+            <!-- CSS Editor Controls -->
+            <div style="margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; background: #fafbfc;">
+                <h3 style="font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 1rem;">Style Controls</h3>
+
+                <!-- Font Size -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Font Size</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text"
+                               :value="getCSSProperty('font-size')"
+                               @input="updateCSSProperty('font-size', $event.target.value)"
+                               placeholder="e.g. 16px, 1rem"
+                               style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Font Weight -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Font Weight</label>
+                    <select :value="getCSSProperty('font-weight', 'normal')"
+                            @change="updateCSSProperty('font-weight', $event.target.value)"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                        <option value="normal">Normal</option>
+                        <option value="bold">Bold</option>
+                        <option value="100">100 - Thin</option>
+                        <option value="200">200 - Extra Light</option>
+                        <option value="300">300 - Light</option>
+                        <option value="400">400 - Normal</option>
+                        <option value="500">500 - Medium</option>
+                        <option value="600">600 - Semibold</option>
+                        <option value="700">700 - Bold</option>
+                        <option value="800">800 - Extra Bold</option>
+                        <option value="900">900 - Black</option>
+                    </select>
+                </div>
+
+                <!-- Text Color -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Text Color</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="color"
+                               :value="getColorValue('color')"
+                               @input="updateCSSProperty('color', $event.target.value)"
+                               style="width: 50px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                        <input type="text"
+                               :value="getCSSProperty('color')"
+                               @input="updateCSSProperty('color', $event.target.value)"
+                               placeholder="#000000 or rgb(0,0,0)"
+                               style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Background Color/Gradient -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Background</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="color"
+                               :value="getBackgroundColorValue()"
+                               @input="updateCSSProperty('background', $event.target.value)"
+                               style="width: 50px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                        <input type="text"
+                               :value="getCSSProperty('background') || getCSSProperty('background-color')"
+                               @input="updateCSSProperty('background', $event.target.value)"
+                               placeholder="Solid color or gradient"
+                               style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Padding & Margin (Box Layout) -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Padding</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.125rem;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('padding', 0, 'padding-top')"
+                                   @input="updateCSSProperty('padding-top', $event.target.value)"
+                                   placeholder="T"
+                                   title="Padding Top"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('padding', 3, 'padding-left')"
+                                   @input="updateCSSProperty('padding-left', $event.target.value)"
+                                   placeholder="L"
+                                   title="Padding Left"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div style="border: 1px solid #d1d5db; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 0.625rem; color: #9ca3af;">P</div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('padding', 1, 'padding-right')"
+                                   @input="updateCSSProperty('padding-right', $event.target.value)"
+                                   placeholder="R"
+                                   title="Padding Right"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('padding', 2, 'padding-bottom')"
+                                   @input="updateCSSProperty('padding-bottom', $event.target.value)"
+                                   placeholder="B"
+                                   title="Padding Bottom"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Margin</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.125rem;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('margin', 0, 'margin-top')"
+                                   @input="updateCSSProperty('margin-top', $event.target.value)"
+                                   placeholder="T"
+                                   title="Margin Top"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('margin', 3, 'margin-left')"
+                                   @input="updateCSSProperty('margin-left', $event.target.value)"
+                                   placeholder="L"
+                                   title="Margin Left"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div style="border: 1px solid #d1d5db; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 0.625rem; color: #9ca3af;">M</div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('margin', 1, 'margin-right')"
+                                   @input="updateCSSProperty('margin-right', $event.target.value)"
+                                   placeholder="R"
+                                   title="Margin Right"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                            <input type="text"
+                                   :value="getPaddingMarginValue('margin', 2, 'margin-bottom')"
+                                   @input="updateCSSProperty('margin-bottom', $event.target.value)"
+                                   placeholder="B"
+                                   title="Margin Bottom"
+                                   style="padding: 0.125rem; border: 1px solid #d1d5db; border-radius: 0.125rem; font-size: 0.625rem; text-align: center; width: 100%;">
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Border -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Border</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.375rem;">
+                        <input type="text"
+                               :value="getCSSProperty('border-width')"
+                               @input="updateCSSProperty('border-width', $event.target.value)"
+                               placeholder="Width (e.g. 2px)"
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                        <select :value="getCSSProperty('border-style', 'solid')"
+                                @change="updateCSSProperty('border-style', $event.target.value)"
+                                style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                            <option value="solid">Solid</option>
+                            <option value="dashed">Dashed</option>
+                            <option value="dotted">Dotted</option>
+                            <option value="double">Double</option>
+                            <option value="none">None</option>
+                        </select>
+                        <div style="display: flex; align-items: center; gap: 0.25rem;">
+                            <input type="color"
+                                   :value="getColorValue('border-color')"
+                                   @input="updateCSSProperty('border-color', $event.target.value)"
+                                   style="width: 40px; height: 36px; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer;">
+                            <input type="text"
+                                   :value="getCSSProperty('border-color')"
+                                   @input="updateCSSProperty('border-color', $event.target.value)"
+                                   placeholder="Color"
+                                   style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Border Radius -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Border Radius</label>
+                    <input type="text"
+                           :value="getCSSProperty('border-radius')"
+                           @input="updateCSSProperty('border-radius', $event.target.value)"
+                           placeholder="e.g. 1rem, 8px"
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                </div>
+
+                <!-- Dimensions -->
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Width</label>
+                        <input type="text"
+                               :value="getCSSProperty('width')"
+                               @input="updateCSSProperty('width', $event.target.value)"
+                               placeholder="e.g. 100%, auto"
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Height</label>
+                        <input type="text"
+                               :value="getCSSProperty('height')"
+                               @input="updateCSSProperty('height', $event.target.value)"
+                               placeholder="e.g. 100%, auto"
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Display -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem;">Display</label>
+                    <select :value="getCSSProperty('display', 'block')"
+                            @change="updateCSSProperty('display', $event.target.value)"
+                            style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.75rem;">
+                        <option value="block">Block</option>
+                        <option value="inline">Inline</option>
+                        <option value="inline-block">Inline Block</option>
+                        <option value="flex">Flex</option>
+                        <option value="grid">Grid</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+            </div>
+        `;
     }
 
     /**
