@@ -385,13 +385,21 @@ export function setupGlobalAPI() {
         
         // Create blocks from saved data
         if (blocks && blocks.length > 0) {
-            blocks.forEach(blockData => {
+            blocks.forEach((blockData, index) => {
                 const blockClass = blockData.class || blockData.type || 'Paragraph';
-                
+
                 // Only create block if tool exists
                 if (blockClass && editor.toolConfig[blockClass]) {
-                    const block = editor.initBlock(blockClass, true, blockData.id);
-                    
+                    // Clean up the block ID - if it's undefined, null, or invalid, don't pass it
+                    // This allows initBlock to generate a fresh ID
+                    let blockId = blockData.id;
+                    if (!blockId || blockId === 'undefined' || blockId === 'null') {
+                        console.warn(`[AlpineBlocks.loadContent] Block ${index} (${blockClass}) has invalid ID: ${blockId}, generating new ID`);
+                        blockId = null; // Let initBlock generate a new ID
+                    }
+
+                    const block = editor.initBlock(blockClass, true, blockId);
+
                     // Apply saved configuration
                     if (block && blockData.data) {
                         Object.assign(block.config, blockData.data);

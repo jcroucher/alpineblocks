@@ -718,8 +718,13 @@ export class Editor {
             window.templateDragData = null;
         }
 
+        // Ensure we always have a valid ID - reject undefined, null, empty strings, or 'undefined' string
+        const blockId = (existingId && existingId !== 'undefined' && existingId !== 'null')
+            ? existingId
+            : generateId();
+
         const newBlock = new BlockClass({
-            id: existingId || generateId(),
+            id: blockId,
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
@@ -894,15 +899,17 @@ export class Editor {
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
                 
                 
+                const blockId = generateId();
+
                 const newBlock = new BlockClass({
-                    id: generateId(),
+                    id: blockId,
                     updateFunction: this.updateFunction.bind(this),
                     config: mergedConfig
                 });
-                
+
                 // Preserve the clean class name
                 newBlock.class = toolName;
-                
+
                 // Now initialize with the merged config
                 newBlock.init(this);
                 

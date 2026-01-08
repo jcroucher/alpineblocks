@@ -23,6 +23,11 @@ function rawCodeEditor() {
         },
         
         init(blockId) {
+            // Validate blockId - silently return if invalid
+            if (!blockId || blockId === 'undefined') {
+                return;
+            }
+
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find(b => b.id === blockId);
 
@@ -37,20 +42,16 @@ function rawCodeEditor() {
                 }
             }
 
-
             if (this.block) {
                 // Set initial preview mode based on block config, defaulting to true
                 this.showPreview = this.block.config.showPreview !== false;
                 this.previewContent = this.block.config.content || '';
                 this.isValid = this.validateCode(this.block.config.content);
 
-
                 // Initialize toolbar for preview mode
                 this.toolbar = new CommonEditorToolbar({
                     className: 'raw-preview-toolbar'
                 });
-            } else {
-                console.error('[rawCodeEditor] Block not found for blockId:', blockId);
             }
         },
         
@@ -438,7 +439,6 @@ class Raw extends Tool {
     constructor({id, updateFunction, config}) {
         super(id, updateFunction, config);
 
-
         this.config = {
             content: config.content || '',
             mode: config.mode || 'html', // html, css, javascript
@@ -559,6 +559,14 @@ class Raw extends Tool {
     }
 
     editorRender() {
+        // Validate that we have an ID before rendering
+        if (!this.id || this.id === 'undefined') {
+            return `<div class="raw-block-error" style="padding: 20px; background: #fee; border: 2px solid #f00; border-radius: 8px;">
+                <h3 style="color: #c00; margin: 0 0 10px 0;">⚠ Raw Block Error</h3>
+                <p style="margin: 0;">Block ID is missing or invalid. Please delete and recreate this block.</p>
+            </div>`;
+        }
+
         return `<div class="raw-block" data-block-id="${this.id}"
                      x-data="rawCodeEditor()"
                      x-init="init('${this.id}')">
@@ -597,18 +605,18 @@ class Raw extends Tool {
                     spellcheck="false"
                     autocomplete="off"
                     style="width: 100%; min-height: 200px; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; resize: vertical;">${this.config.content}</textarea>
-                <div 
-                    x-show="showPreview" 
-                    class="preview-content" 
+                <div
+                    x-show="showPreview"
+                    class="preview-content"
                     style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); background: white;">
-                    
+
                     <!-- Rich Text Toolbar for Preview -->
-                    <div x-show="showPreview && toolbar" 
+                    <div x-show="showPreview && toolbar"
                          class="preview-toolbar-wrapper"
                          style="border-bottom: 1px solid #e5e7eb; padding: 8px;"
                          x-html="toolbar ? toolbar.render() : ''">
                     </div>
-                    
+
                     <div x-ref="previewContainer"
                          contenteditable="true"
                          x-init="initializePreviewContainer($el, block)"

@@ -1062,8 +1062,10 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
             // Clear the template drag data after use
             window.templateDragData = null;
         }
+        // Ensure we always have a valid ID - reject undefined, null, empty strings, or 'undefined' string
+        const blockId = existingId && existingId !== 'undefined' && existingId !== 'null' ? existingId : (0, $c9716fc55d08135c$export$567fc7097e064344)();
         const newBlock = new BlockClass({
-            id: existingId || (0, $c9716fc55d08135c$export$567fc7097e064344)(),
+            id: blockId,
             updateFunction: this.updateFunction.bind(this),
             config: config
         });
@@ -1194,8 +1196,9 @@ class $cda2b75602dff697$export$7cda8d932e2f33c0 {
                 const BlockClass = this.toolConfig[toolName].class;
                 const baseConfig = JSON.parse(JSON.stringify(this.toolConfig[toolName].config));
                 const mergedConfig = Object.assign(baseConfig, blockData.data || {});
+                const blockId = (0, $c9716fc55d08135c$export$567fc7097e064344)();
                 const newBlock = new BlockClass({
-                    id: (0, $c9716fc55d08135c$export$567fc7097e064344)(),
+                    id: blockId,
                     updateFunction: this.updateFunction.bind(this),
                     config: mergedConfig
                 });
@@ -5187,6 +5190,262 @@ var $56e8ed795405fb5c$export$2e2bcd8739ae039 = $56e8ed795405fb5c$var$Quote;
 }
 
 
+/**
+ * RichTextHistoryManager - Custom undo/redo for contenteditable rich text editor
+ *
+ * Unlike the browser's native undo (which only tracks typing and execCommand),
+ * this manager tracks ALL changes including:
+ * - Template drops (manual DOM insertions)
+ * - Inline style changes (background, padding, etc.)
+ * - Property modifications via StyleControls
+ *
+ * Implementation:
+ * - Stores HTML snapshots + cursor position
+ * - Debounces typing to avoid excessive snapshots
+ * - Explicitly saves after non-typing operations (drops, style changes)
+ */ class $0b5a35bcb6563323$export$839910c5ffe56f19 {
+    constructor(editorElement, options = {}){
+        this.editor = editorElement;
+        this.history = [];
+        this.currentIndex = -1;
+        this.maxHistorySize = options.maxHistorySize || 50;
+        this.isApplyingState = false; // Prevent recursive tracking
+        this.typingTimer = null;
+        this.typingDelay = options.typingDelay || 1000; // 1 second after typing stops
+        // Callbacks
+        this.onStateChange = options.onStateChange || null;
+        // Save initial state
+        this.saveState('Initial state');
+    }
+    /**
+   * Save the current editor state to history
+   * @param {string} action - Description of the action that triggered this save
+   * @param {boolean} immediate - Skip debounce, save immediately
+   */ saveState(action = 'Change', immediate = false) {
+        // Don't save state if we're currently applying a previous state
+        if (this.isApplyingState) return;
+        // For typing, debounce to avoid excessive snapshots
+        if (!immediate && action === 'Typing') {
+            clearTimeout(this.typingTimer);
+            this.typingTimer = setTimeout(()=>{
+                this._performSave(action);
+            }, this.typingDelay);
+            return;
+        }
+        // For explicit actions (drops, style changes), save immediately
+        this._performSave(action);
+    }
+    /**
+   * Internal method to perform the actual save
+   * @param {string} action - Description of the action
+   */ _performSave(action) {
+        // Capture current selection/cursor position
+        const selection = window.getSelection();
+        let selectionState = null;
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            // Store selection as relative offsets within the editor
+            try {
+                const preSelectionRange = range.cloneRange();
+                preSelectionRange.selectNodeContents(this.editor);
+                preSelectionRange.setEnd(range.startContainer, range.startOffset);
+                const start = preSelectionRange.toString().length;
+                selectionState = {
+                    start: start,
+                    end: start + range.toString().length,
+                    collapsed: range.collapsed
+                };
+            } catch (e) {
+                // If we can't capture selection, just store null
+                selectionState = null;
+            }
+        }
+        const currentState = {
+            html: this.editor.innerHTML,
+            selection: selectionState,
+            timestamp: Date.now(),
+            action: action
+        };
+        // Check if this state is different from the current one
+        // (avoid duplicate snapshots)
+        if (this.currentIndex >= 0) {
+            const lastState = this.history[this.currentIndex];
+            if (lastState && lastState.html === currentState.html) // No change, don't save
+            return;
+        }
+        // If we're not at the end of history, remove everything after current index
+        // (user made changes after undoing, so discard the "future")
+        if (this.currentIndex < this.history.length - 1) this.history = this.history.slice(0, this.currentIndex + 1);
+        // Add new state
+        this.history.push(currentState);
+        // Keep history size manageable
+        if (this.history.length > this.maxHistorySize) this.history.shift();
+        else this.currentIndex++;
+        this._notifyStateChange();
+    }
+    /**
+   * Undo the last action
+   * @returns {boolean} Whether undo was successful
+   */ undo() {
+        if (!this.canUndo()) return false;
+        this.currentIndex--;
+        const state = this.history[this.currentIndex];
+        this._applyState(state);
+        this._notifyStateChange();
+        return true;
+    }
+    /**
+   * Redo the next action
+   * @returns {boolean} Whether redo was successful
+   */ redo() {
+        if (!this.canRedo()) return false;
+        this.currentIndex++;
+        const state = this.history[this.currentIndex];
+        this._applyState(state);
+        this._notifyStateChange();
+        return true;
+    }
+    /**
+   * Check if undo is possible
+   * @returns {boolean}
+   */ canUndo() {
+        return this.currentIndex > 0;
+    }
+    /**
+   * Check if redo is possible
+   * @returns {boolean}
+   */ canRedo() {
+        return this.currentIndex < this.history.length - 1;
+    }
+    /**
+   * Apply a previous state to the editor
+   * @param {Object} state - The state to apply
+   */ _applyState(state) {
+        this.isApplyingState = true;
+        try {
+            // Restore HTML content
+            this.editor.innerHTML = state.html;
+            // Restore selection/cursor position
+            // We restore selection synchronously, but after a microtask to ensure DOM is updated
+            if (state.selection) // Use requestAnimationFrame for better timing
+            requestAnimationFrame(()=>{
+                this._restoreSelection(state.selection);
+            });
+            // Trigger input event so listeners know content changed
+            const event = new Event('input', {
+                bubbles: true
+            });
+            this.editor.dispatchEvent(event);
+        } finally{
+            this.isApplyingState = false;
+        }
+    }
+    /**
+   * Restore cursor/selection position from saved state
+   * @param {Object} selectionState - Saved selection state
+   */ _restoreSelection(selectionState) {
+        try {
+            // Create a new range
+            const range = document.createRange();
+            const selection = window.getSelection();
+            // Find the text node and offset for the start position
+            const { node: startNode, offset: startOffset } = this._getNodeAndOffset(selectionState.start);
+            if (startNode) {
+                range.setStart(startNode, startOffset);
+                if (selectionState.collapsed) range.collapse(true);
+                else {
+                    // Find the end position
+                    const { node: endNode, offset: endOffset } = this._getNodeAndOffset(selectionState.end);
+                    if (endNode) range.setEnd(endNode, endOffset);
+                }
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        } catch (e) {
+            // If we can't restore selection, just place cursor at start
+            try {
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.setStart(this.editor, 0);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } catch (e2) {
+            // Give up on selection restoration
+            }
+        }
+    }
+    /**
+   * Find text node and offset for a given character position
+   * @param {number} charCount - Character position from start
+   * @returns {Object} {node, offset}
+   */ _getNodeAndOffset(charCount) {
+        const treeWalker = document.createTreeWalker(this.editor, NodeFilter.SHOW_TEXT, null, false);
+        let currentCount = 0;
+        let currentNode = treeWalker.nextNode();
+        while(currentNode){
+            const nodeLength = currentNode.textContent.length;
+            if (currentCount + nodeLength >= charCount) // Found the node
+            return {
+                node: currentNode,
+                offset: charCount - currentCount
+            };
+            currentCount += nodeLength;
+            currentNode = treeWalker.nextNode();
+        }
+        // Couldn't find position, return last node
+        if (currentNode) return {
+            node: currentNode,
+            offset: currentNode.textContent.length
+        };
+        // Fallback to editor element
+        return {
+            node: this.editor,
+            offset: 0
+        };
+    }
+    /**
+   * Notify listeners that history state has changed
+   */ _notifyStateChange() {
+        if (this.onStateChange) this.onStateChange({
+            canUndo: this.canUndo(),
+            canRedo: this.canRedo(),
+            currentIndex: this.currentIndex,
+            totalStates: this.history.length,
+            currentAction: this.history[this.currentIndex]?.action
+        });
+    }
+    /**
+   * Get current history status
+   * @returns {Object} History status
+   */ getStatus() {
+        return {
+            canUndo: this.canUndo(),
+            canRedo: this.canRedo(),
+            currentAction: this.history[this.currentIndex]?.action,
+            totalStates: this.history.length,
+            currentIndex: this.currentIndex
+        };
+    }
+    /**
+   * Clear all history and save current state as initial
+   */ clearHistory() {
+        this.history = [];
+        this.currentIndex = -1;
+        this.saveState('History cleared', true);
+    }
+    /**
+   * Destroy the history manager (cleanup)
+   */ destroy() {
+        clearTimeout(this.typingTimer);
+        this.history = [];
+        this.currentIndex = -1;
+        this.editor = null;
+        this.onStateChange = null;
+    }
+}
+
+
 class $9aaf352ee83751f3$var$RichTextLoader {
     constructor(){
         this.instances = new Map();
@@ -5194,6 +5453,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         this.turboCleanupRegistered = false;
         this.autoInitListenersRegistered = false;
         this.autoInitConfigs = new Map(); // Track selector -> config mappings
+        this.preservedHistories = new Map(); // Store history managers across Turbo reloads
         this.defaultConfig = {
             height: 400,
             features: {
@@ -5216,6 +5476,33 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             className: 'alpineblocks-richtext-editor',
             variables: [] // Array [{label: 'Name', value: '{{var}}'}] OR Object {'Category': [{...}]}
         };
+    }
+    /**
+   * Generate reusable template filters HTML (search + category)
+   * @returns {string} HTML string for template filters
+   */ getTemplateFiltersHTML() {
+        return `
+            <div class="templates-filter-section" style="margin-bottom: 1rem;">
+                <label class="filter-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Search:</label>
+                <input type="text"
+                       placeholder="Search templates..."
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"
+                       x-model="searchTerm"
+                       @input="filterTemplates && filterTemplates()"
+                       style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+            </div>
+            <div class="templates-filter-section">
+                <label class="filter-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Category:</label>
+                <select class="category-filter w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"
+                        x-model="selectedCategory"
+                        @change="filterTemplates && filterTemplates()">
+                    <option value="all">All Templates</option>
+                    <template x-for="(cat, index) in categories" :key="cat.id || 'cat-' + index">
+                        <option :value="cat.id" x-text="cat.name"></option>
+                    </template>
+                </select>
+            </div>
+        `;
     }
     /**
    * Initialize AlpineBlocks globally (only once)
@@ -5303,7 +5590,6 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             editorDiv.style.outline = 'none';
             editorDiv.style.overflowY = 'auto';
             editorDiv.style.backgroundColor = 'white';
-            console.log('[RichTextLoader] Created contenteditable div:', editorDiv.id);
             // Process initial content to convert <!-- drop --> comments to drop zones
             let processedContent = initialContent || `<p>${config.placeholder || this.defaultConfig.placeholder}</p>`;
             if (initialContent && initialContent.includes('<!-- drop -->')) processedContent = this.processDropZones(processedContent, editorId);
@@ -5349,28 +5635,67 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             // Silently ignore execCommand configuration errors
             }
             // Setup Alpine.js event handlers for toolbar
-            this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId);
+            // Note: setupToolbarHandlers will check if a handler already exists and reuse it
+            this.setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId, element);
+            // Initialize custom history manager for undo/redo
+            // Check if we have a preserved history for this textarea
+            const textareaId = element.id;
+            let historyManager;
+            if (this.preservedHistories.has(textareaId)) {
+                // Restore preserved history
+                historyManager = this.preservedHistories.get(textareaId);
+                historyManager.editor = editorDiv; // Update editor reference
+                this.preservedHistories.delete(textareaId);
+            } else // Create new history manager
+            historyManager = new (0, $0b5a35bcb6563323$export$839910c5ffe56f19)(editorDiv, {
+                maxHistorySize: config.maxHistorySize || 50,
+                typingDelay: config.typingDelay || 1000,
+                onStateChange: (status)=>{
+                // Update toolbar button states if needed
+                // Could be used to enable/disable undo/redo buttons
+                }
+            });
+            // Store history manager reference for cleanup and access
+            editorDiv._historyManager = historyManager;
+            // Set up MutationObserver to detect style/attribute changes
+            // This catches when StyleControls or other tools modify element attributes
+            const observer = new MutationObserver((mutations)=>{
+                // Only track if not currently applying history state
+                if (historyManager.isApplyingState) return;
+                // Check if any mutation was an attribute change (style, class, data-*, etc.)
+                const hasAttributeChange = mutations.some((mutation)=>mutation.type === 'attributes' && mutation.target !== editorDiv // Ignore changes to the editor div itself
+                );
+                if (hasAttributeChange) // Save immediately for style/property changes
+                historyManager.saveState('Style change', true);
+            });
+            // Observe the editor for attribute changes on child elements
+            observer.observe(editorDiv, {
+                attributes: true,
+                attributeOldValue: true,
+                subtree: true,
+                // Watch all descendants
+                attributeFilter: [
+                    'style',
+                    'class',
+                    'data-background',
+                    'data-padding'
+                ] // Only watch relevant attributes
+            });
+            // Store observer for cleanup
+            editorDiv._mutationObserver = observer;
             // Sync changes back to textarea
             editorDiv.addEventListener('input', ()=>{
-                console.log('[RichTextLoader] input event fired, editorId:', editorId);
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
-                console.log('[RichTextLoader] textarea value updated, has onChange:', !!config.onChange);
-                if (config.onChange) {
-                    console.log('[RichTextLoader] calling onChange callback');
-                    config.onChange(cleanedHTML);
-                }
+                if (config.onChange) config.onChange(cleanedHTML);
+                // Save to history (debounced for typing)
+                if (historyManager && !historyManager.isApplyingState) historyManager.saveState('Typing', false);
             });
             // Handle blur events
             editorDiv.addEventListener('blur', ()=>{
-                console.log('[RichTextLoader] blur event on contenteditable');
                 const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                 element.value = cleanedHTML;
                 if (config.onBlur) config.onBlur(cleanedHTML);
-            });
-            // Add focus logging
-            editorDiv.addEventListener('focus', ()=>{
-                console.log('[RichTextLoader] focus event on contenteditable');
             });
             // Clean content before form submission
             const form = element.closest('form');
@@ -5610,6 +5935,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                     const cleanedHTML = this.cleanHTML(editorDiv.innerHTML);
                     element.value = cleanedHTML;
                     if (config.onChange) config.onChange(cleanedHTML);
+                    // Save to history immediately after template drop
+                    if (historyManager) historyManager.saveState('Template drop', true);
                     // Clear the template data if it was used
                     if (window.templateDragData) window.templateDragData = null;
                 }
@@ -5890,7 +6217,10 @@ class $9aaf352ee83751f3$var$RichTextLoader {
    * @param {HTMLElement} codeTextarea - Code view textarea
    * @param {Object} toolbar - Toolbar instance
    * @param {string} editorId - Editor ID
-   */ setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId) {
+   * @param {HTMLElement} textareaElement - Original textarea element (for ID persistence)
+   */ setupToolbarHandlers(toolbarContainer, editorDiv, codeTextarea, toolbar, editorId, textareaElement) {
+        // Check if handler already exists (from Turbo reload)
+        window.__richTextHandlers && window.__richTextHandlers[editorId];
         // Store the last selection
         let savedSelection = null;
         let isCodeViewActive = false;
@@ -5909,6 +6239,17 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         });
         // Define the command handler function
         const handleToolbarCommand = (command, value = null)=>{
+            // Get history manager
+            const historyManager = editorDiv._historyManager;
+            // Handle custom undo/redo commands
+            if (command === 'undo') {
+                if (historyManager && historyManager.canUndo()) historyManager.undo();
+                return;
+            }
+            if (command === 'redo') {
+                if (historyManager && historyManager.canRedo()) historyManager.redo();
+                return;
+            }
             // Handle toggle blocks sidebar command
             if (command === 'toggleBlocksSidebar') {
                 this.toggleBlocksSidebar(editorId, !isBlocksSidebarOpen);
@@ -5954,6 +6295,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 // Log the HTML after command to see what changed
                 // Save the new selection
                 if (selection.rangeCount > 0) savedSelection = selection.getRangeAt(0);
+                // Save to history after formatting command (immediate, not debounced)
+                if (historyManager && result) historyManager.saveState(`Format: ${command}`, true);
             } catch (error) {}
         };
         // Store the handler in a global registry that Alpine can access
@@ -5990,6 +6333,8 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             if (!sidebar) {
                 sidebar = this.createBlocksSidebar(editorId);
                 document.body.appendChild(sidebar);
+                // Initialize Alpine on the sidebar after appending to DOM
+                if (window.Alpine && window.Alpine.initTree) window.Alpine.initTree(sidebar);
             }
             // Show sidebar with animation
             setTimeout(()=>{
@@ -6237,6 +6582,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
         sidebar.id = `blocks-sidebar-${editorId}`;
         sidebar.className = 'alpineblocks-sidebar';
         // Initialize Alpine components on the sidebar
+        sidebar.setAttribute('x-init', 'init()');
         sidebar.setAttribute('x-data', `{
             activeTab: 'templates',
             toolbarData: null,
@@ -6245,7 +6591,18 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             currentElementStyle: '',
             currentElementTag: '',
             cssProperties: {},
-            init() {
+            templates: [],
+            filteredTemplates: [],
+            categories: [],
+            selectedCategory: 'all',
+            searchTerm: '',
+            loading: false,
+            tools: [],
+            editor: null,
+            editorId: null,
+            isDragging: false,
+            dragStartTime: null,
+            async init() {
                 // Initialize toolbar component
                 if (window.editorToolbar) {
                     this.toolbarData = window.editorToolbar;
@@ -6254,13 +6611,49 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 if (window.editorTemplatesWithCategories) {
                     this.templatesData = window.editorTemplatesWithCategories();
                     if (this.templatesData.init) {
-                        this.templatesData.init.call(this.templatesData);
+                        await this.templatesData.init.call(this.templatesData);
                     }
+                    // Copy data to parent scope after async init completes
+                    this.templates = this.templatesData.templates || [];
+                    this.filteredTemplates = this.templatesData.filteredTemplates || [];
+                    this.categories = this.templatesData.categories || [];
+                    // Copy methods to parent scope so they're accessible in templates
+                    this.handleTemplateDragStart = this.templatesData.handleTemplateDragStart?.bind(this.templatesData);
+                    this.handleTemplateDragEnd = this.templatesData.handleTemplateDragEnd?.bind(this.templatesData);
+                    this.handleTemplateClick = this.templatesData.handleTemplateClick?.bind(this.templatesData);
+                    this.handleTemplateMouseDown = this.templatesData.handleTemplateMouseDown?.bind(this.templatesData);
                 } else if (window.editorTemplates) {
                     this.templatesData = window.editorTemplates();
                     if (this.templatesData.init) {
-                        this.templatesData.init.call(this.templatesData);
+                        await this.templatesData.init.call(this.templatesData);
                     }
+                    // Copy data to parent scope after async init completes
+                    this.templates = this.templatesData.templates || [];
+                    this.filteredTemplates = this.templatesData.filteredTemplates || [];
+                    this.categories = this.templatesData.categories || [];
+                    // Copy methods to parent scope so they're accessible in templates
+                    this.handleTemplateDragStart = this.templatesData.handleTemplateDragStart?.bind(this.templatesData);
+                    this.handleTemplateDragEnd = this.templatesData.handleTemplateDragEnd?.bind(this.templatesData);
+                    this.handleTemplateClick = this.templatesData.handleTemplateClick?.bind(this.templatesData);
+                    this.handleTemplateMouseDown = this.templatesData.handleTemplateMouseDown?.bind(this.templatesData);
+                }
+
+                // Initialize tools for Tools tab
+                if (window.alpineEditors && Object.keys(window.alpineEditors).length > 0) {
+                    const foundEditorId = Object.keys(window.alpineEditors)[0];
+                    this.editor = window.alpineEditors[foundEditorId];
+                    this.editorId = foundEditorId;
+                    this.tools = this.editor.getToolbar();
+                } else if (window.AlpineBlocks && window.AlpineBlocks.toolModules) {
+                    this.tools = Object.keys(window.AlpineBlocks.toolModules).map(key => {
+                        const Block = window.AlpineBlocks.toolModules[key];
+                        const toolbox = Block.toolbox ? Block.toolbox() : {};
+                        return {
+                            name: toolbox.name || key,
+                            icon: toolbox.icon || '\u{1F527}',
+                            class: key
+                        };
+                    });
                 }
 
                 // Listen for template selection events
@@ -6271,6 +6664,38 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                     this.activeTab = 'properties';
                     this.parseCSSProperties();
                 });
+            },
+            handleDragStart(event, tool) {
+                this.isDragging = true;
+                this.dragStartTime = Date.now();
+                event.dataTransfer.setData('text/plain', tool.class);
+                event.dataTransfer.effectAllowed = 'copy';
+                window.currentDraggedTool = tool.class;
+            },
+            handleDragEnd(event) {
+                setTimeout(() => {
+                    this.isDragging = false;
+                    this.dragStartTime = null;
+                    window.currentDraggedTool = null;
+                }, 100);
+            },
+            handleClick(event, tool) {
+                if (this.isDragging || (this.dragStartTime && Date.now() - this.dragStartTime < 200)) {
+                    return;
+                }
+                const editorElement = document.getElementById('alpineblocks-editor');
+                if (editorElement && editorElement._x_dataStack && editorElement._x_dataStack[0]) {
+                    const editorData = editorElement._x_dataStack[0];
+                    if (editorData.editor) {
+                        const syntheticEvent = {
+                            preventDefault: () => {},
+                            dataTransfer: {
+                                getData: () => tool.class
+                            }
+                        };
+                        editorData.editor.handleDrop(syntheticEvent, 'end', null);
+                    }
+                }
             },
             parseCSSProperties() {
                 // Parse inline style into individual properties
@@ -6398,6 +6823,34 @@ class $9aaf352ee83751f3$var$RichTextLoader {
 
                 this.selectedTemplate.clickedElement.setAttribute('style', styleString);
                 this.currentElementStyle = styleString;
+            },
+            filterTemplates() {
+                // Start with all templates
+                let filtered = this.templates || [];
+
+                // Apply category filter
+                if (this.selectedCategory !== 'all') {
+                    filtered = filtered.filter(t => t.category_id === this.selectedCategory);
+                }
+
+                // Apply search filter
+                if (this.searchTerm && this.searchTerm.trim() !== '') {
+                    const searchLower = this.searchTerm.toLowerCase().trim();
+                    filtered = filtered.filter(t => {
+                        const nameMatch = (t.name || '').toLowerCase().includes(searchLower);
+                        const descMatch = (t.description || '').toLowerCase().includes(searchLower);
+                        return nameMatch || descMatch;
+                    });
+                }
+
+                this.filteredTemplates = filtered;
+
+                // Also delegate to templatesData if it has its own filtering logic
+                if (this.templatesData && this.templatesData.filterTemplates) {
+                    this.templatesData.selectedCategory = this.selectedCategory;
+                    this.templatesData.searchTerm = this.searchTerm;
+                    this.templatesData.filterTemplates.call(this.templatesData);
+                }
             }
         }`);
         sidebar.innerHTML = `
@@ -6526,33 +6979,9 @@ class $9aaf352ee83751f3$var$RichTextLoader {
             </div>
 
             <div class="panel-content" style="overflow-y: auto; flex: 1; min-height: 0;">
-                <!-- Tools Tab - Use actual editorToolbar component -->
+                <!-- Tools Tab -->
                 <div id="toolbar-${editorId}"
                      x-show="activeTab === 'tools'"
-                     x-data="editorToolbar"
-                     x-init="$nextTick(() => {
-                         // Try to find an AlpineBlocks editor on the page
-                         if (window.alpineEditors && Object.keys(window.alpineEditors).length > 0) {
-                             const foundEditorId = Object.keys(window.alpineEditors)[0];
-                             editor = window.alpineEditors[foundEditorId];
-                             editorId = foundEditorId;
-                             // Populate tools from the editor
-                             tools = editor.getToolbar();
-                         } else if (window.AlpineBlocks && window.AlpineBlocks.toolModules) {
-                             // Fallback: No full editor, but we can show tools from toolModules
-                             tools = Object.keys(window.AlpineBlocks.toolModules).map(key => {
-                                 const Block = window.AlpineBlocks.toolModules[key];
-                                 const toolbox = Block.toolbox ? Block.toolbox() : {};
-                                 return {
-                                     name: toolbox.name || key,
-                                     icon: toolbox.icon || '\u{1F527}',
-                                     class: key
-                                 };
-                             });
-                         } else {
-                             console.error('\u{274C} Neither AlpineBlocks editor nor toolModules found');
-                         }
-                     })"
                      style="padding: 1.25rem;">
                     <template x-for="tool in tools" :key="tool.name">
                         <div class="tool-item"
@@ -6571,9 +7000,7 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                 </div>
 
                 <!-- Templates Tab -->
-                <div x-show="activeTab === 'templates'"
-                     x-data="window.editorTemplatesWithCategories ? window.editorTemplatesWithCategories() : (window.editorTemplates ? window.editorTemplates() : {templates: [], filteredTemplates: [], selectedCategory: 'all', loading: false, init: function() {}})"
-                     x-init="init && init()">
+                <div x-show="activeTab === 'templates'">
                     <div class="templates-section">
                         <div class="templates-header" style="margin-bottom: 1rem;">
                             <button @click.stop="$dispatch('open-template-editor', 'new')"
@@ -6581,20 +7008,10 @@ class $9aaf352ee83751f3$var$RichTextLoader {
                                     class="w-full mb-3 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                                 + New Template
                             </button>
-                            <div class="templates-filter-section">
-                                <label class="filter-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Category:</label>
-                                <select class="category-filter w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"
-                                        x-model="selectedCategory"
-                                        @change="filterTemplates && filterTemplates()">
-                                    <option value="all">All Templates</option>
-                                    <template x-for="cat in categories" :key="cat.id">
-                                        <option :value="cat.id" x-text="cat.name"></option>
-                                    </template>
-                                </select>
-                            </div>
+                            ${this.getTemplateFiltersHTML()}
                         </div>
-                        <div class="templates-grid">
-                            <template x-for="template in filteredTemplates" :key="template.id">
+                        <div class="templates-grid" x-show="filteredTemplates && filteredTemplates.length > 0">
+                            <template x-for="(template, index) in (filteredTemplates || [])" :key="template.id || 'template-' + index">
                                 <div class="template-item"
                                      style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; margin-bottom: 0.5rem; transition: all 0.2s ease;"
                                      onmouseover="this.style.borderColor='#93c5fd'; this.style.background='#eff6ff'; this.style.transform='translateY(-1px)'"
@@ -7077,6 +7494,20 @@ class $9aaf352ee83751f3$var$RichTextLoader {
    * Remove all editor instances
    */ removeAll() {
         this.instances.forEach((instance)=>{
+            // Preserve history manager for Turbo reloads
+            if (instance.editorDiv && instance.editorDiv._historyManager && instance.element && instance.element.id) {
+                const textareaId = instance.element.id;
+                this.preservedHistories.set(textareaId, instance.editorDiv._historyManager);
+                // Don't destroy it, just detach
+                instance.editorDiv._historyManager = null;
+            }
+            // Clean up mutation observer
+            if (instance.editorDiv && instance.editorDiv._mutationObserver) {
+                instance.editorDiv._mutationObserver.disconnect();
+                instance.editorDiv._mutationObserver = null;
+            }
+            // DON'T remove the toolbar handler from window.__richTextHandlers
+            // It needs to persist across Turbo reloads since the editorId stays the same
             if (instance.wrapper) instance.wrapper.remove();
             if (instance.element && instance.element.style) instance.element.style.display = '';
         });
@@ -8917,6 +9348,8 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
             }
         },
         init (blockId) {
+            // Validate blockId - silently return if invalid
+            if (!blockId || blockId === 'undefined') return;
             // Find the block instance - try multiple approaches
             this.block = window.blocksManager?.blocks?.find((b)=>b.id === blockId);
             if (!this.block && window.alpineEditors) // Try finding through alpine editors
@@ -8936,7 +9369,7 @@ function $08ab3851bf56e43b$var$rawCodeEditor() {
                 this.toolbar = new (0, $f30f3148448a183c$export$c4f883ba50227a95)({
                     className: 'raw-preview-toolbar'
                 });
-            } else console.error('[rawCodeEditor] Block not found for blockId:', blockId);
+            }
         },
         handleInput (event) {
         // Do nothing - just let the input happen
@@ -9356,6 +9789,11 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
         }
     }
     editorRender() {
+        // Validate that we have an ID before rendering
+        if (!this.id || this.id === 'undefined') return `<div class="raw-block-error" style="padding: 20px; background: #fee; border: 2px solid #f00; border-radius: 8px;">
+                <h3 style="color: #c00; margin: 0 0 10px 0;">\u{26A0} Raw Block Error</h3>
+                <p style="margin: 0;">Block ID is missing or invalid. Please delete and recreate this block.</p>
+            </div>`;
         return `<div class="raw-block" data-block-id="${this.id}"
                      x-data="rawCodeEditor()"
                      x-init="init('${this.id}')">
@@ -9394,18 +9832,18 @@ class $08ab3851bf56e43b$var$Raw extends (0, $7a9b6788f4274d37$export$2e2bcd8739a
                     spellcheck="false"
                     autocomplete="off"
                     style="width: 100%; min-height: 200px; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; resize: vertical;">${this.config.content}</textarea>
-                <div 
-                    x-show="showPreview" 
-                    class="preview-content" 
+                <div
+                    x-show="showPreview"
+                    class="preview-content"
                     style="min-height: 200px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); background: white;">
-                    
+
                     <!-- Rich Text Toolbar for Preview -->
-                    <div x-show="showPreview && toolbar" 
+                    <div x-show="showPreview && toolbar"
                          class="preview-toolbar-wrapper"
                          style="border-bottom: 1px solid #e5e7eb; padding: 8px;"
                          x-html="toolbar ? toolbar.render() : ''">
                     </div>
-                    
+
                     <div x-ref="previewContainer"
                          contenteditable="true"
                          x-init="initializePreviewContainer($el, block)"
@@ -10954,6 +11392,7 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
             templates: [],
             filteredTemplates: [],
             selectedCategory: 'all',
+            searchTerm: '',
             loading: false,
             async init () {
                 this.loading = true;
@@ -10976,10 +11415,21 @@ function $0982ba88a7f01dd6$export$cb57fc1addf981be() {
                 });
             },
             filterTemplates () {
-                if (this.selectedCategory === 'all') this.filteredTemplates = this.templates;
-                else this.filteredTemplates = this.templates.filter((template)=>{
+                let filtered = this.templates;
+                // Apply category filter
+                if (this.selectedCategory !== 'all') filtered = filtered.filter((template)=>{
                     return template.tags && template.tags.includes(this.selectedCategory);
                 });
+                // Apply search filter
+                if (this.searchTerm && this.searchTerm.trim() !== '') {
+                    const searchLower = this.searchTerm.toLowerCase().trim();
+                    filtered = filtered.filter((template)=>{
+                        const nameMatch = (template.name || '').toLowerCase().includes(searchLower);
+                        const descMatch = (template.description || '').toLowerCase().includes(searchLower);
+                        return nameMatch || descMatch;
+                    });
+                }
+                this.filteredTemplates = filtered;
             },
             handleTemplateClick (event, template) {
                 event.preventDefault();
@@ -11466,11 +11916,18 @@ function $ba44cdbcc9d2d44f$export$e140ea7c56d973fa() {
         // Clear existing blocks
         editor.blockManager.blocks = [];
         // Create blocks from saved data
-        if (blocks && blocks.length > 0) blocks.forEach((blockData)=>{
+        if (blocks && blocks.length > 0) blocks.forEach((blockData, index)=>{
             const blockClass = blockData.class || blockData.type || 'Paragraph';
             // Only create block if tool exists
             if (blockClass && editor.toolConfig[blockClass]) {
-                const block = editor.initBlock(blockClass, true, blockData.id);
+                // Clean up the block ID - if it's undefined, null, or invalid, don't pass it
+                // This allows initBlock to generate a fresh ID
+                let blockId = blockData.id;
+                if (!blockId || blockId === 'undefined' || blockId === 'null') {
+                    console.warn(`[AlpineBlocks.loadContent] Block ${index} (${blockClass}) has invalid ID: ${blockId}, generating new ID`);
+                    blockId = null; // Let initBlock generate a new ID
+                }
+                const block = editor.initBlock(blockClass, true, blockId);
                 // Apply saved configuration
                 if (block && blockData.data) Object.assign(block.config, blockData.data);
             }

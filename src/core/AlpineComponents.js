@@ -1216,6 +1216,7 @@ export function registerAlpineComponents() {
         templates: [],
         filteredTemplates: [],
         selectedCategory: 'all',
+        searchTerm: '',
         loading: false,
 
         async init() {
@@ -1244,13 +1245,26 @@ export function registerAlpineComponents() {
         },
 
         filterTemplates() {
-            if (this.selectedCategory === 'all') {
-                this.filteredTemplates = this.templates;
-            } else {
-                this.filteredTemplates = this.templates.filter(template => {
+            let filtered = this.templates;
+
+            // Apply category filter
+            if (this.selectedCategory !== 'all') {
+                filtered = filtered.filter(template => {
                     return template.tags && template.tags.includes(this.selectedCategory);
                 });
             }
+
+            // Apply search filter
+            if (this.searchTerm && this.searchTerm.trim() !== '') {
+                const searchLower = this.searchTerm.toLowerCase().trim();
+                filtered = filtered.filter(template => {
+                    const nameMatch = (template.name || '').toLowerCase().includes(searchLower);
+                    const descMatch = (template.description || '').toLowerCase().includes(searchLower);
+                    return nameMatch || descMatch;
+                });
+            }
+
+            this.filteredTemplates = filtered;
         },
 
         handleTemplateClick(event, template) {
